@@ -22,6 +22,7 @@ const internshipItems = [
   { label: 'Dashboard', href: '/admin/internship', icon: LayoutDashboard },
   { label: 'Interns', href: '/admin/internship/interns', icon: Users },
   { label: 'Tracks', href: '/admin/internship/tracks', icon: GraduationCap },
+  { label: 'Onboarding Questions', href: '/admin/internship/onboarding-questions', icon: ClipboardCheck },
   { label: 'Enrollees', href: '/admin/internship/enrollees', icon: UserRound },
   { label: 'Cohorts', href: '/admin/internship/cohorts', icon: CalendarRange },
   { label: 'Assessments', href: '/admin/internship/assessments', icon: GraduationCap },

@@ -5,17 +5,14 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, ClipboardList, Loader2 } from 'lucide-react'
 
 type Program = { id: string; name: string; slug: string; duration: string; description: string | null }
-
-const EXPERIENCE_LEVELS = ['Complete beginner', 'Some self-taught experience', 'Studied it formally', 'Have work experience']
-const AVAILABILITY_OPTIONS = ['Less than 10 hrs/week', '10–20 hrs/week', '20–30 hrs/week', '30+ hrs/week']
+type Question = { id: string; prompt: string; fieldType: 'select' | 'textarea' | 'text'; options: string[]; required: boolean }
 
 export default function InternshipOnboardingPage() {
   const router = useRouter()
   const [programs, setPrograms] = useState<Program[]>([])
   const [programId, setProgramId] = useState('')
-  const [experienceLevel, setExperienceLevel] = useState('')
-  const [availability, setAvailability] = useState('')
-  const [motivation, setMotivation] = useState('')
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -26,11 +23,10 @@ export default function InternshipOnboardingPage() {
       .then((r) => r.json())
       .then((data) => {
         setPrograms(data.programs ?? [])
+        setQuestions(data.questions ?? [])
         if (data.existingProgramId) setProgramId(data.existingProgramId)
         if (data.existingAnswers) {
-          setExperienceLevel(data.existingAnswers.experienceLevel ?? '')
-          setAvailability(data.existingAnswers.availability ?? '')
-          setMotivation(data.existingAnswers.motivation ?? '')
+          setAnswers(data.existingAnswers)
         }
       })
       .finally(() => setLoading(false))
@@ -46,7 +42,7 @@ export default function InternshipOnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           programId,
-          answers: { experienceLevel, availability, motivation },
+          answers,
         }),
       })
       const data = await response.json()
@@ -89,26 +85,7 @@ export default function InternshipOnboardingPage() {
           </div>
         </div>
 
-        <label className="block text-xs font-bold text-[#1C1D52]">
-          What's your experience level?
-          <select value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} required className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm">
-            <option value="" disabled>Select one</option>
-            {EXPERIENCE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
-          </select>
-        </label>
-
-        <label className="block text-xs font-bold text-[#1C1D52]">
-          How much time can you commit weekly?
-          <select value={availability} onChange={(e) => setAvailability(e.target.value)} required className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm">
-            <option value="" disabled>Select one</option>
-            {AVAILABILITY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </label>
-
-        <label className="block text-xs font-bold text-[#1C1D52]">
-          Why do you want to join this internship?
-          <textarea value={motivation} onChange={(e) => setMotivation(e.target.value)} required rows={4} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
-        </label>
+        {questions.map((question) => <label key={question.id} className="block text-xs font-bold text-[#1C1D52]">{question.prompt}{question.fieldType === 'select' ? <select value={answers[question.id] ?? ''} onChange={(event) => setAnswers({ ...answers, [question.id]: event.target.value })} required={question.required} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm"><option value="" disabled>Select one</option>{question.options.map((option) => <option key={option} value={option}>{option}</option>)}</select> : question.fieldType === 'textarea' ? <textarea value={answers[question.id] ?? ''} onChange={(event) => setAnswers({ ...answers, [question.id]: event.target.value })} required={question.required} rows={4} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" /> : <input value={answers[question.id] ?? ''} onChange={(event) => setAnswers({ ...answers, [question.id]: event.target.value })} required={question.required} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm" />}</label>)}
 
         {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{error}</p>}
 

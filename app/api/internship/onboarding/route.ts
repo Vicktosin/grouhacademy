@@ -11,11 +11,11 @@ export async function GET() {
   const prisma = getPrisma()
 
   try {
-    const programs = await prisma.internshipProgram.findMany({
+    const [programs, questions] = await Promise.all([prisma.internshipProgram.findMany({
       where: { status: 'PUBLISHED' },
       select: { id: true, name: true, slug: true, duration: true, description: true },
       orderBy: { createdAt: 'asc' },
-    })
+    }), prisma.internshipOnboardingQuestion.findMany({ where: { active: true }, orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] })])
 
     const existingApplication = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
@@ -24,6 +24,7 @@ export async function GET() {
 
     return NextResponse.json({
       programs,
+      questions: questions.map((question) => ({ ...question, options: Array.isArray(question.options) ? question.options.filter((option): option is string => typeof option === 'string') : [] })),
       existingProgramId: existingApplication?.programId ?? null,
       existingAnswers: existingApplication?.onboardingAnswers ?? null,
     })
@@ -53,6 +54,12 @@ export async function POST(request: Request) {
     const program = await prisma.internshipProgram.findUnique({ where: { id: programId } })
     if (!program || program.status !== 'PUBLISHED') {
       return NextResponse.json({ error: 'Selected program is not available.' }, { status: 404 })
+    }
+
+    const questions = await prisma.internshipOnboardingQuestion.findMany({ where: { active: true } })
+    for (const question of questions) {
+      const answer = answers[question.id]
+      if (question.required && (typeof answer !== 'string' || !answer.trim())) return NextResponse.json({ error: `Please answer: ${question.prompt}` }, { status: 400 })
     }
 
     const application = await prisma.internshipApplication.upsert({
