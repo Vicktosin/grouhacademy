@@ -1,4 +1,3 @@
-import Container from "./Container";
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,19 +6,20 @@ import Nav from "./Nav";
 
 const Header = () => {
   return (
-  <header className="sticky top-0 z-50 flex w-full items-center gap-8 border-b border-slate-100 bg-white py-2 px-5 sm:gap-24 sm:py-3 sm:px-10 lg:gap-32 lg:px-20">
+  <header className="sticky top-0 z-50 flex w-full items-center gap-3 border-b border-slate-100 bg-white px-4 py-2 sm:gap-24 sm:px-10 sm:py-3 lg:gap-32 lg:px-20">
         <Link href="/" className="inline-flex items-center gap-3">
           <Image
             src={logo}
             alt="Grouh Academy logo"
             width={104}
             height={62}
+            className="h-10 w-auto sm:h-12"
           />
         </Link>
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-5 sm:gap-30">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-30">
           <Nav />
 
           <div className="hidden items-center gap-3 sm:flex">

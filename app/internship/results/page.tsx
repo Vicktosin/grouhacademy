@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react'
 
-type Result = { programName: string; scorePercent: number; score: number; totalQuestions: number; passed: boolean }
+type Result = { programName: string; scorePercent: number; score: number; totalQuestions: number; passed: boolean; acceptanceFee: number; acceptanceFeePaid: boolean }
 
 export default function AssessmentResultsPage() {
   const router = useRouter()
@@ -20,7 +20,7 @@ export default function AssessmentResultsPage() {
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || 'No result found.')
         setResult(data)
-        setShowPassModal(Boolean(data.passed))
+        setShowPassModal(Boolean(data.passed && !data.acceptanceFeePaid))
       })
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'No result found.'))
       .finally(() => setLoading(false))
@@ -49,8 +49,10 @@ export default function AssessmentResultsPage() {
   return (
     <>
     <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-12">
-      {result.passed ? (
+      {result.passed && !result.acceptanceFeePaid ? (
         <CheckCircle2 className="mx-auto h-14 w-14 text-[#5FBB46]" />
+      ) : result.passed ? (
+        <button type="button" onClick={() => router.push('/internship/dashboard')} className="mt-7 inline-flex items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-[#14204f]">Go to workspace <ArrowRight className="h-4 w-4" /></button>
       ) : (
         <XCircle className="mx-auto h-14 w-14 text-red-400" />
       )}
@@ -82,7 +84,7 @@ export default function AssessmentResultsPage() {
       )}
     </div>
 
-    {result.passed && showPassModal && (
+    {result.passed && !result.acceptanceFeePaid && showPassModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#11132f]/75 px-4 backdrop-blur-sm">
         <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white text-center shadow-[0_24px_80px_rgba(0,0,0,0.3)]">
           <div className="bg-[#1C1D52] px-6 pb-8 pt-7 text-white">
@@ -99,10 +101,10 @@ export default function AssessmentResultsPage() {
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 type="button"
-                onClick={() => router.push('/internship/dashboard')}
+                onClick={() => router.push('/internship/payment')}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3 text-sm font-bold text-[#14204f] shadow-[0_10px_24px_rgba(95,187,70,0.22)] transition hover:translate-y-[-1px]"
               >
-                Get Started <ArrowRight className="h-4 w-4" />
+                Pay acceptance fee <ArrowRight className="h-4 w-4" />
               </button>
               <button
                 type="button"

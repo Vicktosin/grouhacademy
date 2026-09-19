@@ -71,12 +71,12 @@ export default function InternshipDashboardPage() {
                   Payment: <strong className={data.paymentStatus === 'PAID' ? 'text-[#5FBB46]' : 'text-amber-600'}>{data.paymentStatus === 'PAID' ? 'Paid' : 'Pending'}</strong> · Assessment: <strong className="text-[#1C1D52]">{assessmentLabel}</strong>
                 </p>
               </div>
-              {data.paymentStatus !== 'PAID' ? (
-                <Link href="/internship/payment" className="rounded-lg bg-[#5FBB46] px-4 py-2.5 text-center text-xs font-bold text-[#14204f]">Complete payment</Link>
-              ) : data.assessmentStatus !== 'UNDER_REVIEW' ? (
+              {data.assessmentStatus === 'PASSED' && data.paymentStatus !== 'PAID' ? (
+                <Link href="/internship/payment" className="rounded-lg bg-[#5FBB46] px-4 py-2.5 text-center text-xs font-bold text-[#14204f]">Pay acceptance fee</Link>
+              ) : data.assessmentStatus !== 'PASSED' ? (
                 <Link href="/internship/assessment/readiness" className="rounded-lg bg-[#5FBB46] px-4 py-2.5 text-center text-xs font-bold text-[#14204f]">{data.assessmentStatus === 'IN_PROGRESS' ? 'Continue assessment' : 'Start assessment'}</Link>
               ) : (
-                <span className="rounded-lg bg-[#e8f7eb] px-4 py-2.5 text-center text-xs font-bold text-[#397d3a]">Outcome under review</span>
+                <span className="rounded-lg bg-[#e8f7eb] px-4 py-2.5 text-center text-xs font-bold text-[#397d3a]">Internship access unlocked</span>
               )}
             </div>
           </section>

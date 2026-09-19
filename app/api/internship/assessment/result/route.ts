@@ -13,15 +13,20 @@ export async function GET() {
   try {
     const application = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
-      include: { program: true },
+      include: { program: true, payment: true },
       orderBy: { createdAt: 'desc' },
     })
     if (!application) {
       return NextResponse.json({ error: 'No application found.' }, { status: 404 })
     }
 
-    const attempt = await prisma.assessmentAttempt.findFirst({
-      where: { applicationId: application.id, status: { in: ['PASSED', 'FAILED'] } },
+    const passedAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { applicationId: application.id, status: 'PASSED' },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const attempt = passedAttempt ?? await prisma.assessmentAttempt.findFirst({
+      where: { applicationId: application.id, status: 'FAILED' },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -34,7 +39,9 @@ export async function GET() {
       scorePercent: attempt.scorePercent,
       score: attempt.score,
       totalQuestions: attempt.totalQuestions,
-      passed: attempt.status === 'PASSED',
+      passed: Boolean(passedAttempt),
+      acceptanceFee: application.program.acceptanceFee,
+      acceptanceFeePaid: application.payment?.status === 'PAID',
     })
   } catch (error) {
     console.error('Failed to load assessment result:', error)

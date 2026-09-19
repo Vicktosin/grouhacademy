@@ -51,7 +51,7 @@ function IconStar() {
 const events = [
   { phase: 'Week 0', title: 'Applications Open', desc: 'Rolling — submit any time. Applications are reviewed within 3 business days.', icon: <IconCalendar /> },
   { phase: 'Week 1', title: 'Screening & Assessment', desc: 'Skills test and 20-minute virtual interview with a Grouh mentor.', icon: <IconUsers /> },
-  { phase: 'Week 2', title: 'Offer & Onboarding', desc: 'Successful applicants receive an offer letter, pay the assessment fee, and access onboarding.', icon: <IconBriefcase /> },
+  { phase: 'Week 2', title: 'Offer & Onboarding', desc: 'Successful applicants receive an offer letter, pay the acceptance fee, and access onboarding.', icon: <IconBriefcase /> },
   { phase: 'Weeks 3–9', title: 'Active Internship', desc: 'Live sprints, workshops, mentor sessions, and iterative project work.', icon: <IconCode /> },
   { phase: 'Week 10', title: 'Final Presentation', desc: 'Present your project to a panel of mentors and industry guests.', icon: <IconStar /> },
   { phase: 'Week 10+', title: 'Graduation & Certificate', desc: 'Receive your Grouh Academy certificate and join the alumni community.', icon: <IconCheck /> },

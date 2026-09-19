@@ -3,7 +3,6 @@
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import InstructorSidebar from './InstructorSidebar'
-import StudentHeader from './StudentHeader'
 import InstructorHeader from './InstructorHeader'
 
 export default function InstructorShell({

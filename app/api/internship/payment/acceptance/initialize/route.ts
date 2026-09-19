@@ -55,12 +55,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'No internship application found.' }, { status: 404 })
     }
 
+    const passedAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { applicationId: application.id, status: 'PASSED' },
+      select: { id: true },
+    })
+    if (!passedAttempt) {
+      return NextResponse.json({ message: 'Pass the entrance assessment before paying the acceptance fee.' }, { status: 403 })
+    }
+
     if (application.payment?.status === 'PAID') {
       return NextResponse.json({ message: 'Your acceptance fee has already been paid.' }, { status: 409 })
     }
 
     const reference = `acceptance_${application.id}_${Date.now()}`
-    const amountKobo = application.program.assessmentFee * 100
+    const amountKobo = application.program.acceptanceFee * 100
 
     // Persist the pending record before sending the user to Paystack. This
     // gives verification an account-owned reference to settle and preserves
@@ -68,8 +76,8 @@ export async function POST(request: Request) {
     pendingApplicationId = application.id
     await prisma.internshipPayment.upsert({
       where: { applicationId: application.id },
-      create: { applicationId: application.id, reference, amount: application.program.assessmentFee, currency: 'NGN', status: 'PENDING' },
-      update: { reference, amount: application.program.assessmentFee, currency: 'NGN', status: 'PENDING', paidAt: null },
+      create: { applicationId: application.id, reference, amount: application.program.acceptanceFee, currency: 'NGN', status: 'PENDING' },
+      update: { reference, amount: application.program.acceptanceFee, currency: 'NGN', status: 'PENDING', paidAt: null },
     })
 
     const response = await fetch('https://api.paystack.co/transaction/initialize', {

@@ -3,7 +3,7 @@ export type InternshipProgram = {
   name: string
   duration: string
   price: number
-  assessmentFee: number
+  acceptanceFee: number
   description: string
   features: string[]
   requirements: string[]
@@ -20,7 +20,7 @@ export const internshipPrograms: InternshipProgram[] = [
     name: 'One-Month Internship',
     duration: '1 month',
     price: 1000,
-    assessmentFee: 1000,
+    acceptanceFee: 1000,
     description: 'A focused internship assessment experience with supervised tasks and a completion certificate.',
     features: ['Practical internship tasks', 'Task supervision', 'Certificate on successful completion'],
     requirements: ['Registered Academy student', 'Complete and submit the assessment'],
@@ -35,7 +35,7 @@ export const internshipPrograms: InternshipProgram[] = [
     name: 'Three-Month Internship',
     duration: '3 months',
     price: 100000,
-    assessmentFee: 100000,
+    acceptanceFee: 100000,
     description: 'A practical company-facing internship with supervision, community support, and a certificate.',
     features: ['Work with an actual company', 'Supervised practical tasks', 'Student community access', 'Certificate on completion'],
     requirements: ['Registered Academy student', 'Complete and submit the assessment'],
@@ -50,7 +50,7 @@ export const internshipPrograms: InternshipProgram[] = [
     name: 'Six-Month Internship',
     duration: '6 months',
     price: 400000,
-    assessmentFee: 400000,
+    acceptanceFee: 400000,
     description: 'A complete placement experience with a company, assigned mentor, community, and certificate.',
     features: ['Work with an actual company', 'Assigned mentor', 'Supervised practical tasks', 'Student community access', 'Certificate on completion'],
     requirements: ['Registered Academy student', 'Complete and submit the assessment'],
@@ -80,22 +80,3 @@ export const theoryQuestions = [
 ]
 
 export const formatNaira = (amount: number) => `₦${amount.toLocaleString('en-NG')}`
-
-export const internshipStorageKey = 'grouh-internship-state'
-
-export type InternshipClientState = {
-  programSlug?: string
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
-  assessmentStatus: 'LOCKED' | 'NOT_STARTED' | 'IN_PROGRESS' | 'OBJECTIVE_SUBMITTED' | 'UNDER_REVIEW'
-  objectiveAnswers: Record<string, string>
-  theoryAnswers: Record<string, string>
-  theoryFiles: Record<string, string>
-}
-
-export const defaultInternshipState: InternshipClientState = {
-  paymentStatus: 'PENDING',
-  assessmentStatus: 'LOCKED',
-  objectiveAnswers: {},
-  theoryAnswers: {},
-  theoryFiles: {},
-}

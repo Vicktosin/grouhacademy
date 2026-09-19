@@ -14,6 +14,7 @@ const EXEMPT_PREFIXES = ['/internship/onboarding', '/internship/assessment', '/i
 type AccessStatus = {
   hasApplication: boolean
   acceptanceFeePaid: boolean
+  assessmentPassed: boolean
   programName: string | null
   acceptanceFeeAmount: number | null
   currency: string | null
@@ -28,7 +29,7 @@ export default function InternshipShell({ children }: { children: React.ReactNod
   const pathname = usePathname() || '/internship/dashboard'
 
   const isExemptRoute = EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-  const showPaywall = !isExemptRoute && Boolean(status?.hasApplication) && !status?.acceptanceFeePaid
+  const showPaywall = !isExemptRoute && Boolean(status?.hasApplication) && Boolean(status?.assessmentPassed) && !status?.acceptanceFeePaid
 
   useEffect(() => {
     fetch('/api/internship/access-status')

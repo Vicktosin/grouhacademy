@@ -44,8 +44,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'This payment does not belong to your account.' }, { status: 403 })
     }
 
+    const passedAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { applicationId, status: 'PASSED' },
+      select: { id: true },
+    })
+    if (!passedAttempt) {
+      return NextResponse.json({ message: 'A passed entrance assessment is required to verify this payment.' }, { status: 403 })
+    }
+
     if (
-      data.data.amount !== application.program.assessmentFee * 100 ||
+      data.data.amount !== application.program.acceptanceFee * 100 ||
       data.data.currency !== application.payment?.currency
     ) {
       return NextResponse.json({ message: 'Payment amount or currency does not match this application.' }, { status: 400 })

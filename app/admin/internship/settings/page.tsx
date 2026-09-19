@@ -57,7 +57,7 @@ export default function InternshipSettingsPage() {
             <div className="space-y-4">
               <SectionTitle title="Internship configuration" description="Core operational behavior for the internship workspace." />
               <SettingCard label="Auto assign mentors" description="Route new interns to available mentors automatically." enabled={settings.autoAssignMentors} onToggle={() => toggle('autoAssignMentors')} />
-              <SettingCard label="Require payment verification" description="Block assessment access until the acceptance fee is confirmed." enabled={settings.requirePaymentVerification} onToggle={() => toggle('requirePaymentVerification')} />
+              <SettingCard label="Require payment verification" description="Block internship workspace access until the acceptance fee is confirmed." enabled={settings.requirePaymentVerification} onToggle={() => toggle('requirePaymentVerification')} />
               <SettingCard label="Auto-start active cohorts" description="Open a cohort as soon as its configured start date is reached." enabled={settings.autoStartCohorts} onToggle={() => toggle('autoStartCohorts')} />
               <SettingCard label="Send application alerts" description="Notify admins whenever a new application is submitted." enabled={settings.sendApplicationAlerts} onToggle={() => toggle('sendApplicationAlerts')} />
             </div>

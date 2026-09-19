@@ -335,7 +335,7 @@ model InternshipProgram {
   name                   String
   duration               String
   price                  Int
-  assessmentFee          Int
+  acceptanceFee          Int
   description            String
   features               Json
   requirements           Json

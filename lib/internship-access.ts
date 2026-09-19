@@ -3,6 +3,7 @@ import { getPrisma } from '@/lib/prisma'
 export type InternshipAccessStatus = {
   hasApplication: boolean
   acceptanceFeePaid: boolean
+  assessmentPassed: boolean
   programName: string | null
   acceptanceFeeAmount: number | null
   currency: string | null
@@ -22,6 +23,7 @@ export async function getInternshipAccessStatus(userId: string): Promise<Interns
     return {
       hasApplication: false,
       acceptanceFeePaid: false,
+      assessmentPassed: false,
       programName: null,
       acceptanceFeeAmount: null,
       currency: null,
@@ -33,8 +35,18 @@ export async function getInternshipAccessStatus(userId: string): Promise<Interns
     hasApplication: true,
     acceptanceFeePaid: application.payment?.status === 'PAID',
     programName: application.program.name,
-    acceptanceFeeAmount: application.program.assessmentFee,
+    assessmentPassed: (await prisma.assessmentAttempt.findFirst({ where: { applicationId: application.id, status: 'PASSED' }, select: { id: true } })) !== null,
+    acceptanceFeeAmount: application.program.acceptanceFee,
     currency: application.payment?.currency ?? 'NGN',
     premiumTier: application.premiumTier,
   }
+}
+
+export async function hasInternshipWorkspaceAccess(userId: string): Promise<boolean> {
+  const application = await getPrisma().internshipApplication.findFirst({
+    where: { studentId: userId, payment: { is: { status: 'PAID' } }, attempts: { some: { status: 'PASSED' } } },
+    select: { id: true },
+  })
+
+  return Boolean(application)
 }

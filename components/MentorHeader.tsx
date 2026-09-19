@@ -1,21 +1,19 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import { Bell, ChevronDown, Search } from 'lucide-react'
+import { Bell, Search } from 'lucide-react'
 import Image from 'next/image'
 import logo from '../public/logo.png'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 type HeaderProfile = { name: string | null; avatarUrl: string | null }
 
 export default function MentorHeader() {
   const [showSearch, setShowSearch] = useState(false)
-  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false)
   const [profile, setProfile] = useState<HeaderProfile>({ name: null, avatarUrl: null })
   const [unreadCount, setUnreadCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const pathname = usePathname() || '/'
   const router = useRouter()
   
   useEffect(() => {
@@ -46,18 +44,18 @@ export default function MentorHeader() {
 
   return (
     <div className="relative">
-      <div className="flex w-full items-center justify-between gap-4">
+      <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
         <Link href="/student" className="inline-flex flex-shrink-0 items-center">
           <Image
             src={logo}
             alt="Grouh Academy logo"
             width={104}
             height={62}
-            className="h-10 w-auto sm:h-12"
+            className="h-8 w-auto sm:h-12"
           />
         </Link>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-4 sm:gap-6">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-6">
           <form onSubmit={handleSearchSubmit} className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]">
             <span className="sr-only">Search</span>
             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
@@ -73,7 +71,7 @@ export default function MentorHeader() {
 
           <button
             onClick={() => setShowSearch((s) => !s)}
-            className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+            className="hidden items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 min-[421px]:inline-flex md:hidden"
             aria-label="Search"
           >
             <Search className="h-5 w-5" />
@@ -95,7 +93,7 @@ export default function MentorHeader() {
           <img
             src={avatarSrc}
             alt={`${displayName} avatar`}
-            className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover sm:h-9 sm:w-9"
           />
         </div>
       </div>

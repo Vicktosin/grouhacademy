@@ -49,25 +49,25 @@ export default function StudentHeader() {
 
   return (
     <div className="relative">
-      <div className="flex w-full items-center justify-between gap-4">
+      <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
         <Link href="/student" className="inline-flex flex-shrink-0 items-center">
           <Image
             src={logo}
             alt="Grouh Academy logo"
             width={104}
             height={62}
-            className="h-10 w-auto sm:h-12"
+            className="h-8 w-auto sm:h-12"
           />
         </Link>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-4 sm:gap-6">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-6">
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowWorkspaceMenu((current) => !current)}
               aria-expanded={showWorkspaceMenu}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-[0_4px_14px_rgba(28,29,82,0.08)] transition hover:shadow-md sm:px-4"
+              className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-[0_4px_14px_rgba(28,29,82,0.08)] transition hover:shadow-md sm:gap-2 sm:px-4"
             >
               <span className="hidden sm:inline">{workspaceName}</span>
               <span className="sm:hidden">{isMentorWorkspace ? 'Mentor' : isInternshipWorkspace ? 'Internship' : 'Student'}</span>
@@ -76,7 +76,7 @@ export default function StudentHeader() {
             {showWorkspaceMenu && (
               <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl bg-white p-1.5 shadow-[0_10px_28px_rgba(28,29,82,0.16)]">
                 <Link href="/student" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`block rounded-lg px-3 py-2 text-xs font-semibold ${!isInternshipWorkspace && !isMentorWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Student Workspace</Link>
-                <Link href="/internship/enroll" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isInternshipWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Internship Workspace</Link>
+                <Link href="/internship/dashboard" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isInternshipWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Internship Workspace</Link>
                 {/*<Link href="/mentor" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isMentorWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Mentor Workspace</Link>*/}
               </div>
             )}
@@ -97,7 +97,7 @@ export default function StudentHeader() {
 
           <button
             onClick={() => setShowSearch((s) => !s)}
-            className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+            className="hidden items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 min-[421px]:inline-flex md:hidden"
             aria-label="Search"
           >
             <Search className="h-5 w-5" />
@@ -119,7 +119,7 @@ export default function StudentHeader() {
           <img
             src={avatarSrc}
             alt={`${displayName} avatar`}
-            className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover sm:h-9 sm:w-9"
           />
         </div>
       </div>

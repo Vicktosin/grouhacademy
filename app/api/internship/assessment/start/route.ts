@@ -31,6 +31,14 @@ export async function POST() {
       return NextResponse.json({ error: 'No assessment has been set up for this program yet. Please check back soon.' }, { status: 404 })
     }
 
+    const passedAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { applicationId: application.id, assessmentId: assessment.id, status: 'PASSED' },
+      select: { id: true },
+    })
+    if (passedAttempt) {
+      return NextResponse.json({ error: 'You have already passed this entrance assessment.' }, { status: 409 })
+    }
+
     // Reuse an in-progress attempt rather than creating a duplicate.
     let attempt = await prisma.assessmentAttempt.findFirst({
       where: { applicationId: application.id, assessmentId: assessment.id, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
@@ -42,11 +50,13 @@ export async function POST() {
         data: {
           applicationId: application.id,
           assessmentId: assessment.id,
-          status: 'IN_PROGRESS',
+          status: 'NOT_STARTED',
           outcomeEmail: user.email,
         },
       })
-    } else if (attempt.status === 'NOT_STARTED') {
+    }
+
+    if (attempt.status === 'NOT_STARTED') {
       attempt = await prisma.assessmentAttempt.update({ where: { id: attempt.id }, data: { status: 'IN_PROGRESS' } })
     }
 

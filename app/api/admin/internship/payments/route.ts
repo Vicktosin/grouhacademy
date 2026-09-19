@@ -81,7 +81,7 @@ export async function GET() {
             select: {
               id: true,
               name: true,
-              assessmentFee: true,
+              acceptanceFee: true,
             },
           },
           cohort: {
@@ -127,7 +127,7 @@ export async function GET() {
         tier: formatTier(application.premiumTier),
         amount: payment.amount,
         amountLabel: formatMoney(payment.amount),
-        paymentType: payment.amount === application.program.assessmentFee ? 'Acceptance Fee' : 'Internship Payment',
+        paymentType: payment.amount === application.program.acceptanceFee ? 'Acceptance Fee' : 'Internship Payment',
         paymentStatus: payment.status,
         paymentStatusLabel: formatPaymentStatus(payment.status),
         internshipStatus,
@@ -135,7 +135,7 @@ export async function GET() {
         paymentDateLabel: formatDate(payment.paidAt ?? payment.createdAt),
         cohort: application.cohort?.name ?? 'Unassigned',
         cohortStatus: application.cohort?.status ?? null,
-        courseFee: application.program.assessmentFee,
+        courseFee: application.program.acceptanceFee,
         accessFeeNote: application.premiumTier === 'NONE' ? 'Free Tier access fee recorded at ₦1,000' : 'Premium tier payment recorded',
         latestAttemptStatus: application.attempts[0]?.status ?? null,
         latestAssessmentPercent: application.attempts[0]?.scorePercent ?? null,

@@ -384,7 +384,7 @@ async function ensureInternshipProgram(input: {
   name: string;
   duration: string;
   price: number;
-  assessmentFee: number;
+  acceptanceFee: number;
   description: string;
   features: string[];
   requirements: string[];
@@ -400,7 +400,7 @@ async function ensureInternshipProgram(input: {
       name: input.name,
       duration: input.duration,
       price: input.price,
-      assessmentFee: input.assessmentFee,
+      acceptanceFee: input.acceptanceFee,
       description: input.description,
       features: input.features,
       requirements: input.requirements,
@@ -415,7 +415,7 @@ async function ensureInternshipProgram(input: {
       name: input.name,
       duration: input.duration,
       price: input.price,
-      assessmentFee: input.assessmentFee,
+      acceptanceFee: input.acceptanceFee,
       description: input.description,
       features: input.features,
       requirements: input.requirements,
@@ -435,7 +435,7 @@ async function seedInternshipAssessmentData() {
       name: 'Product Design Internship',
       duration: '8 weeks',
       price: 250000,
-      assessmentFee: 25000,
+      acceptanceFee: 25000,
       description: 'A design-focused internship for product thinking, wireframes, and user research.',
       features: ['User research labs', 'Portfolio reviews', 'Mentor feedback'],
       requirements: ['Basic design samples', 'Interest in product thinking'],
@@ -450,7 +450,7 @@ async function seedInternshipAssessmentData() {
       name: 'Software Development Internship',
       duration: '10 weeks',
       price: 350000,
-      assessmentFee: 35000,
+      acceptanceFee: 35000,
       description: 'An engineering internship focused on frontend, backend, and product delivery fundamentals.',
       features: ['Live coding labs', 'Capstone project', 'Code review sessions'],
       requirements: ['Basic programming interest', 'Comfort with written problem solving'],
