@@ -6,26 +6,8 @@ import Link from "next/link";
 import Container from "@/components/Container";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getSiteUrl } from "@/lib/site-url";
-import { Apple, Eye, EyeOff } from "lucide-react";
-
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path fill="#1877F2" d="M13.5 22v-8h2.8l.4-3.2h-3.2V7.1c0-.9.3-1.6 1.7-1.6H17V2.5c-.3-.1-1.3-.2-2.5-.2-2.5 0-4.2 1.5-4.2 4.4v2.6H7.5V14h2.8v8h3.2Z" />
-    </svg>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path fill="#EA4335" d="M12 10.2v3.7h5.3c-.2 1.5-1.8 4.4-5.3 4.4-3.2 0-5.8-2.6-5.8-5.9s2.6-5.9 5.8-5.9c1.8 0 3.1.8 3.8 1.5L17 4.8A8.8 8.8 0 0 0 12 3.3C7.1 3.3 3.1 7.3 3.1 12.2S7.1 21 12 21c5 0 8.4-3.5 8.4-8.4 0-.6-.1-1.1-.2-1.6H12Z" />
-      <path fill="#34A853" d="M4.9 14.6c-.4-1.2-.4-2.4 0-3.6L3.3 8.1A9.1 9.1 0 0 0 3 12.2c0 1.4.3 2.8.9 4l1.1-1.6Z" />
-      <path fill="#FBBC05" d="M12 21c2.5 0 4.7-.8 6.3-2.2l-2.8-2.2c-.8.5-1.9.9-3.5.9-2.6 0-4.8-1.7-5.6-4.1l-2.8 2.2A9 9 0 0 0 12 21Z" />
-      <path fill="#4285F4" d="M6.4 18.6c1.1 1.9 3.3 3.4 5.6 3.4 2.1 0 4.1-.8 5.5-2.3l-2.8-2.2c-.7.5-1.7.8-2.7.8-1.8 0-3.4-1.1-4-2.6l-2.8 2.3Z" />
-    </svg>
-  );
-}
+import GoogleIcon from "@/components/GoogleIcon";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -81,11 +63,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleOAuth = async (provider: "google" | "apple" | "facebook") => {
+  const handleOAuth = async () => {
     setError(null);
     const supabase = createSupabaseBrowserClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider,
+      provider: "google",
       options: { redirectTo: `${getSiteUrl()}/auth/callback?next=/internship/onboarding` },
     });
     if (oauthError) setError(oauthError.message);
@@ -166,15 +148,10 @@ export default function LoginPage() {
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <button type="button" onClick={() => handleOAuth("facebook")} className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-3 transition hover:bg-slate-50" aria-label="Continue with Facebook">
-                    <FacebookIcon />
-                  </button>
-                  <button type="button" onClick={() => handleOAuth("google")} className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-3 transition hover:bg-slate-50" aria-label="Continue with Google">
+                <div>
+                  <button type="button" onClick={handleOAuth} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" aria-label="Continue with Google">
                     <GoogleIcon />
-                  </button>
-                  <button type="button" onClick={() => handleOAuth("apple")} className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-slate-700 transition hover:bg-slate-50" aria-label="Continue with Apple">
-                    <Apple className="h-5 w-5" />
+                    Continue with Google
                   </button>
                 </div>
 

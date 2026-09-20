@@ -50,7 +50,10 @@ export async function getAuthorizedHomeRouteForUserId(
   const { roles } = await getUserRBAC(userId)
   const baseRoute = getAuthorizedHomeRouteForRoles(roles)
 
-  if (roles.includes(RoleName.STUDENT) || roles.includes(RoleName.INTERN)) {
+  // Privileged roles take precedence even when an administrator also retains
+  // their original Student or Intern role. Only learner-only accounts need
+  // the application-aware internship destination.
+  if (baseRoute === '/student' || baseRoute === '/internship/dashboard') {
     const prisma = getPrisma()
     const existingApplication = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
