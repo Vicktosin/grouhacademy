@@ -4,6 +4,12 @@ import { getPremiumTierAmounts, type PremiumTierKey } from '@/lib/internship-pre
 import { getPrisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/route-guards'
 
+function callbackUrl(request: Request) {
+  const url = new URL('/internship/payment/callback', process.env.NEXT_PUBLIC_APP_URL || request.url)
+  url.searchParams.set('type', 'premium')
+  return url.toString()
+}
+
 export async function POST(request: Request) {
   const userId = await getCurrentUserId()
   if (!userId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
@@ -34,7 +40,7 @@ export async function POST(request: Request) {
         amount: amount * 100,
         reference,
         metadata: { applicationId: application.id, tier, purpose: 'internship_premium' },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/internship/payment/callback?type=premium`,
+        callback_url: callbackUrl(request),
       }),
     })
     const data = await response.json().catch(() => null)

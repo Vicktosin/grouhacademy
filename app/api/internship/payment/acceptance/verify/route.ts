@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getCurrentUserId } from '@/lib/route-guards'
 import { getPrisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
-  const userId = await getCurrentUserId()
-  if (!userId) {
-    return NextResponse.json({ message: 'Authentication required.' }, { status: 401 })
-  }
-
   const reference = new URL(request.url).searchParams.get('reference')
   const secretKey = process.env.PAYSTACK_SECRET_KEY
   if (!reference) return NextResponse.json({ message: 'Missing payment reference.' }, { status: 400 })
@@ -33,11 +27,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Payment reference is missing application context.' }, { status: 400 })
     }
 
-    // Confirm the verified transaction is the exact pending payment record
-    // for this user's application. Metadata alone must never settle a
-    // different or superseded payment reference.
+    // Paystack returns to this endpoint through the customer's browser. That
+    // navigation can arrive without the Supabase session cookie (for example,
+    // when the callback host differs from the host where payment began). The
+    // Paystack verification plus this exact persisted reference are therefore
+    // the authority for settling the payment; browser authentication must not
+    // leave a successful payment pending.
+    //
+    // Metadata alone must never settle a different or superseded payment
+    // reference, so require the reference stored on the application payment.
     const application = await prisma.internshipApplication.findFirst({
-      where: { id: applicationId, studentId: userId, payment: { is: { reference } } },
+      where: { id: applicationId, payment: { is: { reference } } },
       include: { program: true, payment: true },
     })
     if (!application) {

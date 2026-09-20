@@ -1,5 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import logoWhite from '../public/logo-white.png'
 
 const Footer = () => {
@@ -49,9 +50,9 @@ const Footer = () => {
               <ul className="space-y-3">
                 {col.links.map((link) => (
                   <li key={link}>
-                    <a href={link === 'Courses' ? '/courses' : link === 'About Us' ? '/about' : link === 'Contact' ? '/contact' : '#'} className="text-white/40 text-sm hover:text-white/80 transition-colors">
+                    <Link href={link === 'Courses' ? '/courses' : link === 'About Us' ? '/about' : link === 'Contact' ? '/contact' : link === 'Privacy Policy' ? '/privacy-policy' : link === 'Terms of Service' ? '/terms-of-service' : '#'} className="text-white/40 text-sm hover:text-white/80 transition-colors">
                       {link}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>

@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { getCurrentUserId } from '@/lib/route-guards'
 import { getPrisma } from '@/lib/prisma'
 
+function callbackUrl(request: Request) {
+  return new URL('/internship/payment/callback', process.env.NEXT_PUBLIC_APP_URL || request.url).toString()
+}
+
 export async function POST(request: Request) {
   const userId = await getCurrentUserId()
   if (!userId) {
@@ -88,7 +92,7 @@ export async function POST(request: Request) {
         amount: amountKobo,
         reference,
         metadata: { applicationId: application.id, purpose: 'internship_acceptance_fee' },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/internship/payment/callback`,
+        callback_url: callbackUrl(request),
       }),
     })
     const data = await response.json()

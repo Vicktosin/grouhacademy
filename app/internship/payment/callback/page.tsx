@@ -7,14 +7,12 @@ import { useEffect, useState } from 'react'
 export default function PaymentCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('Verifying your payment securely...')
-  const [isPremium, setIsPremium] = useState(false)
+  const isPremium = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('type') === 'premium'
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const reference = params.get('reference')
+    const reference = params.get('reference') ?? params.get('trxref') ?? params.get('trxtref')
     const type = params.get('type') === 'premium' ? 'premium' : 'acceptance'
-    setIsPremium(type === 'premium')
-
     if (!reference) {
       setStatus('error')
       setMessage('The payment reference is missing. You can safely retry payment from your dashboard.')
