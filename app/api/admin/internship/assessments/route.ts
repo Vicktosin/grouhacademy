@@ -73,6 +73,7 @@ export async function GET() {
         assessmentTitle: assessment.title,
         track: assessment.program.name,
         instructions: assessment.description ?? '',
+        passingScore: assessment.passingScore,
         prompt: question.prompt,
         options: question.options.map((option) => ({
           id: option.id,

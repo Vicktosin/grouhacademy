@@ -16,8 +16,18 @@ type QuestionRow = {
   correctOptionIndex: number
 }
 
+type AssessmentRow = {
+  id: string
+  title: string
+  track: string
+  questionCount: number
+  passingScore: number
+  instructions: string
+}
+
 export default function InternshipAssessmentsPage() {
   const [questions, setQuestions] = useState<QuestionRow[]>([])
+  const [assessments, setAssessments] = useState<AssessmentRow[]>([])
   const [track, setTrack] = useState('All')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -27,36 +37,39 @@ export default function InternshipAssessmentsPage() {
     fetch('/api/admin/internship/assessments', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Assessment data request failed (${response.status}).`)
-        const payload = (await response.json()) as { questions?: QuestionRow[]; programs?: Array<{ id: string; name: string }> }
+        const payload = (await response.json()) as { questions?: QuestionRow[]; assessments?: AssessmentRow[] }
         setQuestions(payload.questions ?? [])
+        setAssessments(payload.assessments ?? [])
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'Assessment data is unavailable.'))
       .finally(() => setLoading(false))
   }, [])
 
-  const trackOptions = useMemo(() => ['All', ...new Set(questions.map((question) => question.track))], [questions])
+  const trackOptions = useMemo(() => ['All', ...new Set(assessments.map((assessment) => assessment.track))], [assessments])
 
-  const visibleQuestions = useMemo(() => {
+  const visibleAssessments = useMemo(() => {
     const term = query.trim().toLowerCase()
-    return questions.filter((question) => {
-      const matchesTrack = track === 'All' || question.track === track
-      const searchable = `${question.assessmentTitle} ${question.track} ${question.prompt}`.toLowerCase()
+    return assessments.filter((assessment) => {
+      const matchesTrack = track === 'All' || assessment.track === track
+      const assessmentQuestions = questions.filter((question) => question.assessmentId === assessment.id)
+      const searchable = `${assessment.title} ${assessment.track} ${assessmentQuestions.map((question) => question.prompt).join(' ')}`.toLowerCase()
       return matchesTrack && (!term || searchable.includes(term))
     })
-  }, [questions, query, track])
+  }, [assessments, questions, query, track])
 
-  async function handleDelete(questionId: string) {
+  async function handleDelete(question: QuestionRow) {
     try {
       const response = await fetch('/api/admin/internship/assessments', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId }),
+        body: JSON.stringify({ questionId: question.id }),
       })
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
         throw new Error(payload?.error || 'Unable to delete this question.')
       }
-      setQuestions((current) => current.filter((question) => question.id !== questionId))
+      setQuestions((current) => current.filter((currentQuestion) => currentQuestion.id !== question.id))
+      setAssessments((current) => current.map((assessment) => assessment.id === question.assessmentId ? { ...assessment, questionCount: Math.max(0, assessment.questionCount - 1) } : assessment))
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete this question.')
     }
@@ -92,58 +105,47 @@ export default function InternshipAssessmentsPage() {
 
           {loading ? (
             <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">Loading exam question bank…</p>
-          ) : visibleQuestions.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">No exam questions found for this track yet.</p>
+          ) : visibleAssessments.length === 0 ? (
+            <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">No assessments found for this track yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px] border-collapse text-left text-[10px]">
+              <table className="w-full min-w-[850px] border-collapse text-left text-[10px]">
                 <thead>
                   <tr className="bg-[#f5f8fb] text-slate-600">
-                    <th className="px-3 py-3 font-semibold">Question</th>
-                    <th className="px-3 py-3 font-semibold">Track</th>
-                    <th className="px-3 py-3 font-semibold">Options</th>
-                    <th className="px-3 py-3 font-semibold">Correct answer</th>
                     <th className="px-3 py-3 font-semibold">Assessment</th>
-                    <th className="px-3 py-3 font-semibold">Actions</th>
+                    <th className="px-3 py-3 font-semibold">Track</th>
+                    <th className="px-3 py-3 font-semibold">Passing score</th>
+                    <th className="px-3 py-3 font-semibold">Questions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleQuestions.map((question) => (
-                    <tr key={question.id} className="border-b border-slate-100 align-top text-[#1C1D52]">
+                  {visibleAssessments.map((assessment) => {
+                    const assessmentQuestions = questions.filter((question) => question.assessmentId === assessment.id)
+                    return <tr key={assessment.id} className="border-b border-slate-100 align-top text-[#1C1D52]">
                       <td className="px-3 py-3.5">
-                        <p className="font-semibold text-[#1C1D52]">{question.prompt}</p>
-                        {question.instructions ? <p className="mt-1 text-[9px] text-slate-500">{question.instructions}</p> : null}
+                        <p className="font-semibold text-[#1C1D52]">{assessment.title}</p>
+                        {assessment.instructions ? <p className="mt-1 text-[9px] text-slate-500">{assessment.instructions}</p> : null}
                       </td>
-                      <td className="px-3 py-3.5 text-slate-600">{question.track}</td>
+                      <td className="px-3 py-3.5 text-slate-600">{assessment.track}</td>
                       <td className="px-3 py-3.5 text-slate-600">
-                        <ul className="space-y-1">
-                          {question.options.map((option, index) => (
-                            <li key={option.id} className={index === question.correctOptionIndex ? 'font-semibold text-[#1C1D52]' : ''}>
-                              {String.fromCharCode(65 + index)}. {option.optionText}
-                            </li>
+                        {assessment.passingScore}%
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <p className="font-semibold text-slate-600">{assessmentQuestions.length} question{assessmentQuestions.length === 1 ? '' : 's'}</p>
+                        <div className="mt-2 space-y-2">
+                          {assessmentQuestions.map((question, index) => (
+                            <div key={question.id} className="rounded-lg bg-slate-50 p-2.5">
+                              <p className="font-semibold">{index + 1}. {question.prompt}</p>
+                              <div className="mt-2 flex gap-2">
+                                <Link href={`/admin/internship/assessments/new?edit=${encodeURIComponent(question.id)}`} className="inline-flex items-center gap-1 rounded bg-[#f3f6fb] px-2 py-1 font-semibold text-[#1C1D52] hover:bg-[#e8edf7]"><PencilLine className="h-3 w-3" />Edit</Link>
+                                <button type="button" onClick={() => handleDelete(question)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 font-semibold text-red-600 hover:bg-red-100"><Trash2 className="h-3 w-3" />Delete</button>
+                              </div>
+                            </div>
                           ))}
-                        </ul>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <span className="rounded-full bg-[#e8faf7] px-2 py-1 font-semibold text-teal-700">
-                          {String.fromCharCode(65 + question.correctOptionIndex)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3.5 text-slate-600">{question.assessmentTitle}</td>
-                      <td className="px-3 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/admin/internship/assessments/new?edit=${encodeURIComponent(question.id)}`} className="inline-flex items-center gap-1 rounded bg-[#f3f6fb] px-2 py-1 font-semibold text-[#1C1D52] hover:bg-[#e8edf7]">
-                            <PencilLine className="h-3 w-3" />
-                            Edit
-                          </Link>
-                          <button type="button" onClick={() => handleDelete(question.id)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 font-semibold text-red-600 hover:bg-red-100">
-                            <Trash2 className="h-3 w-3" />
-                            Delete
-                          </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  })}
                 </tbody>
               </table>
             </div>

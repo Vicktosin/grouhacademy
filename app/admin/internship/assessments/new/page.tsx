@@ -20,6 +20,7 @@ type QuestionPayload = {
   track: string
   prompt: string
   instructions: string
+  passingScore: number
   options: Array<{ id: string; optionText: string }>
   correctOptionIndex: number
 }
@@ -66,6 +67,7 @@ export default function NewAssessmentPage() {
           if (targetQuestion) {
             setAssessmentTitle(targetQuestion.assessmentTitle)
             setInstructions(targetQuestion.instructions)
+            setPassingScore(targetQuestion.passingScore)
             const matchedProgram = nextPrograms.find((program) => program.name === targetQuestion.track)
             setProgramId(matchedProgram?.id ?? nextPrograms[0]?.id ?? '')
             setQuestions([
