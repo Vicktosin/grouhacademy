@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { AssessmentAttemptStatus, InternshipApplicationStatus, InternshipPaymentStatus, RoleName } from '@/generated/prisma/client'
+import { AssessmentAttemptStatus, InternshipPaymentStatus, RoleName } from '@/generated/prisma/client'
 import { getPrisma } from '@/lib/prisma'
 import { userHasRole } from '@/lib/rbac'
 import { getCurrentUserId } from '@/lib/route-guards'
@@ -12,8 +12,8 @@ function formatTier(value: string | null | undefined) {
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
-function formatCohort(groupNumber: number | null | undefined) {
-  return groupNumber ? `Cohort ${groupNumber}` : 'Unassigned'
+function formatCohort(name: string | null | undefined) {
+  return name || 'Unassigned'
 }
 
 function formatDate(date: Date | null | undefined) {
@@ -61,14 +61,6 @@ export async function GET() {
           createdAt: true,
           updatedAt: true,
           profile: { select: { firstName: true, lastName: true, program: true, institution: true, bio: true } },
-          groupMemberships: {
-            select: {
-              programId: true,
-              group: {
-                select: { number: true },
-              },
-            },
-          },
         },
       },
       program: {
@@ -77,6 +69,9 @@ export async function GET() {
           name: true,
           slug: true,
         },
+      },
+      cohort: {
+        select: { name: true },
       },
       payment: {
         select: {
@@ -124,7 +119,6 @@ export async function GET() {
     const student = application.student
     const latestAttempt = application.attempts[0]
     const progress = progressMap.get(`${student.id}:${application.programId}`)
-    const membership = student.groupMemberships.find((membership) => membership.programId === application.programId)
     const lastActive = [
       student.updatedAt,
       progress?.lastUpdated,
@@ -143,7 +137,7 @@ export async function GET() {
       lastActive: formatRelativeDate(lastActive),
       enrollmentDate: formatDate(application.payment?.paidAt ?? application.createdAt),
       tier: formatTier(application.premiumTier),
-      cohort: formatCohort(membership?.group?.number ?? null),
+      cohort: formatCohort(application.cohort?.name),
       status: application.status,
       lastAssessmentStatus: latestAttempt?.status ?? 'PASSED',
       examScore: latestAttempt?.scorePercent ?? null,

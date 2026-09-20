@@ -65,15 +65,6 @@ export async function GET(request: Request) {
     })
 
     const now = new Date()
-    const activeCohort = await prisma.internshipCohort.findFirst({
-      where: {
-        programId: application.programId,
-        startDate: { lte: now },
-        endDate: { gte: now },
-      },
-      orderBy: { startDate: 'asc' },
-    })
-
     const nextCohort = await prisma.internshipCohort.findFirst({
       where: {
         programId: application.programId,
@@ -85,7 +76,7 @@ export async function GET(request: Request) {
     await prisma.internshipApplication.update({
       where: { id: applicationId },
       data: {
-        cohortId: activeCohort ? nextCohort?.id ?? application.cohortId ?? null : nextCohort?.id ?? application.cohortId ?? null,
+        cohortId: nextCohort?.id ?? application.cohortId ?? null,
       },
     })
 

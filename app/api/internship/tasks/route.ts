@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { NotificationType, SubmissionStatus } from '@/generated/prisma/client'
 import { getCurrentUserId } from '@/lib/route-guards'
 import { getPrisma } from '@/lib/prisma'
+import { hasInternshipWorkspaceAccess } from '@/lib/internship-access'
 import type { InternshipAlert, InternshipTaskItem, InternshipTaskListResponse, TaskTone } from '@/lib/internship-data'
 
 const MS_PER_HOUR = 1000 * 60 * 60
@@ -68,6 +69,10 @@ export async function GET() {
 
   if (!userId) {
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+  }
+
+  if (!(await hasInternshipWorkspaceAccess(userId))) {
+    return NextResponse.json({ error: 'Pass the entrance assessment and pay the acceptance fee to access internship tasks.' }, { status: 403 })
   }
 
   const prisma = getPrisma()
