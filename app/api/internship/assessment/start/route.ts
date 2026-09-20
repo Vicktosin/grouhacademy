@@ -23,8 +23,11 @@ export async function POST() {
     }
 
     const assessment = await prisma.internshipAssessment.findFirst({
-      where: { programId: application.programId },
-      orderBy: { createdAt: 'asc' },
+      where: {
+        programId: application.programId,
+        questions: { some: {} },
+      },
+      orderBy: { createdAt: 'desc' },
     })
 
     if (!assessment) {

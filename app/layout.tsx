@@ -3,6 +3,7 @@ import { Lato } from "next/font/google";
 import "./globals.css";
 import HeaderGuard from "../components/HeaderGuard";
 import FooterGuard from "@/components/FooterGuard";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -16,6 +17,14 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "Grouh Academy",
   description: "Practical digital skills and internship opportunities.",
+  appleWebApp: {
+    capable: true,
+    title: "Grouh Academy",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -25,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`h-full antialiased ${lato.variable}`}
     >
       <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
         <HeaderGuard />
         {children}
         <FooterGuard />
