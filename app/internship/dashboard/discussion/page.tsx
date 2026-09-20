@@ -22,6 +22,12 @@ type MemberProfile = {
 
 const POLL_INTERVAL_MS = 4000
 
+function mergeMessages(current: Message[], incoming: Message[]): Message[] {
+  const knownIds = new Set(current.map((message) => message.id))
+  const newMessages = incoming.filter((message) => !knownIds.has(message.id))
+  return newMessages.length === 0 ? current : [...current, ...newMessages]
+}
+
 export default function DiscussionPage() {
   const [groupNumber, setGroupNumber] = useState<number | null>(null)
   const [isLeader, setIsLeader] = useState(false)
@@ -31,6 +37,7 @@ export default function DiscussionPage() {
   const [currentTask, setCurrentTask] = useState<CurrentTask | null>(null)
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
@@ -47,9 +54,13 @@ export default function DiscussionPage() {
   const [submitMessage, setSubmitMessage] = useState('')
 
   const lastFetchedAt = useRef<string | null>(null)
+  const isPolling = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   async function loadGroup(initial: boolean) {
+    if (!initial && isPolling.current) return
+    if (!initial) isPolling.current = true
+
     try {
       const url = new URL('/api/internship/group', window.location.origin)
       if (!initial && lastFetchedAt.current) url.searchParams.set('after', lastFetchedAt.current)
@@ -70,17 +81,21 @@ export default function DiscussionPage() {
         setCurrentTask(body.currentTask)
         setMessages(body.messages)
       } else if (body.messages.length > 0) {
-        setMessages((current) => [...current, ...body.messages])
+        setMessages((current) => mergeMessages(current, body.messages))
       }
 
       if (body.messages.length > 0) {
-        lastFetchedAt.current = body.messages[body.messages.length - 1].createdAt
+        const newestMessage = body.messages[body.messages.length - 1]
+        if (!lastFetchedAt.current || newestMessage.createdAt > lastFetchedAt.current) {
+          lastFetchedAt.current = newestMessage.createdAt
+        }
       }
       setError(null)
     } catch {
       if (initial) setError('Unable to load your group.')
     } finally {
       if (initial) setLoading(false)
+      else isPolling.current = false
     }
   }
 
@@ -97,8 +112,10 @@ export default function DiscussionPage() {
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const content = draft.trim()
-    if (!content) return
+    if (!content || sending) return
 
+    setSending(true)
+    setError(null)
     try {
       const response = await fetch('/api/internship/group', {
         method: 'POST',
@@ -108,11 +125,15 @@ export default function DiscussionPage() {
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error ?? 'Unable to send message.')
 
-      setMessages((current) => [...current, body])
-      lastFetchedAt.current = body.createdAt
+      setMessages((current) => mergeMessages(current, [body]))
+      if (!lastFetchedAt.current || body.createdAt > lastFetchedAt.current) {
+        lastFetchedAt.current = body.createdAt
+      }
       setDraft('')
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Unable to send message.')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -284,7 +305,7 @@ export default function DiscussionPage() {
               aria-label="Type a message"
               className="min-w-0 flex-1 rounded-full bg-[#f3f6fb] px-4 py-3 text-xs text-[#1C1D52] outline-none focus:ring-2 focus:ring-[#5FBB46]/25"
             />
-            <button type="submit" disabled={!draft.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5FBB46] text-white transition hover:bg-[#4aaa3e] disabled:cursor-not-allowed disabled:opacity-50" aria-label="Send message">
+            <button type="submit" disabled={sending || !draft.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5FBB46] text-white transition hover:bg-[#4aaa3e] disabled:cursor-not-allowed disabled:opacity-50" aria-label="Send message">
               <Send className="h-4 w-4" />
             </button>
           </form>

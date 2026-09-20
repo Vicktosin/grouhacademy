@@ -225,7 +225,7 @@ export default function NewAssessmentPage() {
 
           <div className="space-y-5">
             {questions.map((question, questionIndex) => (
-              <div key={`${questionIndex}-${question.prompt || 'new-question'}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div key={questionIndex} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-bold text-[#1C1D52]">Question {questionIndex + 1}</h3>
                   {questions.length > 1 && (
