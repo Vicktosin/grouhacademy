@@ -198,12 +198,30 @@ export async function DELETE(request: Request) {
 
   const body = await request.json().catch(() => null)
   const questionId = typeof body?.questionId === 'string' ? body.questionId : null
-
-  if (!questionId) {
-    return NextResponse.json({ error: 'A valid question id is required.' }, { status: 400 })
-  }
+  const assessmentId = typeof body?.assessmentId === 'string' ? body.assessmentId : null
 
   const prisma = getPrisma()
+
+  if (assessmentId) {
+    const assessment = await prisma.internshipAssessment.findUnique({
+      where: { id: assessmentId },
+      include: { _count: { select: { questions: true } } },
+    })
+    if (!assessment) {
+      return NextResponse.json({ error: 'Assessment not found.' }, { status: 404 })
+    }
+    if (assessment._count.questions > 0) {
+      return NextResponse.json({ error: 'Delete all questions before removing this assessment.' }, { status: 409 })
+    }
+
+    await prisma.internshipAssessment.delete({ where: { id: assessmentId } })
+    return NextResponse.json({ success: true, deletedAssessmentId: assessmentId })
+  }
+
+  if (!questionId) {
+    return NextResponse.json({ error: 'A valid assessment or question id is required.' }, { status: 400 })
+  }
+
   const question = await prisma.assessmentQuestion.findUnique({ where: { id: questionId } })
   if (!question) {
     return NextResponse.json({ error: 'Question not found.' }, { status: 404 })

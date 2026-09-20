@@ -75,6 +75,24 @@ export default function InternshipAssessmentsPage() {
     }
   }
 
+  async function handleDeleteEmptyAssessment(assessmentId: string) {
+    setError(null)
+    try {
+      const response = await fetch('/api/admin/internship/assessments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assessmentId }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'Unable to delete this assessment.')
+      }
+      setAssessments((current) => current.filter((assessment) => assessment.id !== assessmentId))
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete this assessment.')
+    }
+  }
+
   return (
     <AdminShell workspace="internship">
       <div className="mx-auto max-w-[1400px] space-y-5">
@@ -132,7 +150,9 @@ export default function InternshipAssessmentsPage() {
                       </td>
                       <td className="px-3 py-3.5">
                         <p className="font-semibold text-slate-600">{assessmentQuestions.length} question{assessmentQuestions.length === 1 ? '' : 's'}</p>
-                        <div className="mt-2 space-y-2">
+                        {assessmentQuestions.length === 0 ? (
+                          <button type="button" onClick={() => handleDeleteEmptyAssessment(assessment.id)} className="mt-2 inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 font-semibold text-red-600 hover:bg-red-100"><Trash2 className="h-3 w-3" />Delete empty assessment</button>
+                        ) : <div className="mt-2 space-y-2">
                           {assessmentQuestions.map((question, index) => (
                             <div key={question.id} className="rounded-lg bg-slate-50 p-2.5">
                               <p className="font-semibold">{index + 1}. {question.prompt}</p>
@@ -142,7 +162,7 @@ export default function InternshipAssessmentsPage() {
                               </div>
                             </div>
                           ))}
-                        </div>
+                        </div>}
                       </td>
                     </tr>
                   })}
