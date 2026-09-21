@@ -1,3 +1,5 @@
+import { assignApplicationCohort } from '@/lib/internship-cohort'
+
 export type PaystackWebhookEvent = {
   event?: string
   status?: string
@@ -32,7 +34,7 @@ export type PaystackSettlementPrisma = {
     update(args: Record<string, unknown>): Promise<unknown>
   }
   internshipApplication: { update(args: Record<string, unknown>): Promise<unknown> }
-  internshipCohort: { findFirst(args: Record<string, unknown>): Promise<{ id: string } | null> }
+  internshipCohort: { findFirst(args: Record<string, unknown>): Promise<{ id: string; startDate?: Date; endDate?: Date } | null> }
 }
 
 function amountInSmallestUnit(value: number | string | null | undefined) {
@@ -80,23 +82,7 @@ export async function settleSuccessfulPaystackPayment(prisma: PaystackSettlement
 
       updatedInternshipPayment = true
 
-      if (internshipPayment.application) {
-        const now = new Date()
-        const nextCohort = await prisma.internshipCohort.findFirst({
-          where: {
-            programId: internshipPayment.application.programId,
-            startDate: { gt: now },
-          },
-          orderBy: { startDate: 'asc' },
-        }).catch(() => null)
-
-        await prisma.internshipApplication.update({
-          where: { id: internshipPayment.applicationId },
-          data: {
-            cohortId: nextCohort?.id ?? internshipPayment.application.cohortId ?? null,
-          },
-        }).catch(() => null)
-      }
+      if (internshipPayment.application) await assignApplicationCohort(prisma, internshipPayment.application).catch(() => null)
     } else if (internshipPayment) {
       console.warn('[paystack-webhook] Acceptance payment validation failed.', { reference })
       return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: true, reason: 'payment_mismatch' }

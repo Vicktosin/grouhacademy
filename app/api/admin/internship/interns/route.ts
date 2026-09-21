@@ -4,6 +4,7 @@ import { AssessmentAttemptStatus, InternshipPaymentStatus, RoleName } from '@/ge
 import { getPrisma } from '@/lib/prisma'
 import { userHasRole } from '@/lib/rbac'
 import { getCurrentUserId } from '@/lib/route-guards'
+import { assignApplicationCohort, type CohortDb } from '@/lib/internship-cohort'
 
 function formatTier(value: string | null | undefined) {
   if (!value || value === 'NONE') return 'Free Tier'
@@ -115,6 +116,20 @@ export async function GET() {
     })
   }
 
+  const assignedCohortIds = await Promise.all(
+    applications.map((application) => assignApplicationCohort(prisma as unknown as CohortDb, {
+      id: application.id,
+      programId: application.programId,
+      cohortId: application.cohortId,
+    })),
+  )
+  const assignedCohorts = await prisma.internshipCohort.findMany({
+    where: { id: { in: assignedCohortIds.filter((id): id is string => Boolean(id)) } },
+    select: { id: true, name: true },
+  })
+  const cohortNames = new Map(assignedCohorts.map((cohort) => [cohort.id, cohort.name]))
+  const assignedCohortByApplicationId = new Map(applications.map((application, index) => [application.id, assignedCohortIds[index]]))
+
   const interns = applications.map((application) => {
     const student = application.student
     const latestAttempt = application.attempts[0]
@@ -137,7 +152,7 @@ export async function GET() {
       lastActive: formatRelativeDate(lastActive),
       enrollmentDate: formatDate(application.payment?.paidAt ?? application.createdAt),
       tier: formatTier(application.premiumTier),
-      cohort: formatCohort(application.cohort?.name),
+      cohort: formatCohort(application.cohort?.name ?? (application.cohortId ? cohortNames.get(application.cohortId) : null) ?? (assignedCohortByApplicationId.get(application.id) ? cohortNames.get(assignedCohortByApplicationId.get(application.id) as string) : null)),
       status: application.status,
       lastAssessmentStatus: latestAttempt?.status ?? 'PASSED',
       examScore: latestAttempt?.scorePercent ?? null,

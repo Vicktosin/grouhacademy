@@ -4,6 +4,7 @@ import { InternshipPaymentStatus, RoleName } from '@/generated/prisma/client'
 import { getPrisma } from '@/lib/prisma'
 import { userHasRole } from '@/lib/rbac'
 import { getCurrentUserId } from '@/lib/route-guards'
+import { assignApplicationCohort, type CohortDb } from '@/lib/internship-cohort'
 
 const VALID_STATUSES = new Set<InternshipPaymentStatus>([
   InternshipPaymentStatus.PENDING,
@@ -38,7 +39,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Unsupported payment status.' }, { status: 400 })
   }
 
-  const payment = await prisma.internshipPayment.findUnique({ where: { id } })
+  const payment = await prisma.internshipPayment.findUnique({
+    where: { id },
+    include: { application: { select: { id: true, programId: true, cohortId: true } } },
+  })
   if (!payment) {
     return NextResponse.json({ error: 'Payment not found.' }, { status: 404 })
   }
@@ -50,6 +54,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       paidAt: normalizedStatus === InternshipPaymentStatus.PAID ? payment.paidAt ?? new Date() : null,
     },
   })
+
+  if (normalizedStatus === InternshipPaymentStatus.PAID) {
+    await assignApplicationCohort(prisma as unknown as CohortDb, payment.application)
+  }
 
   return NextResponse.json({
     payment: {

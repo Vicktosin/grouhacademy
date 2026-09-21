@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPrisma } from '@/lib/prisma'
+import { assignApplicationCohort, type CohortDb } from '@/lib/internship-cohort'
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get('reference')
@@ -64,21 +65,7 @@ export async function GET(request: Request) {
       data: { status: 'PAID', paidAt: new Date() },
     })
 
-    const now = new Date()
-    const nextCohort = await prisma.internshipCohort.findFirst({
-      where: {
-        programId: application.programId,
-        startDate: { gt: now },
-      },
-      orderBy: { startDate: 'asc' },
-    })
-
-    await prisma.internshipApplication.update({
-      where: { id: applicationId },
-      data: {
-        cohortId: nextCohort?.id ?? application.cohortId ?? null,
-      },
-    })
+    await assignApplicationCohort(prisma as unknown as CohortDb, application)
 
     return NextResponse.json({ status: 'success' })
   } catch (error) {
