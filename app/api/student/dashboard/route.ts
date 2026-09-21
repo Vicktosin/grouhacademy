@@ -8,6 +8,7 @@ import {
   type DashboardCourseProgress,
   type StudentDashboardResponse,
 } from '@/lib/course-data'
+import { buildCourseRecommendationFilter } from '@/lib/course-recommendation-filter'
 
 export async function GET() {
   const userId = await getCurrentUserId()
@@ -67,15 +68,40 @@ export async function GET() {
       )
     : 0
 
-  const recommendedCourses = await prisma.course.findMany({
+  const baseCourseFilter = {
+    status: CourseStatus.PUBLISHED,
+    ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
+  }
+
+  const studentProfile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { skills: true },
+  })
+
+  const interestLabels = (studentProfile?.skills ?? [])
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean))
+
+  const personalizedRecommendationFilter = buildCourseRecommendationFilter(interestLabels)
+
+  let recommendedCourses = await prisma.course.findMany({
     where: {
-      status: CourseStatus.PUBLISHED,
-      ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
+      ...baseCourseFilter,
+      ...(personalizedRecommendationFilter ? personalizedRecommendationFilter : {}),
     },
     include: courseInclude,
     orderBy: { createdAt: 'desc' },
     take: 3,
   })
+
+  if (recommendedCourses.length === 0) {
+    recommendedCourses = await prisma.course.findMany({
+      where: baseCourseFilter,
+      include: courseInclude,
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    })
+  }
 
   const response: StudentDashboardResponse = {
     stats: {

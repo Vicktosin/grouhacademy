@@ -3,6 +3,7 @@ import { getCurrentUserId } from '@/lib/route-guards'
 import { getPrisma } from '@/lib/prisma'
 import { CourseStatus } from '@/generated/prisma/client'
 import { courseInclude, serializeCourse } from '@/lib/course-data'
+import { buildCourseRecommendationFilter } from '@/lib/course-recommendation-filter'
 
 function parseDurationWeeks(duration: string): number {
   const match = duration.match(/\d+/)
@@ -141,15 +142,30 @@ export async function GET() {
       await prisma.enrollment.findMany({ where: { userId }, select: { courseId: true } })
     ).map((e) => e.courseId)
 
-    const recommendedCourses = await prisma.course.findMany({
+    const baseCourseFilter = {
+      status: CourseStatus.PUBLISHED,
+      ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
+    }
+
+    const trackSpecificCourses = buildCourseRecommendationFilter([program.name])
+    let recommendedCourses = await prisma.course.findMany({
       where: {
-        status: CourseStatus.PUBLISHED,
-        ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
+        ...baseCourseFilter,
+        ...(trackSpecificCourses ? trackSpecificCourses : {}),
       },
       include: courseInclude,
       orderBy: { createdAt: 'desc' },
       take: 3,
     })
+
+    if (recommendedCourses.length === 0) {
+      recommendedCourses = await prisma.course.findMany({
+        where: baseCourseFilter,
+        include: courseInclude,
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      })
+    }
 
     const cohortStatus = activeCohort ? 'ACTIVE' : nextCohort ? 'UPCOMING' : 'COMPLETED'
     const countdownDays = displayCohort ? Math.max(0, Math.ceil((displayCohort.startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null

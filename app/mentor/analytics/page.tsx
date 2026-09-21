@@ -1,3 +1,25 @@
-import { BarChart3, CheckCircle2, TrendingUp, Users } from 'lucide-react'
+import { RoleName, SubmissionStatus } from '@/generated/prisma/client'
 import { MentorPage, MentorStat } from '@/components/MentorPage'
-export default function MentorAnalyticsPage() { return <MentorPage title="Mentor Analytics" description="Track intern progress, task completion, assessment outcomes, and the health of your supervised cohorts."><div className="grid grid-cols-2 gap-3 xl:grid-cols-4"><MentorStat label="Active interns" value="24" detail="Across 2 cohorts" /><MentorStat label="Task completion" value="86%" detail="↑ 9% this month" /><MentorStat label="Assessment pass rate" value="78%" detail="24 reviewed attempts" /><MentorStat label="Average intern score" value="82%" detail="↑ 6% this month" /></div><div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-blue-500" /><h2 className="text-sm font-bold text-[#1C1D52]">Cohort progress</h2></div><div className="mt-8 flex h-40 items-end gap-3">{[48, 61, 55, 70, 78, 72, 86, 92, 84, 98].map((height, index) => <div key={index} className="flex flex-1 flex-col justify-end gap-2"><div className="rounded-t-md bg-[#5FBB46]" style={{ height: `${height}px` }} /><span className="text-center text-[9px] text-slate-400">W{index + 1}</span></div>)}</div></section><section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-[#5FBB46]" /><h2 className="text-sm font-bold text-[#1C1D52]">Outcome breakdown</h2></div><div className="mt-6 space-y-5">{[['On track', '62%', 'bg-[#5FBB46]'], ['Needs support', '25%', 'bg-amber-400'], ['At risk', '13%', 'bg-red-400']].map(([label, value, color]) => <div key={label}><div className="flex justify-between text-xs"><span className="text-slate-500">{label}</span><strong className="text-[#1C1D52]">{value}</strong></div><div className="mt-2 h-2 rounded-full bg-slate-100"><div className={`h-full rounded-full ${color}`} style={{ width: value }} /></div></div>)}</div><div className="mt-6 flex items-center gap-2 text-xs text-[#5FBB46]"><TrendingUp className="h-4 w-4" />Cohort performance is improving</div></section></div><section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center gap-2 text-sm font-bold text-[#1C1D52]"><CheckCircle2 className="h-4 w-4 text-[#5FBB46]" />Recommended mentor actions</div><div className="mt-4 grid gap-3 sm:grid-cols-3">{['Follow up with 3 at-risk interns', 'Review 8 pending assessments', 'Schedule Cohort A check-in'].map((item) => <div key={item} className="rounded-lg bg-[#f8fbff] p-3 text-xs text-slate-600">{item}</div>)}</div></section></MentorPage> }
+import { getPrisma } from '@/lib/prisma'
+import { requireRouteAccess } from '@/lib/route-guards'
+
+export default async function MentorAnalyticsPage() {
+  const mentorId = await requireRouteAccess({ requiredRoles: [RoleName.MENTOR], redirectTo: '/login' })
+  const prisma = getPrisma()
+  const assignments = await prisma.mentorAssignment.findMany({ where: { mentorId, status: 'ACTIVE' }, select: { internId: true } })
+  const internIds = assignments.map((assignment) => assignment.internId)
+  const [attempts, submissions, progress] = await Promise.all([
+    prisma.assessmentAttempt.findMany({ where: { application: { studentId: { in: internIds } } }, select: { status: true, scorePercent: true } }),
+    prisma.taskSubmission.findMany({ where: { userId: { in: internIds } }, select: { status: true } }),
+    prisma.internshipProgress.findMany({ where: { userId: { in: internIds } }, select: { progressPercent: true } }),
+  ])
+  const scoredAttempts = attempts.filter((attempt) => attempt.scorePercent != null)
+  const completedTasks = submissions.filter((submission) => submission.status === SubmissionStatus.ACCEPTED).length
+  const passRate = attempts.length ? Math.round((attempts.filter((attempt) => attempt.status === 'PASSED').length / attempts.length) * 100) : 0
+  const averageScore = scoredAttempts.length ? Math.round(scoredAttempts.reduce((sum, attempt) => sum + (attempt.scorePercent ?? 0), 0) / scoredAttempts.length) : 0
+  const averageProgress = progress.length ? Math.round(progress.reduce((sum, item) => sum + item.progressPercent, 0) / progress.length) : 0
+
+  return <MentorPage title="Mentor analytics" description="Live performance data for interns assigned to you.">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><MentorStat label="Active interns" value={String(internIds.length)} detail="Current assignments" /><MentorStat label="Completed tasks" value={String(completedTasks)} detail="Accepted submissions" /><MentorStat label="Assessment pass rate" value={`${passRate}%`} detail={`${attempts.length} attempts`} /><MentorStat label="Average progress" value={`${averageProgress}%`} detail={`Assessment average ${averageScore}%`} /></div>
+  </MentorPage>
+}

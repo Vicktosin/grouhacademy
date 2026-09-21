@@ -53,6 +53,9 @@ export default function InternshipPaymentsPage() {
   const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ paymentId: string; nextStatus: PaymentRecord['paymentStatus']; label: string } | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/internship/payments', { cache: 'no-store' })
@@ -106,6 +109,44 @@ export default function InternshipPaymentsPage() {
     }
   }, [payments])
 
+  async function updateStatus(paymentId: string, nextStatus: PaymentRecord['paymentStatus']) {
+    setUpdatingId(paymentId)
+    setUpdateMessage(null)
+    setConfirmAction(null)
+
+    try {
+      const response = await fetch(`/api/admin/internship/payments/${paymentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+
+      const payload = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'Unable to update payment status.')
+
+      setPayments((current) => current.map((payment) => {
+        if (payment.id !== paymentId) return payment
+
+        const nextStatusLabel = nextStatus === 'PAID' ? 'Paid' : nextStatus === 'PENDING' ? 'Pending' : nextStatus === 'FAILED' ? 'Failed' : 'Cancelled'
+        const nextInternshipStatus = nextStatus === 'PAID' ? 'In Progress' : 'Awaiting Next Course'
+
+        return {
+          ...payment,
+          paymentStatus: nextStatus,
+          paymentStatusLabel: nextStatusLabel,
+          internshipStatus: nextInternshipStatus,
+        }
+      }))
+
+      setOpenMenuId(null)
+      setUpdateMessage('Payment record updated.')
+    } catch (reason) {
+      setUpdateMessage(reason instanceof Error ? reason.message : 'Unable to update payment status.')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   return (
     <AdminShell workspace="internship">
       <div className="mx-auto max-w-[1400px] space-y-5">
@@ -130,6 +171,24 @@ export default function InternshipPaymentsPage() {
 
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700" role="alert">{error}</p>}
         {!error && !payments.length && <p className="rounded-xl bg-white px-4 py-3 text-xs text-slate-500">Loading payment records…</p>}
+        {updateMessage && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">{updateMessage}</p>}
+
+        {confirmAction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_45px_rgba(28,29,82,0.2)]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">Confirm status change</p>
+              <h2 className="mt-3 text-xl font-semibold text-[#1C1D52]">Update payment status?</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                This will change the payment status to <span className="font-semibold text-[#1C1D52]">{confirmAction.label}</span>.
+                Please confirm before continuing.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setConfirmAction(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button type="button" onClick={() => void updateStatus(confirmAction.paymentId, confirmAction.nextStatus)} className="rounded-lg bg-[#1C1D52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#2b2d72]">Confirm</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {payments.length > 0 && (
           <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
@@ -206,9 +265,12 @@ export default function InternshipPaymentsPage() {
                           </button>
                         </div>
                         {openMenuId === payment.id && (
-                          <div className="absolute right-0 z-10 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 shadow-[0_8px_20px_rgba(28,29,82,0.16)]">
+                          <div className="absolute right-0 z-10 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-[0_8px_20px_rgba(28,29,82,0.16)]">
                             <Link href={`/admin/internship/payments/${payment.id}`} onClick={() => setOpenMenuId(null)} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium text-[#1C1D52] hover:bg-[#f3f6fb]">View payment</Link>
                             <Link href={`/admin/internship/payments/${payment.id}/receipt`} onClick={() => setOpenMenuId(null)} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium text-[#1C1D52] hover:bg-[#f3f6fb]">Receipt</Link>
+                            <button type="button" disabled={updatingId === payment.id} onClick={() => setConfirmAction({ paymentId: payment.id, nextStatus: 'PAID', label: 'Paid' })} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">{updatingId === payment.id ? 'Updating…' : 'Mark as paid'}</button>
+                            <button type="button" disabled={updatingId === payment.id} onClick={() => setConfirmAction({ paymentId: payment.id, nextStatus: 'PENDING', label: 'Pending' })} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-60">Mark as pending</button>
+                            <button type="button" disabled={updatingId === payment.id} onClick={() => setConfirmAction({ paymentId: payment.id, nextStatus: 'FAILED', label: 'Failed' })} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-60">Mark as failed</button>
                           </div>
                         )}
                       </td>
