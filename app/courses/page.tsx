@@ -2,6 +2,13 @@ import { Suspense } from 'react'
 import { BookOpen, Sparkles, Users } from 'lucide-react'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import CourseCatalog from '@/components/CourseCatalog'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Online Courses for Career-Ready Digital Skills',
+  description: 'Explore practical online courses in digital skills, technology, product, design, and analytics, taught through projects and real-world practice.',
+  alternates: { canonical: '/courses' },
+};
 
 export default function CoursesPage() {
   return (

@@ -29,12 +29,17 @@ export default function StudentHeader() {
       })
       .catch((error) => console.error('Failed to load header profile:', error))
 
-    fetch('/api/student/notifications/unread-count', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (data) setUnreadCount(data.count ?? 0)
-      })
-      .catch((error) => console.error('Failed to load notification count:', error))
+    const loadUnreadCount = () => {
+      fetch('/api/student/notifications/unread-count', { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (data) setUnreadCount(data.count ?? 0)
+        })
+        .catch((error) => console.error('Failed to load notification count:', error))
+    }
+    loadUnreadCount()
+    window.addEventListener('focus', loadUnreadCount)
+    return () => window.removeEventListener('focus', loadUnreadCount)
   }, [])
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -106,7 +111,7 @@ export default function StudentHeader() {
           <Link
             href="/student/notifications"
             className="relative rounded-full p-1.5 text-gray-800 hover:bg-gray-100"
-            aria-label="Notifications"
+            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (

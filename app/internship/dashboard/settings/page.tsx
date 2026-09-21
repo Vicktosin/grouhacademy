@@ -9,7 +9,7 @@ const panelClass = 'rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.
 const inputClass = 'mt-1.5 h-10 w-full rounded-lg bg-[#F3F6FB] px-3 text-xs text-[#1C1D52] outline-none focus:ring-2 focus:ring-[#5FBB46]/25'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return <button type="button" role="switch" aria-checked={checked} onClick={onChange} className={`relative h-5 w-10 shrink-0 rounded-full transition-colors ${checked ? 'bg-[#5FBB46]' : 'bg-slate-300'}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} /></button>
+  return <button type="button" role="switch" aria-checked={checked} onClick={onChange} className={`relative h-5 w-8 shrink-0 rounded-full transition-colors ${checked ? 'bg-[#5FBB46]' : 'bg-slate-300'}`}><span className={`absolute left-1 top-1 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-3' : ''}`} /></button>
 }
 
 type Notifications = {

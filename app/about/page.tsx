@@ -6,6 +6,13 @@ import MeetTheTeam from '@/components/MeetTheTeam'
 import MissionVision from '@/components/MissionVision'
 import OurStory from '@/components/OurStory'
 import React from 'react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'About Grouh Academy',
+  description: 'Learn how Grouh Academy helps people build practical digital skills and move confidently into the next stage of their careers.',
+  alternates: { canonical: '/about' },
+};
 
 const page = () => {
   return (

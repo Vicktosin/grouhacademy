@@ -6,11 +6,41 @@ import InternshipSection from "@/components/InternshipSection";
 import LearningProcess from "@/components/LearningProcess";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
-import { BookOpen, CheckCircle2, Star } from "lucide-react";
+import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/site-url";
+
+export const metadata: Metadata = {
+  title: "Practical Digital Skills, Courses, and Internships",
+  description: "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with Grouh Academy courses and internships.",
+  alternates: { canonical: "/" },
+};
 
 const page = () => {
+  const siteUrl = getSiteUrl();
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'EducationalOrganization',
+        '@id': `${siteUrl}/#organization`,
+        name: 'Grouh Academy',
+        url: siteUrl,
+        logo: `${siteUrl}/logo.png`,
+        description: 'Practical digital skills, career-ready courses, and real-world internship opportunities.',
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        name: 'Grouh Academy',
+        url: siteUrl,
+        publisher: { '@id': `${siteUrl}/#organization` },
+      },
+    ],
+  }
+
   return (
     <main className="relative min-h-screen overflow-x-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="relative min-h-screen pt-24 pb-8 md:pt-32 md:pb-14">
         <div className="pointer-events-none absolute inset-0 -z-10 h-full">
       {/* Background Video */}
@@ -39,7 +69,7 @@ const page = () => {
               </h1>
 
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/75">
-                Your gateway to elite learning and real-world internships. Learn from industry experts, build in-demand skills, and launch a future you're proud of.
+                Your gateway to elite learning and real-world internships. Learn from industry experts, build in-demand skills, and launch a future you&apos;re proud of.
               </p>
 
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
