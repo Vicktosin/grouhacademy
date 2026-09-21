@@ -58,6 +58,7 @@ type Question = {
 // Local alias to the real API response shape - see course-data.ts for
 // why this must not be hand-typed again.
 type SavedCourse = PublicCourse
+type CourseCategoryOption = { id: string; name: string }
 
 const steps = [
   { label: 'Basics', icon: BookOpen },
@@ -72,7 +73,7 @@ const emptyCourse = {
   category: 'Design',
   level: 'Intermediate',
   duration: '6 weeks',
-  price: '$149',
+  price: '$0',
   launchDate: '2026-10-15',
   description:
     'A hands-on course covering product thinking, UX research, interface systems, and rapid prototyping for digital products.',
@@ -208,9 +209,20 @@ export default function InstructorCourseBuilder({
   )
 
   const [persistedSlug, setPersistedSlug] = useState(courseSlug ?? '')
+  const [categories, setCategories] = useState<CourseCategoryOption[]>([])
 
   const isEditMode = mode === 'edit' || Boolean(persistedSlug)
   const progress = ((currentStep + 1) / steps.length) * 100
+
+  useEffect(() => {
+    fetch('/api/course-categories', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load course categories.')
+        const data = (await response.json()) as { categories?: CourseCategoryOption[] }
+        setCategories(data.categories ?? [])
+      })
+      .catch(() => setCategories([]))
+  }, [])
 
   const field = (name: string, value: string) => {
     setCourse((previous) => ({
@@ -761,6 +773,7 @@ export default function InstructorCourseBuilder({
           {currentStep === 0 && (
             <BuilderBasics
               course={course}
+              categories={categories}
               field={field}
             />
           )}
@@ -895,11 +908,22 @@ function BuilderHeading({
   )
 }
 
+function CategorySelect({ value, categories, onChange }: { value: string; categories: CourseCategoryOption[]; onChange: (value: string) => void }) {
+  return <label className="text-[10px] font-semibold text-[#1C1D52]">Category<select required value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-[#5FBB46]"><option value="">Select a category</option>{categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}{value && !categories.some((category) => category.name === value) && <option value={value}>{value} (legacy)</option>}</select></label>
+}
+
+function PriceInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const pricingEnabled = process.env.NEXT_PUBLIC_COURSE_PRICING_ENABLED === 'true'
+  return <label className="text-[10px] font-semibold text-[#1C1D52]">Price<input type="text" value={pricingEnabled ? value : '$0'} onChange={(event) => onChange(event.target.value)} disabled={!pricingEnabled} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-normal outline-none focus:border-[#5FBB46] disabled:cursor-not-allowed disabled:text-slate-500" /><span className="mt-1 block text-[9px] font-normal text-slate-500">{pricingEnabled ? 'This price will be shown to learners.' : 'Courses are currently free. Pricing can be enabled later without changing the course.'}</span></label>
+}
+
 function BuilderBasics({
   course,
+  categories,
   field,
 }: {
   course: typeof emptyCourse
+  categories: CourseCategoryOption[]
   field: (name: string, value: string) => void
 }) {
   return (
@@ -918,12 +942,7 @@ function BuilderBasics({
           placeholder="Enter course title"
         />
 
-        <Input
-          label="Category"
-          value={course.category}
-          onChange={(value) => field('category', value)}
-          placeholder="e.g. Design"
-        />
+        <CategorySelect value={course.category} categories={categories} onChange={(value) => field('category', value)} />
 
         <Input
           label="Level"
@@ -939,12 +958,7 @@ function BuilderBasics({
           placeholder="e.g. 6 weeks"
         />
 
-        <Input
-          label="Price"
-          value={course.price}
-          onChange={(value) => field('price', value)}
-          placeholder="$149"
-        />
+        <PriceInput value={course.price} onChange={(value) => field('price', value)} />
 
         <Input
           label="Launch date"

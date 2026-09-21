@@ -9,6 +9,7 @@ import type { AdminContext } from '@/lib/admin-context'
 const studentItems = [
   { label: 'Dashboard', href: '/admin/student', icon: LayoutDashboard },
   { label: 'Courses', href: '/admin/student/courses', icon: BookOpen },
+  { label: 'Categories', href: '/admin/student/course-categories', icon: BookOpen },
   { label: 'Students', href: '/admin/student/students', icon: Users },
   { label: 'Enrollments', href: '/admin/student/enrollments', icon: GraduationCap },
   { label: 'Payments', href: '/admin/student/payments', icon: CreditCard },

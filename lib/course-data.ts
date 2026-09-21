@@ -1,5 +1,6 @@
 import { CourseStatus } from '@/generated/prisma/client'
 import { getPrisma } from '@/lib/prisma'
+import { effectiveCoursePrice } from '@/lib/course-pricing'
 
 export const courseInclude = {
   category: true,
@@ -63,7 +64,7 @@ export function serializeCourse(course: Awaited<ReturnType<typeof getCourseBySlu
   if (!course) return null
   const lessons = course.modules.reduce((total, module) => total + module.lessons.length, 0)
   const rating = course.reviews.length ? course.reviews.reduce((total, review) => total + review.rating, 0) / course.reviews.length : null
-  return { ...course, lessonCount: lessons, rating }
+  return { ...course, price: effectiveCoursePrice(course.price), lessonCount: lessons, rating }
 }
 
 /**

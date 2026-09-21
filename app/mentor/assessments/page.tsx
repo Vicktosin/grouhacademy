@@ -9,8 +9,14 @@ function statusLabel(status: AssessmentAttemptStatus) {
 
 export default async function MentorAssessmentsPage() {
   const mentorId = await requireRouteAccess({ requiredRoles: [RoleName.MENTOR], redirectTo: '/login' })
+  const prisma = getPrisma()
+  const assignments = await prisma.mentorAssignment.findMany({
+    where: { mentorId, status: 'ACTIVE' },
+    select: { internId: true, programId: true },
+  })
+  const assignedInternPrograms = assignments.map(({ internId, programId }) => ({ studentId: internId, programId }))
   const attempts = await getPrisma().assessmentAttempt.findMany({
-    where: { application: { mentorAssignments: { some: { mentorId, status: 'ACTIVE' } } } },
+    where: assignedInternPrograms.length ? { application: { OR: assignedInternPrograms } } : { id: { in: [] } },
     include: { application: { include: { student: { select: { name: true, email: true } }, program: { select: { name: true } } } } },
     orderBy: { updatedAt: 'desc' },
   })
