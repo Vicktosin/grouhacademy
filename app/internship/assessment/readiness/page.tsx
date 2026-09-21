@@ -15,6 +15,10 @@ export default function AssessmentReadinessPage() {
     try {
       const response = await fetch('/api/internship/assessment/start', { method: 'POST' })
       const data = await response.json()
+      if (data.code === 'ONBOARDING_REQUIRED') {
+        router.replace('/internship/onboarding')
+        return
+      }
       if (!response.ok) throw new Error(data.error || 'Unable to start your assessment.')
       router.push('/internship/assessment/take')
     } catch (startError) {

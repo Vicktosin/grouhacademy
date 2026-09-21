@@ -20,12 +20,17 @@ export default function AssessmentTakePage() {
     fetch('/api/internship/assessment/questions')
       .then(async (response) => {
         const data = await response.json()
+        if (data.code === 'ONBOARDING_REQUIRED') {
+          router.replace('/internship/onboarding')
+          return null
+        }
         if (!response.ok) throw new Error(data.error || 'Unable to load assessment.')
         setQuestions(data.questions)
+        return data
       })
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load assessment.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [router])
 
   const currentQuestion = questions[currentIndex]
   const answeredCount = Object.keys(answers).length

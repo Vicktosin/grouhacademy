@@ -40,10 +40,15 @@ export default function InternshipDashboardPage() {
   useEffect(() => {
     fetch('/api/internship/dashboard')
       .then(async (response) => {
-        if (!response.ok) throw new Error('Unable to load your internship dashboard.')
-        return response.json() as Promise<DashboardData>
+        const payload = await response.json()
+        if (payload.code === 'ONBOARDING_REQUIRED') {
+          window.location.replace('/internship/onboarding')
+          return null
+        }
+        if (!response.ok) throw new Error(payload.error || 'Unable to load your internship dashboard.')
+        return payload as DashboardData
       })
-      .then(setData)
+      .then((payload) => { if (payload) setData(payload) })
       .catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : 'Unable to load your internship dashboard.'))
       .finally(() => setLoading(false))
   }, [])

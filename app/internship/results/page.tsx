@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react'
 
-type Result = { programName: string; scorePercent: number; score: number; totalQuestions: number; passed: boolean; acceptanceFee: number; acceptanceFeePaid: boolean }
+type Result = { programName: string; scorePercent: number; score: number; totalQuestions: number; passed: boolean; acceptanceFee: number; acceptanceFeePaid: boolean; answerReview: Array<{ questionId: string; question: string; selectedAnswer: string; correctAnswer: string; isCorrect: boolean }> }
 
 export default function AssessmentResultsPage() {
   const router = useRouter()
@@ -39,15 +39,15 @@ export default function AssessmentResultsPage() {
   }
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#5FBB46]" /></div>
+    return <main className="flex min-h-dvh items-center justify-center bg-[#F0F7FF] px-5 py-12"><Loader2 className="h-6 w-6 animate-spin text-[#5FBB46]" /></main>
   }
 
   if (error || !result) {
-    return <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 px-6 py-12 text-center text-sm text-red-700">{error || 'No result found.'}</div>
+    return <main className="flex min-h-dvh items-center justify-center bg-[#F0F7FF] px-5 py-12"><div className="w-full max-w-xl rounded-2xl border border-red-200 bg-red-50 px-6 py-12 text-center text-sm text-red-700">{error || 'No result found.'}</div></main>
   }
 
   return (
-    <>
+    <main className="min-h-dvh bg-[#F0F7FF] px-5 py-12 sm:px-8 sm:py-16">
     <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-12">
       {result.passed && !result.acceptanceFeePaid ? (
         <CheckCircle2 className="mx-auto h-14 w-14 text-[#5FBB46]" />
@@ -63,6 +63,27 @@ export default function AssessmentResultsPage() {
         You scored <strong className="text-[#1C1D52]">{result.scorePercent}%</strong> ({result.score}/{result.totalQuestions}) on the {result.programName} assessment.
         {result.passed ? ' You are qualified for this internship program.' : ' You can try again whenever you\'re ready.'}
       </p>
+
+      <section className="mt-8 text-left">
+        <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#5FBB46]">Answer review</p>
+            <h2 className="mt-1 text-lg font-bold text-[#1C1D52]">Your answers and the correct answers</h2>
+          </div>
+          <span className="text-xs font-semibold text-slate-500">{result.answerReview.filter((answer) => answer.isCorrect).length}/{result.answerReview.length} correct</span>
+        </div>
+        <div className="mt-4 space-y-3">
+          {result.answerReview.map((answer, index) => (
+            <article key={answer.questionId} className="rounded-xl border border-slate-200 bg-[#f8fbff] p-4">
+              <p className="text-xs font-bold leading-5 text-[#1C1D52]">{index + 1}. {answer.question}</p>
+              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <p className={`rounded-lg px-3 py-2 ${answer.isCorrect ? 'bg-[#e8f7eb] text-[#397d3a]' : 'bg-red-50 text-red-700'}`}><span className="font-semibold">Your answer:</span> {answer.selectedAnswer}</p>
+                <p className="rounded-lg bg-[#e8f7eb] px-3 py-2 text-[#397d3a]"><span className="font-semibold">Correct answer:</span> {answer.correctAnswer}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {result.passed ? (
         <button
@@ -118,6 +139,6 @@ export default function AssessmentResultsPage() {
         </div>
       </div>
     )}
-    </>
+    </main>
   )
 }

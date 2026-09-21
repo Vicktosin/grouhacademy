@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import Image from 'next/image'
+import React, { useEffect, useState } from 'react'
 
 const Testimonials = () => {
   const [active, setActive] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
 
   const TESTIMONIALS = [
   {
@@ -29,8 +31,16 @@ const Testimonials = () => {
   },
 ]
 
+  useEffect(() => {
+    if (isPaused) return
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % TESTIMONIALS.length)
+    }, 7000)
+    return () => window.clearInterval(timer)
+  }, [isPaused, TESTIMONIALS.length])
+
   return (
-    <section id="success-stories" className="py-24 lg:py-32" style={{ backgroundColor: '#f8f9fe' }}>
+    <section id="success-stories" className="py-24 lg:py-32" style={{ backgroundColor: '#f8f9fe' }} onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)} onFocus={() => setIsPaused(true)} onBlur={() => setIsPaused(false)}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-[1fr_2fr] gap-16 items-start">
           <div className="lg:sticky lg:top-32">
@@ -58,7 +68,7 @@ const Testimonials = () => {
                   }`}
                   style={{ borderColor: i === active ? '#4db848' : 'transparent' }}
                 >
-                  <img src={t.avatar} alt={t.name} className="w-full h-full object-cover" />
+                  <Image src={t.avatar} alt={t.name} width={48} height={48} className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -82,14 +92,16 @@ const Testimonials = () => {
               </svg>
 
               <p className="text-white/90 text-xl lg:text-2xl leading-relaxed font-medium mb-8" style={{ fontFamily: 'Fraunces, serif' }}>
-                "{TESTIMONIALS[active].quote}"
+                {TESTIMONIALS[active].quote}
               </p>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <img
+                  <Image
                     src={TESTIMONIALS[active].avatar}
                     alt={TESTIMONIALS[active].name}
+                    width={56}
+                    height={56}
                     className="w-14 h-14 rounded-full object-cover border-2 border-green-400"
                     style={{ borderColor: '#4db848' }}
                   />
@@ -116,10 +128,10 @@ const Testimonials = () => {
                   className="text-left p-5 bg-white rounded-2xl border border-gray-100 hover:border-green-200 hover:shadow-md transition-all"
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <img src={t.avatar} alt={t.name} className="w-8 h-8 rounded-full object-cover" />
+                    <Image src={t.avatar} alt={t.name} width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
                     <span className="text-sm font-semibold" style={{ color: '#141650' }}>{t.name}</span>
                   </div>
-                  <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">"{t.quote}"</p>
+                  <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{t.quote}</p>
                 </button>
               ))}
             </div>

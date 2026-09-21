@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { settleSuccessfulPaystackPayment } from '../lib/paystack-webhook'
+import { settleSuccessfulPaystackPayment, type PaystackSettlementPrisma } from '../lib/paystack-webhook'
 
 test('marks internship payment as paid when Paystack charge.success arrives for a bank transfer', async () => {
   const calls: Record<string, unknown>[] = []
@@ -39,7 +39,7 @@ test('marks internship payment as paid when Paystack charge.success arrives for 
     },
   }
 
-  const result = await settleSuccessfulPaystackPayment(prisma as any, {
+  const result = await settleSuccessfulPaystackPayment(prisma as unknown as PaystackSettlementPrisma, {
     reference: 'acceptance_app-1_123',
     status: 'success',
     amount: 25000000,

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Container from "@/components/Container";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getSiteUrl } from "@/lib/site-url";
@@ -48,7 +49,12 @@ export default function LoginPage() {
       }
 
       const data = (await response.json()) as { redirectTo?: string };
-      const redirectTo = data.redirectTo || "/student";
+      const requestedNext = new URLSearchParams(window.location.search).get("next");
+      const redirectTo = requestedNext?.startsWith("/internship/")
+        ? "/internship/onboarding"
+        : requestedNext?.startsWith("/")
+          ? requestedNext
+          : data.redirectTo || "/student";
 
       router.replace(redirectTo);
       router.refresh();
@@ -83,7 +89,7 @@ export default function LoginPage() {
             <div className="flex items-center px-6 py-12 sm:px-12 lg:px-16">
               <div className="mx-auto w-full max-w-md">
                 <div className="mb-10">
-                  <img src="/logo.png" alt="Grouh Academy logo" className="mb-3 h-10 w-auto" />
+                  <Link href="/" className="inline-flex"><Image src="/logo.png" alt="Grouh Academy logo" width={160} height={64} className="mb-3 h-10 w-auto" /></Link>
                   <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">Welcome back</h1>
                   <p className="mt-3 text-sm leading-6 text-slate-500">Sign in to continue building the skills that move you forward.</p>
                 </div>
@@ -173,12 +179,12 @@ export default function LoginPage() {
 
           {/* Woman Image */}
           <div className="absolute right-8 bottom-0 w-80">
-            <img src="/woman-with-tab.png" alt="Woman with tablet" className="w-full h-auto" />
+            <Image src="/woman-with-tab.png" alt="Woman with tablet" width={640} height={760} className="h-auto w-full" />
           </div>
 
           {/* Thunderbolt Badge */}
           <div className="absolute left-8 top-72 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md">
-            <img src="/thunderbolt.png" alt="Thunderbolt icon" className="w-8 h-8" />
+            <Image src="/thunderbolt.png" alt="Thunderbolt icon" width={32} height={32} className="h-8 w-8" />
           </div>
         </div>
 

@@ -1,4 +1,6 @@
-import React from 'react'
+'use client'
+
+import React, { useEffect, useRef, useState } from 'react'
 
 function IconCalendar() {
   return (
@@ -58,6 +60,24 @@ const events = [
 ]
 
 const InternshipTimeline = () => {
+  const [activeEvent, setActiveEvent] = useState(0)
+  const eventRefs = useRef<Array<HTMLDivElement | null>>([])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      const visibleEvent = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => Math.abs(left.boundingClientRect.top) - Math.abs(right.boundingClientRect.top))[0]
+      if (visibleEvent) {
+        const index = eventRefs.current.indexOf(visibleEvent.target as HTMLDivElement)
+        if (index >= 0) setActiveEvent(index)
+      }
+    }, { rootMargin: '-35% 0px -45% 0px', threshold: 0 })
+
+    eventRefs.current.forEach((event) => { if (event) observer.observe(event) })
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <section className="py-24" style={{ background: '#1C1D52' }} id="timeline">
       <div className="max-w-4xl mx-auto px-6">
@@ -75,8 +95,8 @@ const InternshipTimeline = () => {
           <div style={{ position: 'absolute', left: '27px', top: '8px', bottom: '8px', width: '2px', background: 'linear-gradient(to bottom, #5FBB46, rgba(249,115,22,0.1))' }} />
           <div className="flex flex-col gap-8">
             {events.map((e, i) => (
-              <div key={i} className="flex gap-6 items-start">
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: i === 0 ? 'linear-gradient(135deg, #5FBB46, #1c570c)' : '#0d0f3a', border: i === 0 ? 'none' : '2px solid #1e2a45', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: i === 0 ? 'white' : '#5FBB46', zIndex: 1, position: 'relative' }}>
+              <div key={i} ref={(element) => { eventRefs.current[i] = element }} className="flex gap-6 items-start">
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: i === activeEvent ? 'linear-gradient(135deg, #5FBB46, #1c570c)' : '#0d0f3a', border: i === activeEvent ? 'none' : '2px solid #1e2a45', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: i === activeEvent ? 'white' : '#5FBB46', zIndex: 1, position: 'relative' }}>
                   {e.icon}
                 </div>
                 <div style={{ paddingTop: '12px' }}>

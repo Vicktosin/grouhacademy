@@ -6,7 +6,7 @@ import Nav from "./Nav";
 
 const Header = () => {
   return (
-  <header className="sticky top-0 z-50 flex w-full items-center gap-3 border-b border-slate-100 bg-white px-4 py-2 sm:gap-24 sm:px-10 sm:py-3 lg:gap-32 lg:px-20">
+  <header className="flex w-full items-center gap-3 border-b border-slate-100 bg-white px-4 py-2 sm:gap-24 sm:px-10 sm:py-3 lg:gap-32 lg:px-20">
         <Link href="/" className="inline-flex items-center gap-3">
           <Image
             src={logo}

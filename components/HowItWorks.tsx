@@ -1,4 +1,6 @@
-import React from 'react'
+'use client'
+
+import React, { useEffect, useRef, useState } from 'react'
 
 function Label({ children }: { children: string }) {
   return (
@@ -11,6 +13,8 @@ function Label({ children }: { children: string }) {
 }
 
 const HowItWorks = () => {
+  const [activeStep, setActiveStep] = useState(0)
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([])
   const steps = [
     { n: '01', title: 'Browse & Choose a Track', desc: 'Explore Software Dev, Digital Marketing, or UI/UX Design. Pick the path that matches your goals and current skills.' },
     { n: '02', title: 'Complete the Application', desc: 'Fill out our concise online application. Tell us about your background, motivations, and what you want to build.' },
@@ -19,6 +23,21 @@ const HowItWorks = () => {
     { n: '05', title: 'Onboard & Kick Off', desc: 'Join your cohort, meet your mentor, and receive your first project brief. The real work starts here.' },
     { n: '06', title: 'Graduate & Get Certified', desc: 'Complete deliverables, receive a Grouh Academy certificate, and gain a portfolio-ready case study.' },
   ]
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      const visibleStep = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => Math.abs(left.boundingClientRect.top) - Math.abs(right.boundingClientRect.top))[0]
+      if (visibleStep) {
+        const index = stepRefs.current.indexOf(visibleStep.target as HTMLDivElement)
+        if (index >= 0) setActiveStep(index)
+      }
+    }, { rootMargin: '-35% 0px -45% 0px', threshold: 0 })
+
+    stepRefs.current.forEach((step) => { if (step) observer.observe(step) })
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section className="py-24" id="how-it-works" style={{ background: '#ffffff' }}>
@@ -35,15 +54,15 @@ const HowItWorks = () => {
 
           <div className="flex flex-col gap-6">
             {steps.map((step, i) => (
-              <div key={step.n} className="flex gap-8 items-start group">
+              <div key={step.n} ref={(element) => { stepRefs.current[i] = element }} className="flex gap-8 items-start group">
                 <div style={{
                   minWidth: '56px', height: '56px', borderRadius: '50%',
-                  background: i === 0 ? 'linear-gradient(135deg, #4db848, #65d665)' : '#1a2060',
-                  border: i === 0 ? 'none' : '2px solid #1a2060',
+                  background: i === activeStep ? 'linear-gradient(135deg, #4db848, #65d665)' : '#1a2060',
+                  border: i === activeStep ? 'none' : '2px solid #1a2060',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0, transition: 'all 0.3s', zIndex: 1, position: 'relative'
                 }} className="group-hover:border-green-500">
-                  <span className="font-display font-black text-sm" style={{ color: i === 0 ? 'white' : '#4db848' }}>{step.n}</span>
+                  <span className="font-display font-black text-sm" style={{ color: i === activeStep ? 'white' : '#4db848' }}>{step.n}</span>
                 </div>
                 <div style={{ background: '#1a2060', border: '1px solid #1a2060', borderRadius: '16px', padding: '20px 24px', flex: 1, transition: 'border-color 0.3s' }}
                   className="group-hover:border-green-500/40">

@@ -22,6 +22,10 @@ export async function POST() {
       return NextResponse.json({ error: 'Complete onboarding before starting your assessment.' }, { status: 404 })
     }
 
+    if (!application.onboardingAnswers) {
+      return NextResponse.json({ error: 'Complete onboarding before starting your assessment.', code: 'ONBOARDING_REQUIRED' }, { status: 403 })
+    }
+
     const assessment = await prisma.internshipAssessment.findFirst({
       where: {
         programId: application.programId,

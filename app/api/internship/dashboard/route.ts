@@ -40,17 +40,11 @@ export async function GET() {
     })
 
     if (!application) {
-      // No application yet — page should show the "start your internship" empty state.
-      const recommendedCourses = await prisma.course.findMany({
-        where: { status: CourseStatus.PUBLISHED },
-        include: courseInclude,
-        orderBy: { createdAt: 'desc' },
-        take: 3,
-      })
-      return NextResponse.json({
-        program: null,
-        recommendedCourses: recommendedCourses.map((c) => serializeCourse(c)!),
-      })
+      return NextResponse.json({ error: 'Complete internship onboarding before accessing the dashboard.', code: 'ONBOARDING_REQUIRED' }, { status: 403 })
+    }
+
+    if (!application.onboardingAnswers) {
+      return NextResponse.json({ error: 'Complete internship onboarding before accessing the dashboard.', code: 'ONBOARDING_REQUIRED' }, { status: 403 })
     }
 
     const { program } = application

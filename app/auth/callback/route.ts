@@ -13,10 +13,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServerClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // Password-recovery links are the sole callback that should honour a
-      // caller-provided destination. OAuth sign-ins must use the real account
-      // state below, otherwise existing interns are sent back to onboarding.
-      if (next === '/reset-password') {
+      // Only allow internal destinations from the registration and recovery
+      // flows. External callback redirects must never be accepted.
+      if (next === '/reset-password' || next?.startsWith('/internship/')) {
         return NextResponse.redirect(new URL(next, request.url))
       }
 

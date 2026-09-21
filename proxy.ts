@@ -25,7 +25,21 @@ export async function proxy(request: NextRequest) {
     },
   )
 
-  await supabase.auth.getClaims()
+    const { data: claimsData } = await supabase.auth.getClaims()
+    const pathname = request.nextUrl.pathname
+    const requiresInternshipRegistration =
+      pathname === '/internship/enroll' ||
+      pathname.startsWith('/internship/onboarding') ||
+      pathname.startsWith('/internship/assessment') ||
+      pathname.startsWith('/internship/results') ||
+      pathname.startsWith('/internship/payment') ||
+      pathname.startsWith('/internship/dashboard')
+
+    if (requiresInternshipRegistration && !claimsData?.claims?.sub) {
+      const registerUrl = new URL('/register', request.url)
+      registerUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
+      return NextResponse.redirect(registerUrl)
+    }
 
   return response
 }

@@ -34,6 +34,37 @@ export async function GET() {
       return NextResponse.json({ error: 'No completed assessment found.' }, { status: 404 })
     }
 
+    if (!attempt.assessmentId) {
+      return NextResponse.json({ error: 'Assessment questions are unavailable for this result.' }, { status: 500 })
+    }
+
+    const [questions, answers] = await Promise.all([
+      prisma.assessmentQuestion.findMany({
+        where: { assessmentId: attempt.assessmentId },
+        orderBy: { order: 'asc' },
+        include: { options: { select: { id: true, optionText: true, isCorrect: true }, orderBy: { order: 'asc' } } },
+      }),
+      prisma.assessmentAnswer.findMany({
+        where: { attemptId: attempt.id, section: 'objective' },
+        select: { questionId: true, answer: true },
+      }),
+    ])
+
+    const answersByQuestionId = new Map(answers.map((answer) => [answer.questionId, answer.answer]))
+    const answerReview = questions.map((question) => {
+      const selectedOptionId = answersByQuestionId.get(question.id) ?? null
+      const selectedOption = question.options.find((option) => option.id === selectedOptionId) ?? null
+      const correctOption = question.options.find((option) => option.isCorrect) ?? null
+
+      return {
+        questionId: question.id,
+        question: question.prompt,
+        selectedAnswer: selectedOption?.optionText ?? 'Not answered',
+        correctAnswer: correctOption?.optionText ?? 'Not available',
+        isCorrect: Boolean(selectedOption?.isCorrect),
+      }
+    })
+
     return NextResponse.json({
       programName: application.program.name,
       scorePercent: attempt.scorePercent,
@@ -42,6 +73,7 @@ export async function GET() {
       passed: Boolean(passedAttempt),
       acceptanceFee: application.program.acceptanceFee,
       acceptanceFeePaid: application.payment?.status === 'PAID',
+      answerReview,
     })
   } catch (error) {
     console.error('Failed to load assessment result:', error)
