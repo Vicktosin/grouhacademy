@@ -14,29 +14,6 @@ function formatDate(date: Date | null | undefined) {
   }).format(date);
 }
 
-function formatOnboardingSummary(onboardingAnswers: unknown) {
-  if (!onboardingAnswers || typeof onboardingAnswers !== "object") {
-    return "No onboarding details saved yet.";
-  }
-
-  const answers = onboardingAnswers as Record<string, unknown>;
-  const detailParts = [
-    typeof answers.experienceLevel === "string"
-      ? `Experience: ${answers.experienceLevel}`
-      : null,
-    typeof answers.availability === "string"
-      ? `Time: ${answers.availability}`
-      : null,
-    typeof answers.motivation === "string" && answers.motivation.trim()
-      ? `Motivation: ${answers.motivation.trim().slice(0, 120)}${answers.motivation.trim().length > 120 ? "…" : ""}`
-      : null,
-  ].filter(Boolean);
-
-  return detailParts.length
-    ? detailParts.join(" • ")
-    : "No onboarding details saved yet.";
-}
-
 export async function GET() {
   const adminId = await requireAdminApi();
   if (adminId instanceof NextResponse) return adminId;
@@ -119,6 +96,7 @@ export async function GET() {
 
     return {
       id: student.id,
+      applicationId: application.id,
       name:
         student.name ||
         [student.profile?.firstName, student.profile?.lastName]
@@ -127,34 +105,6 @@ export async function GET() {
         "Unnamed enrollee",
       email: student.email,
       track: application.program.name,
-      onboarding: formatOnboardingSummary(application.onboardingAnswers),
-      experienceLevel:
-        typeof application.onboardingAnswers === "object" &&
-        application.onboardingAnswers &&
-        "experienceLevel" in application.onboardingAnswers
-          ? String(
-              (application.onboardingAnswers as Record<string, unknown>)
-                .experienceLevel ?? "Not provided",
-            )
-          : "Not provided",
-      availability:
-        typeof application.onboardingAnswers === "object" &&
-        application.onboardingAnswers &&
-        "availability" in application.onboardingAnswers
-          ? String(
-              (application.onboardingAnswers as Record<string, unknown>)
-                .availability ?? "Not provided",
-            )
-          : "Not provided",
-      motivation:
-        typeof application.onboardingAnswers === "object" &&
-        application.onboardingAnswers &&
-        "motivation" in application.onboardingAnswers
-          ? String(
-              (application.onboardingAnswers as Record<string, unknown>)
-                .motivation ?? "Not provided",
-            )
-          : "Not provided",
       examScore: latestAttempt?.scorePercent ?? null,
       attempts: application.attempts.length,
       cohort: application.cohort?.name ?? "Unassigned",

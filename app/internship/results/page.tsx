@@ -9,6 +9,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
+import CommunityInvite from "@/components/CommunityInvite";
 
 type Result = {
   programName: string;
@@ -183,6 +184,22 @@ export default function AssessmentResultsPage() {
           </button>
         )}
       </div>
+
+      {!result.acceptanceFeePaid && (
+        <CommunityInvite
+          className="mx-auto mt-5 max-w-xl"
+          title={
+            result.passed
+              ? "Have questions before you pay?"
+              : "Prepare for your next attempt"
+          }
+          description={
+            result.passed
+              ? "Join our WhatsApp community to learn more about the programme and hear from current interns before you secure your place."
+              : "Join our WhatsApp community for preparation tips and support from other applicants and interns."
+          }
+        />
+      )}
 
       {result.passed && !result.acceptanceFeePaid && showPassModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#11132f]/75 px-4 backdrop-blur-sm">

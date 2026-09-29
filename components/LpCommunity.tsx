@@ -1,5 +1,6 @@
 import React from 'react'
-import LpIcon, { COMMUNITY_URL } from './LpIcon'
+import LpIcon from './LpIcon'
+import { COMMUNITY_URL } from '@/lib/community'
 
 const requirements = [
   ['Pass the entrance examination', 'Complete and pass our simple examination before admission.'],
@@ -22,7 +23,7 @@ const LpCommunity = () => {
           </p>
           <a
             className="button-primary mt-9 text-base"
-            href="https://chat.whatsapp.com/Fo0Ah8wtIoUBhg1Jio36Cu"
+            href={COMMUNITY_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

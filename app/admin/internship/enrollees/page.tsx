@@ -1,18 +1,16 @@
 "use client";
 
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 
 type EnrolleeRow = {
   id: string;
+  applicationId: string;
   name: string;
   email: string;
   track: string;
-  onboarding: string;
-  experienceLevel: string;
-  availability: string;
-  motivation: string;
   examScore: number | null;
   attempts: number;
   cohort: string;
@@ -58,7 +56,7 @@ export default function InternshipEnrolleesPage() {
       const matchesTrack = track === "All" || row.track === track;
       const matchesCohort = cohort === "All" || row.cohort === cohort;
       const searchable =
-        `${row.name} ${row.email} ${row.track} ${row.cohort} ${row.experienceLevel} ${row.availability}`.toLowerCase();
+        `${row.name} ${row.email} ${row.track} ${row.cohort}`.toLowerCase();
       return (
         matchesTrack &&
         matchesCohort &&
@@ -150,24 +148,26 @@ export default function InternshipEnrolleesPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1200px] border-collapse text-left text-[10px]">
+              <table className="w-full min-w-[1000px] border-collapse text-left text-[10px]">
                 <thead>
                   <tr className="bg-[#f5f8fb] text-slate-600">
                     <th className="px-3 py-3 font-semibold">Name</th>
                     <th className="px-3 py-3 font-semibold">Email</th>
                     <th className="px-3 py-3 font-semibold">Track</th>
                     <th className="px-3 py-3 font-semibold">Cohort</th>
-                    <th className="px-3 py-3 font-semibold">Onboarding</th>
                     <th className="px-3 py-3 font-semibold">Exam score</th>
                     <th className="px-3 py-3 font-semibold">Attempts</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold">Updated</th>
+                    <th className="px-3 py-3 font-semibold">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleRows.map((row) => (
                     <tr
-                      key={row.id}
+                      key={row.applicationId}
                       className="border-b border-slate-100 align-top text-[#1C1D52]"
                     >
                       <td className="px-3 py-3.5">
@@ -192,25 +192,6 @@ export default function InternshipEnrolleesPage() {
                           </span>
                         )}
                       </td>
-                      <td className="max-w-[260px] px-3 py-3.5 text-slate-600">
-                        <div className="space-y-1">
-                          <p>
-                            <span className="font-semibold text-[#1C1D52]">
-                              Experience:
-                            </span>{" "}
-                            {row.experienceLevel}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#1C1D52]">
-                              Availability:
-                            </span>{" "}
-                            {row.availability}
-                          </p>
-                          <p className="text-[9px] leading-5 text-slate-500">
-                            {row.motivation}
-                          </p>
-                        </div>
-                      </td>
                       <td className="px-3 py-3.5">
                         <span
                           className={`rounded-full px-2 py-1 font-semibold ${row.examScore !== null && row.examScore >= 70 ? "bg-[#e8faf7] text-teal-600" : "bg-[#fff0d8] text-amber-600"}`}
@@ -230,6 +211,14 @@ export default function InternshipEnrolleesPage() {
                       </td>
                       <td className="px-3 py-3.5 text-slate-600">
                         {row.lastUpdated}
+                      </td>
+                      <td className="px-3 py-3.5 text-right">
+                        <Link
+                          href={`/admin/internship/enrollees/${row.applicationId}`}
+                          className="inline-flex whitespace-nowrap rounded-lg bg-[#1C1D52] px-3 py-2 font-semibold text-white transition hover:bg-[#5FBB46]"
+                        >
+                          Review onboarding
+                        </Link>
                       </td>
                     </tr>
                   ))}

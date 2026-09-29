@@ -2,8 +2,6 @@ import type { ReactNode } from 'react'
 
 export const EXAM_URL = '#register'
 export const ENROLL_URL = '/internship/enroll'
-// TODO: replace with the community invite link (e.g. WhatsApp or Telegram group).
-export const COMMUNITY_URL = '#'
 
 export type IconName =
   | 'arrow'

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CommunityInvite from "@/components/CommunityInvite";
 
 type Result = {
   programName: string;
@@ -110,54 +111,61 @@ export default function InternshipPaymentPage() {
     );
 
   return (
-    <div className="mx-auto max-w-xl rounded-2xl bg-white p-6 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-8">
-      <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f7eb] text-[#5FBB46]">
-          <CreditCard className="h-5 w-5" />
-        </span>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">
-            You qualified
+    <div className="mx-auto max-w-xl space-y-5">
+      <div className="rounded-2xl bg-white p-6 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-8">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f7eb] text-[#5FBB46]">
+            <CreditCard className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">
+              You qualified
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-[#1C1D52]">
+              Pay your acceptance fee
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              You scored {result.scorePercent}% on the {result.programName}{" "}
+              entrance assessment.
+            </p>
+          </div>
+        </div>
+        <div className="mt-7 rounded-xl bg-[#1C1D52] p-5 text-white">
+          <div className="flex items-end justify-between gap-4">
+            <span className="text-xs text-white/70">Acceptance fee</span>
+            <strong className="text-2xl">
+              ₦{result.acceptanceFee.toLocaleString()}
+            </strong>
+          </div>
+          <p className="mt-3 text-[11px] leading-5 text-white/65">
+            This one-time payment is available only after passing your entrance
+            assessment and unlocks the internship workspace.
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-[#1C1D52]">
-            Pay your acceptance fee
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            You scored {result.scorePercent}% on the {result.programName}{" "}
-            entrance assessment.
-          </p>
+          <button
+            type="button"
+            onClick={payAcceptanceFee}
+            disabled={paying}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-3 text-xs font-bold text-[#14204f] disabled:cursor-wait disabled:opacity-60"
+          >
+            {paying ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Connecting to Paystack…
+              </>
+            ) : (
+              <>
+                <LockKeyhole className="h-4 w-4" />
+                Pay acceptance fee
+              </>
+            )}
+          </button>
         </div>
       </div>
-      <div className="mt-7 rounded-xl bg-[#1C1D52] p-5 text-white">
-        <div className="flex items-end justify-between gap-4">
-          <span className="text-xs text-white/70">Acceptance fee</span>
-          <strong className="text-2xl">
-            ₦{result.acceptanceFee.toLocaleString()}
-          </strong>
-        </div>
-        <p className="mt-3 text-[11px] leading-5 text-white/65">
-          This one-time payment is available only after passing your entrance
-          assessment and unlocks the internship workspace.
-        </p>
-        <button
-          type="button"
-          onClick={payAcceptanceFee}
-          disabled={paying}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-3 text-xs font-bold text-[#14204f] disabled:cursor-wait disabled:opacity-60"
-        >
-          {paying ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Connecting to Paystack…
-            </>
-          ) : (
-            <>
-              <LockKeyhole className="h-4 w-4" />
-              Pay acceptance fee
-            </>
-          )}
-        </button>
-      </div>
+
+      <CommunityInvite
+        title="Not ready to pay yet?"
+        description="Join our WhatsApp community to ask questions, learn more about the programme, and hear from current interns."
+      />
     </div>
   );
 }
