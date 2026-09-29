@@ -121,6 +121,9 @@ export default function AdminSidebar({
               <li key={item.label}>
                 <Link
                   href={item.href}
+                  // Each admin page runs a slow access check in the layout, so
+                  // prefetching every sidebar link multiplied that cost per page view.
+                  prefetch={false}
                   className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-[#5FBB46] text-white" : "text-white/90 hover:bg-white/10"}`}
                 >
                   <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
@@ -133,6 +136,7 @@ export default function AdminSidebar({
       </nav>
       <Link
         href="/admin/logout"
+        prefetch={false}
         className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-white/90 hover:bg-white/10"
       >
         <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.75} />

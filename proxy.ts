@@ -6,7 +6,18 @@ import {
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
 
+// Paths the app has never served that bots keep requesting: spam "profile"
+// pages and WordPress endpoints. 410 Gone tells crawlers to drop them for good.
+const GONE_PATH = /^\/(profile(\/|$)|xmlrpc\.php$|wp-(admin|login\.php|content|includes)(\/|$))/;
+
 export async function proxy(request: NextRequest) {
+  if (GONE_PATH.test(request.nextUrl.pathname)) {
+    return new NextResponse("Gone", {
+      status: 410,
+      headers: { "X-Robots-Tag": "noindex" },
+    });
+  }
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,
