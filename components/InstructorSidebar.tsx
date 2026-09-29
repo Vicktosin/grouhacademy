@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   BarChart3,
@@ -10,19 +10,20 @@ import {
   LogOut,
   MessageCircleQuestion,
   Settings,
+  ShieldCheck,
   UserRound,
   Users,
   WalletCards,
-} from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+} from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const navItems = [
-  { label: 'Dashboard', href: '/instructor', icon: LayoutGrid },
-  { label: 'My Courses', href: '/instructor/courses', icon: BookOpen },
-  { label: 'Students', href: '/instructor/students', icon: Users },
+  { label: "Dashboard", href: "/instructor", icon: LayoutGrid },
+  { label: "My Courses", href: "/instructor/courses", icon: BookOpen },
+  { label: "Students", href: "/instructor/students", icon: Users },
   /*{ label: 'Quizzes', href: '/instructor/quizzes', icon: FileQuestion },*/
   /*{ label: 'Assignments', href: '/instructor/assignments', icon: GraduationCap },*/
   /*{ label: 'Revenue', href: '/instructor/revenue', icon: WalletCards },*/
@@ -31,16 +32,17 @@ const navItems = [
     href: '/instructor/questions',
     icon: MessageCircleQuestion,
   },*/
-  { label: 'Analytics', href: '/instructor/analytics', icon: BarChart3 },
-  { label: 'Notifications', href: '/instructor/notifications', icon: Bell },
-  { label: 'Profile', href: '/instructor/profile', icon: UserRound },
-  { label: 'Settings', href: '/instructor/settings', icon: Settings },
-]
+  { label: "Analytics", href: "/instructor/analytics", icon: BarChart3 },
+  { label: "Notifications", href: "/instructor/notifications", icon: Bell },
+  { label: "Profile", href: "/instructor/profile", icon: UserRound },
+  { label: "Settings", href: "/instructor/settings", icon: Settings },
+  { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
+];
 
 interface InstructorSidebarProps {
-  name?: string
-  avatarUrl?: string
-  onNavigate?: () => void
+  name?: string;
+  avatarUrl?: string;
+  onNavigate?: () => void;
 }
 
 export default function InstructorSidebar({
@@ -48,24 +50,33 @@ export default function InstructorSidebar({
   avatarUrl,
   onNavigate,
 }: InstructorSidebarProps) {
-  const pathname = usePathname() || '/instructor'
-  const [profile, setProfile] = useState<{ name: string | null; avatarUrl: string | null }>({ name: null, avatarUrl: null })
+  const pathname = usePathname() || "/instructor";
+  const [profile, setProfile] = useState<{
+    name: string | null;
+    avatarUrl: string | null;
+  }>({ name: null, avatarUrl: null });
 
   useEffect(() => {
-    fetch('/api/instructor/profile', { cache: 'no-store' })
+    fetch("/api/instructor/profile", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (data) setProfile({ name: data.name ?? null, avatarUrl: data.avatarUrl ?? null })
+        if (data)
+          setProfile({
+            name: data.name ?? null,
+            avatarUrl: data.avatarUrl ?? null,
+          });
       })
-      .catch((error) => console.error('Failed to load instructor sidebar profile:', error))
-  }, [])
+      .catch((error) =>
+        console.error("Failed to load instructor sidebar profile:", error),
+      );
+  }, []);
 
-  const instructorName = name || profile.name || 'Instructor'
-  const instructorAvatarUrl = avatarUrl || profile.avatarUrl || '/avatar-placeholder.png'
+  const instructorName = name || profile.name || "Instructor";
+  const instructorAvatarUrl =
+    avatarUrl || profile.avatarUrl || "/avatar-placeholder.png";
 
   return (
     <div className="flex h-full w-full flex-col rounded-[28px] bg-[#1C1D52] px-4 py-6 text-white shadow-[0_12px_40px_rgba(28,29,82,0.18)] sm:py-8">
-
       {/* Profile */}
       <div className="px-2 text-center">
         <div className="mb-4 flex justify-center">
@@ -83,9 +94,7 @@ export default function InstructorSidebar({
           {instructorName}
         </h3>
 
-        <p className="mt-1 text-sm font-medium text-white/55">
-          Instructor
-        </p>
+        <p className="mt-1 text-sm font-medium text-white/55">Instructor</p>
       </div>
 
       {/* Navigation */}
@@ -95,13 +104,13 @@ export default function InstructorSidebar({
       >
         <ul className="space-y-1.5">
           {navItems.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
 
             const active =
-              item.href === '/instructor'
+              item.href === "/instructor"
                 ? pathname === item.href
                 : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`)
+                  pathname.startsWith(`${item.href}/`);
 
             return (
               <li key={item.href}>
@@ -110,21 +119,16 @@ export default function InstructorSidebar({
                   onClick={onNavigate}
                   className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                     active
-                      ? 'bg-[#5FBB46] text-white'
-                      : 'text-white/90 hover:bg-white/10'
+                      ? "bg-[#5FBB46] text-white"
+                      : "text-white/90 hover:bg-white/10"
                   }`}
                 >
-                  <Icon
-                    className="h-5 w-5 shrink-0"
-                    strokeWidth={1.75}
-                  />
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
 
-                  <span className="truncate">
-                    {item.label}
-                  </span>
+                  <span className="truncate">{item.label}</span>
                 </Link>
               </li>
-            )
+            );
           })}
         </ul>
       </nav>
@@ -139,5 +143,5 @@ export default function InstructorSidebar({
         <span>Log Out</span>
       </Link>
     </div>
-  )
+  );
 }

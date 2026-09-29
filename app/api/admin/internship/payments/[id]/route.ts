@@ -1,62 +1,79 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
 
-import { InternshipPaymentStatus, RoleName } from '@/generated/prisma/client'
-import { getPrisma } from '@/lib/prisma'
-import { userHasRole } from '@/lib/rbac'
-import { getCurrentUserId } from '@/lib/route-guards'
-import { assignApplicationCohort, type CohortDb } from '@/lib/internship-cohort'
+import { InternshipPaymentStatus } from "@/generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
+import {
+  assignApplicationCohort,
+  type CohortDb,
+} from "@/lib/internship-cohort";
+import { requireAdminApi } from "@/lib/api-guards";
 
 const VALID_STATUSES = new Set<InternshipPaymentStatus>([
   InternshipPaymentStatus.PENDING,
   InternshipPaymentStatus.PAID,
   InternshipPaymentStatus.FAILED,
   InternshipPaymentStatus.CANCELLED,
-])
+]);
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const adminId = await getCurrentUserId()
-  if (!adminId || !(await userHasRole(adminId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const adminId = await requireAdminApi();
+  if (adminId instanceof NextResponse) return adminId;
 
-  const { id } = await params
-  const prisma = getPrisma()
+  const { id } = await params;
+  const prisma = getPrisma();
 
-  let body: { status?: string }
+  let body: { status?: string };
   try {
-    body = await request.json()
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const rawStatus = body.status
-  if (!rawStatus || typeof rawStatus !== 'string') {
-    return NextResponse.json({ error: 'A payment status is required.' }, { status: 400 })
+  const rawStatus = body.status;
+  if (!rawStatus || typeof rawStatus !== "string") {
+    return NextResponse.json(
+      { error: "A payment status is required." },
+      { status: 400 },
+    );
   }
 
-  const normalizedStatus = rawStatus.toUpperCase()
+  const normalizedStatus = rawStatus.toUpperCase();
   if (!VALID_STATUSES.has(normalizedStatus as InternshipPaymentStatus)) {
-    return NextResponse.json({ error: 'Unsupported payment status.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Unsupported payment status." },
+      { status: 400 },
+    );
   }
 
   const payment = await prisma.internshipPayment.findUnique({
     where: { id },
-    include: { application: { select: { id: true, programId: true, cohortId: true } } },
-  })
+    include: {
+      application: { select: { id: true, programId: true, cohortId: true } },
+    },
+  });
   if (!payment) {
-    return NextResponse.json({ error: 'Payment not found.' }, { status: 404 })
+    return NextResponse.json({ error: "Payment not found." }, { status: 404 });
   }
 
   const updatedPayment = await prisma.internshipPayment.update({
     where: { id },
     data: {
       status: normalizedStatus as InternshipPaymentStatus,
-      paidAt: normalizedStatus === InternshipPaymentStatus.PAID ? payment.paidAt ?? new Date() : null,
+      paidAt:
+        normalizedStatus === InternshipPaymentStatus.PAID
+          ? (payment.paidAt ?? new Date())
+          : null,
     },
-  })
+  });
 
   if (normalizedStatus === InternshipPaymentStatus.PAID) {
-    await assignApplicationCohort(prisma as unknown as CohortDb, payment.application)
+    await assignApplicationCohort(
+      prisma as unknown as CohortDb,
+      payment.application,
+    );
   }
 
   return NextResponse.json({
@@ -65,5 +82,5 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       status: updatedPayment.status,
       paidAt: updatedPayment.paidAt,
     },
-  })
+  });
 }

@@ -1,10 +1,11 @@
-import { RoleName } from '../generated/prisma/client';
-import { getPrisma } from '@/lib/prisma';
+import { cache } from "react";
+import { RoleName } from "../generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
 import {
   getDevelopmentRolePermissions,
   getValidatedDevelopmentRole,
   isDevelopmentBypassEnabled,
-} from '@/lib/dev-auth';
+} from "@/lib/dev-auth";
 
 export type PermissionKey = string;
 
@@ -14,9 +15,15 @@ export interface UserRBAC {
   permissions: PermissionKey[];
 }
 
-const DEV_USER_ID_PREFIX = 'dev:';
+const DEV_USER_ID_PREFIX = "dev:";
 
-export async function getUserRBAC(userId: string): Promise<UserRBAC> {
+/**
+ * Memoised per request, so repeated role and permission checks for the same
+ * user (userHasRole, userHasPermission, …) share one pair of queries.
+ */
+export const getUserRBAC = cache(loadUserRBAC);
+
+async function loadUserRBAC(userId: string): Promise<UserRBAC> {
   // Development-bypass identities (e.g. "dev:INSTRUCTOR") are not rows
   // in the database and are never valid UUIDs, so they must never reach
   // the userId-keyed Prisma queries below.
@@ -92,7 +99,9 @@ export async function userHasPermission(
     ? targetPermissions
     : [targetPermissions];
 
-  return permissionsToCheck.some((permission) => rbac.permissions.includes(permission));
+  return permissionsToCheck.some((permission) =>
+    rbac.permissions.includes(permission),
+  );
 }
 
 export async function requireUserPermissions(
@@ -106,6 +115,8 @@ export async function getUserRoleNames(userId: string): Promise<RoleName[]> {
   return (await getUserRBAC(userId)).roles;
 }
 
-export async function getUserPermissions(userId: string): Promise<PermissionKey[]> {
+export async function getUserPermissions(
+  userId: string,
+): Promise<PermissionKey[]> {
   return (await getUserRBAC(userId)).permissions;
 }

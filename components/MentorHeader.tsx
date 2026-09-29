@@ -1,56 +1,72 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { Bell, Search } from 'lucide-react'
-import Image from 'next/image'
-import logo from '../public/logo.png'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import React, { useEffect, useState } from "react";
+import { Bell, Search } from "lucide-react";
+import Image from "next/image";
+import logo from "../public/logo.png";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-type HeaderProfile = { name: string | null; avatarUrl: string | null }
+type HeaderProfile = { name: string | null; avatarUrl: string | null };
 
 export default function MentorHeader() {
-  const [showSearch, setShowSearch] = useState(false)
-  const [profile, setProfile] = useState<HeaderProfile>({ name: null, avatarUrl: null })
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
-  const router = useRouter()
-  
+  const [showSearch, setShowSearch] = useState(false);
+  const [profile, setProfile] = useState<HeaderProfile>({
+    name: null,
+    avatarUrl: null,
+  });
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
   useEffect(() => {
-    fetch('/api/student/profile', { cache: 'no-store' })
+    fetch("/api/student/profile", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (data) setProfile({ name: data.name ?? null, avatarUrl: data.avatarUrl ?? null })
+        if (data)
+          setProfile({
+            name: data.name ?? null,
+            avatarUrl: data.avatarUrl ?? null,
+          });
       })
-      .catch((error) => console.error('Failed to load header profile:', error))
+      .catch((error) => console.error("Failed to load header profile:", error));
 
     const loadUnreadCount = () => {
-      fetch('/api/student/notifications/unread-count', { cache: 'no-store' })
+      fetch("/api/student/notifications/unread-count", { cache: "no-store" })
         .then((response) => (response.ok ? response.json() : null))
         .then((data) => {
-          if (data) setUnreadCount(data.count ?? 0)
+          if (data) setUnreadCount(data.count ?? 0);
         })
-        .catch((error) => console.error('Failed to load notification count:', error))
-    }
-    loadUnreadCount()
-    window.addEventListener('focus', loadUnreadCount)
-    return () => window.removeEventListener('focus', loadUnreadCount)
-  }, [])
+        .catch((error) =>
+          console.error("Failed to load notification count:", error),
+        );
+    };
+    loadUnreadCount();
+    window.addEventListener("focus", loadUnreadCount);
+    return () => window.removeEventListener("focus", loadUnreadCount);
+  }, []);
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmed = searchQuery.trim()
-    router.push(trimmed ? `/student/explore-courses?q=${encodeURIComponent(trimmed)}` : '/student/explore-courses')
-    setShowSearch(false)
+    event.preventDefault();
+    const trimmed = searchQuery.trim();
+    router.push(
+      trimmed
+        ? `/student/explore-courses?q=${encodeURIComponent(trimmed)}`
+        : "/student/explore-courses",
+    );
+    setShowSearch(false);
   }
 
-  const displayName = profile.name || 'Student'
-  const avatarSrc = profile.avatarUrl || '/avatar-placeholder.png'
+  const displayName = profile.name || "Student";
+  const avatarSrc = profile.avatarUrl || "/avatar-placeholder.png";
 
   return (
     <div className="relative">
       <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
-        <Link href="/student" className="inline-flex flex-shrink-0 items-center">
+        <Link
+          href="/student"
+          className="inline-flex flex-shrink-0 items-center"
+        >
           <Image
             src={logo}
             alt="Grouh Academy logo"
@@ -61,7 +77,10 @@ export default function MentorHeader() {
         </Link>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-6">
-          <form onSubmit={handleSearchSubmit} className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]"
+          >
             <span className="sr-only">Search</span>
             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
               <Search className="h-4 w-4" />
@@ -85,12 +104,16 @@ export default function MentorHeader() {
           <Link
             href="/student/notifications"
             className="relative rounded-full p-1.5 text-gray-800 hover:bg-gray-100"
-            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+            aria-label={
+              unreadCount > 0
+                ? `${unreadCount} unread notifications`
+                : "Notifications"
+            }
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </Link>
@@ -121,5 +144,5 @@ export default function MentorHeader() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,18 +1,18 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import { Award, Download, Eye, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import Image from "next/image";
+import { Award, Download, Eye, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type Certificate = {
-  id: string
-  certificateNumber: string
-  verificationId: string
-  courseTitle: string
-  courseSlug: string
-  studentName: string
-  issuedAt: string
-}
+  id: string;
+  certificateNumber: string;
+  verificationId: string;
+  courseTitle: string;
+  courseSlug: string;
+  studentName: string;
+  issuedAt: string;
+};
 
 // A certificate is always laid out at these exact pixel dimensions -
 // Letter landscape at 96dpi (11in x 8.5in). This never changes based on
@@ -22,15 +22,15 @@ type Certificate = {
 // stylesheet below removes that scaling and pins the page itself to the
 // same physical size, so the PDF a phone produces and the PDF a desktop
 // produces are identical.
-const CERT_WIDTH = 1056
-const CERT_HEIGHT = 816
+const CERT_WIDTH = 1056;
+const CERT_HEIGHT = 816;
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function CertificateFace({ certificate }: { certificate: Certificate }) {
@@ -42,25 +42,48 @@ function CertificateFace({ certificate }: { certificate: Certificate }) {
       <div className="absolute inset-5 border-2 border-[#f3b619]" />
       <div className="relative flex h-full flex-col justify-between border border-[#d9b443]/50 p-10 text-center">
         <div>
-          <Image src="/logo.png" alt="Grouh Academy" width={170} height={45} className="mx-auto h-auto w-44" />
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.32em] text-[#5FBB46]">Official certification</p>
-          <h2 className="mt-8 font-serif text-5xl font-semibold">Certificate of Completion</h2>
-          <p className="mt-8 text-sm text-slate-500">This certificate is proudly presented to</p>
+          <Image
+            src="/logo.png"
+            alt="Grouh Academy"
+            width={170}
+            height={45}
+            className="mx-auto h-auto w-44"
+          />
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.32em] text-[#5FBB46]">
+            Official certification
+          </p>
+          <h2 className="mt-8 font-serif text-5xl font-semibold">
+            Certificate of Completion
+          </h2>
+          <p className="mt-8 text-sm text-slate-500">
+            This certificate is proudly presented to
+          </p>
           <h3 className="mt-4 inline-block border-b-2 border-[#f3b619] px-6 pb-3 font-serif text-4xl font-semibold">
             {certificate.studentName}
           </h3>
           <p className="mx-auto mt-7 max-w-xl text-sm leading-6 text-slate-500">
-            For successfully completing the advanced industry certification curriculum and demonstrating mastery of professional standards in
+            For successfully completing the advanced industry certification
+            curriculum and demonstrating mastery of professional standards in
           </p>
-          <p className="mt-5 text-2xl font-bold text-[#5FBB46]">{certificate.courseTitle}</p>
-          <p className="mt-4 text-sm text-slate-500">Completed on {formatDate(certificate.issuedAt)}</p>
+          <p className="mt-5 text-2xl font-bold text-[#5FBB46]">
+            {certificate.courseTitle}
+          </p>
+          <p className="mt-4 text-sm text-slate-500">
+            Completed on {formatDate(certificate.issuedAt)}
+          </p>
         </div>
         <div className="grid grid-cols-3 items-end gap-5 text-left text-[9px] text-slate-500">
           <div>
-            <p className="font-serif text-base text-[#1C1D52]">Emmanuel Thomas</p>
-            <div className="mt-1 border-t border-slate-300 pt-1 uppercase tracking-wider">Academy Director</div>
+            <p className="font-serif text-base text-[#1C1D52]">
+              Emmanuel Thomas
+            </p>
+            <div className="mt-1 border-t border-slate-300 pt-1 uppercase tracking-wider">
+              Academy Director
+            </div>
           </div>
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#f3b619] bg-[#ffc32b] text-xl text-white">★</div>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#f3b619] bg-[#ffc32b] text-xl text-white">
+            ★
+          </div>
           <div className="text-right">
             Certificate No: <strong>{certificate.certificateNumber}</strong>
             <br />
@@ -69,7 +92,7 @@ function CertificateFace({ certificate }: { certificate: Certificate }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // Shrinks the fixed-size certificate to fit whatever width its container
@@ -78,61 +101,76 @@ function CertificateFace({ certificate }: { certificate: Certificate }) {
 // scaled as a whole via CSS transform, so nothing inside it ever
 // reflows differently on a phone vs. a desktop.
 function ScaledCertificate({ certificate }: { certificate: Certificate }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const container = containerRef.current;
+    if (!container) return;
 
     const updateScale = () => {
-      const availableWidth = container.clientWidth
-      setScale(Math.min(1, availableWidth / CERT_WIDTH))
-    }
+      const availableWidth = container.clientWidth;
+      setScale(Math.min(1, availableWidth / CERT_WIDTH));
+    };
 
-    updateScale()
+    updateScale();
 
-    const observer = new ResizeObserver(updateScale)
-    observer.observe(container)
-    return () => observer.disconnect()
-  }, [])
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div ref={containerRef} className="w-full overflow-hidden" style={{ height: CERT_HEIGHT * scale }}>
-      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: CERT_WIDTH, height: CERT_HEIGHT }}>
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden"
+      style={{ height: CERT_HEIGHT * scale }}
+    >
+      <div
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          width: CERT_WIDTH,
+          height: CERT_HEIGHT,
+        }}
+      >
         <CertificateFace certificate={certificate} />
       </div>
     </div>
-  )
+  );
 }
 
 export default function CertificatesPage() {
-  const [certificates, setCertificates] = useState<Certificate[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Certificate | null>(null)
-  const [online, setOnline] = useState(false)
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Certificate | null>(null);
+  const [online, setOnline] = useState(false);
 
   useEffect(() => {
-    fetch('/api/student/certificates')
+    fetch("/api/student/certificates")
       .then(async (response) => {
-        if (!response.ok) throw new Error('Unable to load your certificates.')
-        return response.json() as Promise<Certificate[]>
+        if (!response.ok) throw new Error("Unable to load your certificates.");
+        return response.json() as Promise<Certificate[]>;
       })
       .then((data) => {
-        setCertificates(data)
-        setSelected(data[0] ?? null)
+        setCertificates(data);
+        setSelected(data[0] ?? null);
       })
       .catch((requestError: unknown) =>
-        setError(requestError instanceof Error ? requestError.message : 'Unable to load your certificates.'),
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to load your certificates.",
+        ),
       )
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   const downloadCertificate = (certificate: Certificate) => {
-    setSelected(certificate)
-    window.setTimeout(() => window.print(), 0)
-  }
+    setSelected(certificate);
+    window.setTimeout(() => window.print(), 0);
+  };
 
   return (
     <div className="space-y-6">
@@ -170,14 +208,19 @@ export default function CertificatesPage() {
       `}</style>
 
       <section className="rounded-2xl bg-[#5FBB46] px-6 py-6 text-[#14204f] shadow-[0_12px_28px_rgba(95,187,70,0.18)] sm:px-8 sm:py-7">
-        <h1 className="text-3xl font-bold tracking-tight">Certificate System</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Certificate System
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-5 text-[#14204f]/75">
-          Your official credentials are ready to view online and print as polished PDF certificates.
+          Your official credentials are ready to view online and print as
+          polished PDF certificates.
         </p>
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center text-sm text-red-700">{error}</div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center text-sm text-red-700">
+          {error}
+        </div>
       )}
 
       {!error && loading && (
@@ -187,8 +230,13 @@ export default function CertificatesPage() {
       {!error && !loading && certificates.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
           <Award className="mx-auto h-8 w-8 text-slate-300" />
-          <h2 className="mt-4 text-lg font-bold text-[#1C1D52]">No certificates yet</h2>
-          <p className="mt-2 text-sm text-slate-500">Complete a course to earn your first certificate - it'll show up here automatically.</p>
+          <h2 className="mt-4 text-lg font-bold text-[#1C1D52]">
+            No certificates yet
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Complete a course to earn your first certificate - it'll show up
+            here automatically.
+          </p>
         </div>
       )}
 
@@ -196,7 +244,9 @@ export default function CertificatesPage() {
         <>
           <section>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-[#1C1D52]">Currently Selected Certificate</h2>
+              <h2 className="text-sm font-bold text-[#1C1D52]">
+                Currently Selected Certificate
+              </h2>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -220,7 +270,9 @@ export default function CertificatesPage() {
           </section>
 
           <section className="rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
-            <h2 className="text-sm font-bold text-[#1C1D52]">Your Earned Credentials</h2>
+            <h2 className="text-sm font-bold text-[#1C1D52]">
+              Your Earned Credentials
+            </h2>
             <div className="mt-4 space-y-2">
               {certificates.map((certificate) => (
                 <div
@@ -228,17 +280,20 @@ export default function CertificatesPage() {
                   className="flex flex-col gap-3 rounded-xl bg-[#fbfcff] p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <h3 className="text-xs font-bold text-[#1C1D52]">{certificate.courseTitle}</h3>
+                    <h3 className="text-xs font-bold text-[#1C1D52]">
+                      {certificate.courseTitle}
+                    </h3>
                     <p className="mt-1 text-[9px] text-slate-500">
-                      Completed on {formatDate(certificate.issuedAt)} · ID: {certificate.certificateNumber}
+                      Completed on {formatDate(certificate.issuedAt)} · ID:{" "}
+                      {certificate.certificateNumber}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        setSelected(certificate)
-                        setOnline(true)
+                        setSelected(certificate);
+                        setOnline(true);
                       }}
                       className="rounded-lg bg-white px-3 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-[inset_0_0_0_1px_#1C1D52]"
                     >
@@ -277,5 +332,5 @@ export default function CertificatesPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

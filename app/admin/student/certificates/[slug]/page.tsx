@@ -1,20 +1,155 @@
-'use client'
+"use client";
 
-import { ArrowLeft, Award, Download, FileText, ShieldCheck } from 'lucide-react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import AdminShell from '@/components/AdminShell'
+import {
+  ArrowLeft,
+  Award,
+  Download,
+  FileText,
+  ShieldCheck,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import AdminShell from "@/components/AdminShell";
 
-type Certificate = { id: string; certificateNumber: string; issuedAt: string; student: string; email: string; course: string; instructor: string; verificationId: string }
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
+type Certificate = {
+  id: string;
+  certificateNumber: string;
+  issuedAt: string;
+  student: string;
+  email: string;
+  course: string;
+  instructor: string;
+  verificationId: string;
+};
+const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "long" });
 
 export default function CertificateDetailPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const [certificate, setCertificate] = useState<Certificate | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => { fetch(`/api/admin/student/certificates/${slug}`, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? 'Unable to load certificate.'); return response.json() }).then(setCertificate).catch((reason) => setError(reason.message)) }, [slug])
-  const download = () => { if (!certificate) return; const html = `<!doctype html><title>${certificate.certificateNumber}</title><body><h1>Certificate of Completion</h1><p>This certifies that <strong>${certificate.student}</strong> successfully completed <strong>${certificate.course}</strong>.</p><p>Certificate number: ${certificate.certificateNumber}</p><p>Verification: ${certificate.verificationId}</p></body>`; const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })); const link = document.createElement('a'); link.href = url; link.download = `${certificate.certificateNumber}.html`; link.click(); URL.revokeObjectURL(url) }
-  return <AdminShell workspace="student"><div className="mx-auto max-w-[1100px] space-y-5"><Link href="/admin/student/certificates" className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"><ArrowLeft className="h-4 w-4" />Back to certificates</Link>{error && <p className="rounded-xl bg-red-50 p-4 text-xs text-red-700">{error}</p>}{!certificate && !error && <p className="py-12 text-center text-xs text-slate-500">Loading certificate…</p>}{certificate && <section className="rounded-2xl bg-white p-6 shadow-[0_7px_20px_rgba(28,29,82,0.08)]"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ecf9e7] text-[#5FBB46]"><Award className="h-6 w-6" /></span><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">Certificate</p><h1 className="mt-1 text-2xl font-semibold text-[#1C1D52]">{certificate.certificateNumber}</h1></div></div><button type="button" onClick={download} className="inline-flex items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"><Download className="h-3.5 w-3.5" />Download</button></div><div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]"><div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#f5fbf2,_#ffffff_55%)] p-6"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Grouh Academy</p><h2 className="mt-3 text-3xl font-bold text-[#1C1D52]">Certificate of Completion</h2><p className="mt-8 text-sm text-slate-500">This certifies that</p><p className="mt-3 text-2xl font-semibold text-[#1C1D52]">{certificate.student}</p><div className="mt-4 h-px bg-slate-200" /><p className="mt-4 text-sm leading-6 text-slate-600">has successfully completed the {certificate.course} course.</p><div className="mt-6 flex items-center gap-2 border-t border-slate-200 pt-5 text-[10px] text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-[#5FBB46]" />Verification code: {certificate.verificationId}</div></div><aside className="rounded-2xl bg-[#f8fbff] p-4"><h3 className="text-sm font-bold text-[#1C1D52]">Certificate details</h3><dl className="mt-4 space-y-3 text-[10px] text-slate-500"><Detail label="Learner" value={certificate.student} /><Detail label="Email" value={certificate.email} /><Detail label="Course" value={certificate.course} /><Detail label="Instructor" value={certificate.instructor} /><Detail label="Issue date" value={dateFormat.format(new Date(certificate.issuedAt))} /><Detail label="Certificate number" value={certificate.certificateNumber} /></dl></aside></div></section>}</div></AdminShell>
+  const { slug } = useParams<{ slug: string }>();
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`/api/admin/student/certificates/${slug}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error(
+            (await response.json().catch(() => null))?.error ??
+              "Unable to load certificate.",
+          );
+        return response.json();
+      })
+      .then(setCertificate)
+      .catch((reason) => setError(reason.message));
+  }, [slug]);
+  const download = () => {
+    if (!certificate) return;
+    const html = `<!doctype html><title>${certificate.certificateNumber}</title><body><h1>Certificate of Completion</h1><p>This certifies that <strong>${certificate.student}</strong> successfully completed <strong>${certificate.course}</strong>.</p><p>Certificate number: ${certificate.certificateNumber}</p><p>Verification: ${certificate.verificationId}</p></body>`;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${certificate.certificateNumber}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <AdminShell workspace="student">
+      <div className="mx-auto max-w-[1100px] space-y-5">
+        <Link
+          href="/admin/student/certificates"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to certificates
+        </Link>
+        {error && (
+          <p className="rounded-xl bg-red-50 p-4 text-xs text-red-700">
+            {error}
+          </p>
+        )}
+        {!certificate && !error && (
+          <p className="py-12 text-center text-xs text-slate-500">
+            Loading certificate…
+          </p>
+        )}
+        {certificate && (
+          <section className="rounded-2xl bg-white p-6 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ecf9e7] text-[#5FBB46]">
+                  <Award className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">
+                    Certificate
+                  </p>
+                  <h1 className="mt-1 text-2xl font-semibold text-[#1C1D52]">
+                    {certificate.certificateNumber}
+                  </h1>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={download}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </button>
+            </div>
+            <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#f5fbf2,_#ffffff_55%)] p-6">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  Grouh Academy
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-[#1C1D52]">
+                  Certificate of Completion
+                </h2>
+                <p className="mt-8 text-sm text-slate-500">
+                  This certifies that
+                </p>
+                <p className="mt-3 text-2xl font-semibold text-[#1C1D52]">
+                  {certificate.student}
+                </p>
+                <div className="mt-4 h-px bg-slate-200" />
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  has successfully completed the {certificate.course} course.
+                </p>
+                <div className="mt-6 flex items-center gap-2 border-t border-slate-200 pt-5 text-[10px] text-slate-500">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#5FBB46]" />
+                  Verification code: {certificate.verificationId}
+                </div>
+              </div>
+              <aside className="rounded-2xl bg-[#f8fbff] p-4">
+                <h3 className="text-sm font-bold text-[#1C1D52]">
+                  Certificate details
+                </h3>
+                <dl className="mt-4 space-y-3 text-[10px] text-slate-500">
+                  <Detail label="Learner" value={certificate.student} />
+                  <Detail label="Email" value={certificate.email} />
+                  <Detail label="Course" value={certificate.course} />
+                  <Detail label="Instructor" value={certificate.instructor} />
+                  <Detail
+                    label="Issue date"
+                    value={dateFormat.format(new Date(certificate.issuedAt))}
+                  />
+                  <Detail
+                    label="Certificate number"
+                    value={certificate.certificateNumber}
+                  />
+                </dl>
+              </aside>
+            </div>
+          </section>
+        )}
+      </div>
+    </AdminShell>
+  );
 }
-function Detail({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-3 rounded-xl bg-white p-3"><dt>{label}</dt><dd className="text-right font-semibold text-[#1C1D52]">{value}</dd></div> }
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3 rounded-xl bg-white p-3">
+      <dt>{label}</dt>
+      <dd className="text-right font-semibold text-[#1C1D52]">{value}</dd>
+    </div>
+  );
+}

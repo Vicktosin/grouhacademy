@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grouh-academy-v1'
+const CACHE_NAME = 'grouh-academy-v2'
 const APP_SHELL = [
   '/offline',
   '/icons/icon-192.png',
@@ -27,7 +27,22 @@ self.addEventListener('fetch', (event) => {
   // Never cache API responses or personalized pages. When offline, a page
   // navigation gets a purpose-built fallback instead of stale account data.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/offline')))
+    if (url.origin === self.location.origin && url.pathname === '/offline') {
+      event.respondWith(fetch(request).catch(() => caches.match('/offline')))
+      return
+    }
+
+    // Redirect (rather than serving the fallback in place) so the address bar
+    // shows /offline, and remember the page so it can be retried later.
+    event.respondWith(
+      fetch(request).catch(() => {
+        const offlineUrl = new URL('/offline', self.location.origin)
+        if (url.origin === self.location.origin) {
+          offlineUrl.searchParams.set('from', url.pathname + url.search)
+        }
+        return Response.redirect(offlineUrl.href, 302)
+      }),
+    )
     return
   }
 

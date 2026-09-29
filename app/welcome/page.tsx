@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 export default function WelcomePage() {
   return (
@@ -7,17 +8,36 @@ export default function WelcomePage() {
         {/* Left (white) */}
         <div className="flex flex-col items-center justify-center bg-white px-8 md:px-20 py-12">
           <div className="w-full max-w-sm flex flex-col gap-10 items-center justify-start">
-            <img src="/logo.png" alt="Grouh Academy logo" className="mb-4 h-10 w-auto" />
+            <img
+              src="/logo.png"
+              alt="Grouh Academy logo"
+              className="mb-4 h-10 w-auto"
+            />
             <div className="flex flex-col items-center justify-start">
-             <button className="w-full md:w-64 rounded-xl bg-[#1c1d52] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#1c1d52]/20 transition hover:bg-[#292a68] focus:outline-none focus:ring-4 focus:ring-[#1c1d52]/20 mb-6">Login</button>
-             <button className="w-full md:w-64 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#1c1d52] border border-[#1c1d52] transition hover:bg-[#292a68] hover:text-white focus:outline-none focus:ring-4 focus:ring-[#1c1d52]/20 mb-6">Register</button>
-             <a href="#" className="text-sm text-amber-500 hover:underline">Continue as a guest</a>
+              <Link
+                href="/login"
+                className="w-full md:w-64 rounded-xl bg-[#1c1d52] px-5 py-3.5 text-center text-sm font-semibold text-white shadow-lg shadow-[#1c1d52]/20 transition hover:bg-[#292a68] focus:outline-none focus:ring-4 focus:ring-[#1c1d52]/20 mb-6"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="w-full md:w-64 rounded-xl bg-white px-5 py-3 text-center text-sm font-semibold text-[#1c1d52] border border-[#1c1d52] transition hover:bg-[#292a68] hover:text-white focus:outline-none focus:ring-4 focus:ring-[#1c1d52]/20 mb-6"
+              >
+                Register
+              </Link>
+              <Link href="/" className="text-sm text-amber-500 hover:underline">
+                Continue as a guest
+              </Link>
             </div>
           </div>
         </div>
 
         {/* Right (background image) */}
-        <div className="hidden md:block relative bg-cover bg-center" style={{ backgroundImage: "url('/right-bg.png')" }}>
+        <div
+          className="hidden md:block relative bg-cover bg-center"
+          style={{ backgroundImage: "url('/right-bg.png')" }}
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black/10 to-black/20"></div>
 
           {/* Glassmorphism Card */}
@@ -37,12 +57,20 @@ export default function WelcomePage() {
 
           {/* Woman Image */}
           <div className="absolute right-8 bottom-0 w-80">
-            <img src="/woman-with-tab.png" alt="Woman with tablet" className="w-full h-auto" />
+            <img
+              src="/woman-with-tab.png"
+              alt="Woman with tablet"
+              className="w-full h-auto"
+            />
           </div>
 
           {/* Thunderbolt Badge */}
           <div className="absolute left-8 top-72 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md">
-            <img src="/thunderbolt.png" alt="Thunderbolt icon" className="w-8 h-8" />
+            <img
+              src="/thunderbolt.png"
+              alt="Thunderbolt icon"
+              className="w-8 h-8"
+            />
           </div>
         </div>
       </div>

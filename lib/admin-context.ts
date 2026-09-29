@@ -1,5 +1,5 @@
 export type AdminContext = {
-  name: string
-  avatarUrl: string | null
-  unreadNotificationCount: number
-}
+  name: string;
+  avatarUrl: string | null;
+  unreadNotificationCount: number;
+};

@@ -1,8 +1,8 @@
-import LogoutConfirmation from '@/components/LogoutConfirmation'
+import LogoutConfirmation from "@/components/LogoutConfirmation";
 
 export const metadata = {
-  title: 'Log Out | Internship Workspace',
-}
+  title: "Log Out | Internship Workspace",
+};
 
 export default function InternshipLogoutPage() {
   return (
@@ -12,5 +12,5 @@ export default function InternshipLogoutPage() {
       cancelHref="/internship/dashboard"
       logoutHref="/login"
     />
-  )
+  );
 }

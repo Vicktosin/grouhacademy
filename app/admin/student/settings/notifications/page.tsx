@@ -1,10 +1,75 @@
-'use client'
+"use client";
 
-import AdminShell from '@/components/AdminShell'
-import AdminSettings, { SettingsActions, SettingsToggle } from '@/components/AdminSettings'
-import { useAdminPlatformSettings } from '@/components/useAdminPlatformSettings'
+import AdminShell from "@/components/AdminShell";
+import AdminSettings, {
+  SettingsActions,
+  SettingsToggle,
+} from "@/components/AdminSettings";
+import { useAdminPlatformSettings } from "@/components/useAdminPlatformSettings";
 
 export default function NotificationSettingsPage() {
-  const { settings, error, saving, message, save } = useAdminPlatformSettings()
-  return <AdminShell workspace="student"><AdminSettings active="notifications" title="Notification policy" description="Choose the important learning and payment events the platform should notify about.">{error && <p className="pt-5 text-xs text-red-600">{error}</p>}{!settings && !error && <p className="pt-5 text-xs text-slate-500">Loading settings...</p>}{settings && <form className="pt-5" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); void save({ notifyAdminOnRegistration: data.has('notifyAdminOnRegistration'), notifyAdminOnPayment: data.has('notifyAdminOnPayment'), notifyStudentOnEnrollment: data.has('notifyStudentOnEnrollment'), notifyStudentOnCertificate: data.has('notifyStudentOnCertificate') }) }}><div className="divide-y divide-slate-100"><SettingsToggle name="notifyAdminOnRegistration" label="New learner registration" description="Notify administrators when a learner creates an account." defaultChecked={settings.notifyAdminOnRegistration} /><SettingsToggle name="notifyAdminOnPayment" label="Successful payment" description="Notify administrators when a payment is confirmed." defaultChecked={settings.notifyAdminOnPayment} /><SettingsToggle name="notifyStudentOnEnrollment" label="Course enrolment" description="Notify learners when they are enrolled in a course." defaultChecked={settings.notifyStudentOnEnrollment} /><SettingsToggle name="notifyStudentOnCertificate" label="Certificate issued" description="Notify learners when a course certificate becomes available." defaultChecked={settings.notifyStudentOnCertificate} /></div><SettingsActions saving={saving} savedMessage={message} /></form>}</AdminSettings></AdminShell>
+  const { settings, error, saving, message, save } = useAdminPlatformSettings();
+  return (
+    <AdminShell workspace="student">
+      <AdminSettings
+        active="notifications"
+        title="Notification policy"
+        description="Choose the important learning and payment events the platform should notify about."
+      >
+        {error && <p className="pt-5 text-xs text-red-600">{error}</p>}
+        {!settings && !error && (
+          <p className="pt-5 text-xs text-slate-500">Loading settings...</p>
+        )}
+        {settings && (
+          <form
+            className="pt-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              void save({
+                notifyAdminOnRegistration: data.has(
+                  "notifyAdminOnRegistration",
+                ),
+                notifyAdminOnPayment: data.has("notifyAdminOnPayment"),
+                notifyStudentOnEnrollment: data.has(
+                  "notifyStudentOnEnrollment",
+                ),
+                notifyStudentOnCertificate: data.has(
+                  "notifyStudentOnCertificate",
+                ),
+              });
+            }}
+          >
+            <div className="divide-y divide-slate-100">
+              <SettingsToggle
+                name="notifyAdminOnRegistration"
+                label="New learner registration"
+                description="Notify administrators when a learner creates an account."
+                defaultChecked={settings.notifyAdminOnRegistration}
+              />
+              <SettingsToggle
+                name="notifyAdminOnPayment"
+                label="Successful payment"
+                description="Notify administrators when a payment is confirmed."
+                defaultChecked={settings.notifyAdminOnPayment}
+              />
+              <SettingsToggle
+                name="notifyStudentOnEnrollment"
+                label="Course enrolment"
+                description="Notify learners when they are enrolled in a course."
+                defaultChecked={settings.notifyStudentOnEnrollment}
+              />
+              <SettingsToggle
+                name="notifyStudentOnCertificate"
+                label="Certificate issued"
+                description="Notify learners when a course certificate becomes available."
+                defaultChecked={settings.notifyStudentOnCertificate}
+              />
+            </div>
+            <SettingsActions saving={saving} savedMessage={message} />
+          </form>
+        )}
+      </AdminSettings>
+    </AdminShell>
+  );
 }

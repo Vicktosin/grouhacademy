@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   BarChart3,
@@ -10,34 +10,33 @@ import {
   LogOut,
   MessageCircle,
   Settings,
+  ShieldCheck,
   UserRound,
   Users,
-} from 'lucide-react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const items = [
-  { label: 'Dashboard', href: '/mentor', icon: LayoutGrid },
-  { label: 'My Interns', href: '/mentor/interns', icon: Users },
-  { label: 'Messages', href: '/mentor/messages', icon: MessageCircle },
-  { label: 'Assessments', href: '/mentor/assessments', icon: ClipboardCheck },
-  { label: 'Tasks', href: '/mentor/tasks', icon: CheckSquare },
-  { label: 'Submissions', href: '/mentor/submissions', icon: FileText },
-  { label: 'Analytics', href: '/mentor/analytics', icon: BarChart3 },
-  { label: 'Notifications', href: '/mentor/notifications', icon: Bell },
-  { label: 'Profile', href: '/mentor/profile', icon: UserRound },
-  { label: 'Settings', href: '/mentor/settings', icon: Settings },
-  { label: 'Security', href: '/auth/mfa/setup', icon: Settings },
-]
+  { label: "Dashboard", href: "/mentor", icon: LayoutGrid },
+  { label: "My Interns", href: "/mentor/interns", icon: Users },
+  { label: "Messages", href: "/mentor/messages", icon: MessageCircle },
+  { label: "Assessments", href: "/mentor/assessments", icon: ClipboardCheck },
+  { label: "Tasks", href: "/mentor/tasks", icon: CheckSquare },
+  { label: "Submissions", href: "/mentor/submissions", icon: FileText },
+  { label: "Analytics", href: "/mentor/analytics", icon: BarChart3 },
+  { label: "Notifications", href: "/mentor/notifications", icon: Bell },
+  { label: "Profile", href: "/mentor/profile", icon: UserRound },
+  { label: "Settings", href: "/mentor/settings", icon: Settings },
+  { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
+];
 
 type MentorSidebarProps = {
-  onNavigate?: () => void
-}
+  onNavigate?: () => void;
+};
 
-export default function MentorSidebar({
-  onNavigate,
-}: MentorSidebarProps) {
-  const pathname = usePathname() || '/mentor'
+export default function MentorSidebar({ onNavigate }: MentorSidebarProps) {
+  const pathname = usePathname() || "/mentor";
 
   return (
     <div className="flex h-full w-full flex-col rounded-[28px] bg-[#1C1D52] px-4 py-6 text-white shadow-[0_12px_40px_rgba(28,29,82,0.18)] sm:py-8">
@@ -55,9 +54,7 @@ export default function MentorSidebar({
           Dr. Sarah Chen
         </h3>
 
-        <p className="mt-1 text-sm font-medium text-white/55">
-          Mentor
-        </p>
+        <p className="mt-1 text-sm font-medium text-white/55">Mentor</p>
       </div>
 
       {/* Navigation */}
@@ -67,13 +64,13 @@ export default function MentorSidebar({
       >
         <ul className="space-y-1.5">
           {items.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
 
             const active =
-              item.href === '/mentor'
+              item.href === "/mentor"
                 ? pathname === item.href
                 : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`)
+                  pathname.startsWith(`${item.href}/`);
 
             return (
               <li key={item.href}>
@@ -82,21 +79,16 @@ export default function MentorSidebar({
                   onClick={onNavigate}
                   className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                     active
-                      ? 'bg-[#5FBB46] text-white'
-                      : 'text-white/90 hover:bg-white/10'
+                      ? "bg-[#5FBB46] text-white"
+                      : "text-white/90 hover:bg-white/10"
                   }`}
                 >
-                  <Icon
-                    className="h-5 w-5 shrink-0"
-                    strokeWidth={1.75}
-                  />
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
 
-                  <span className="truncate">
-                    {item.label}
-                  </span>
+                  <span className="truncate">{item.label}</span>
                 </Link>
               </li>
-            )
+            );
           })}
         </ul>
       </nav>
@@ -111,5 +103,5 @@ export default function MentorSidebar({
         <span>Log Out</span>
       </Link>
     </div>
-  )
+  );
 }

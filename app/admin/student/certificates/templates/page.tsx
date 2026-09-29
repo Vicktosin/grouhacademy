@@ -1,68 +1,81 @@
-'use client'
+"use client";
 
-import { ArrowLeft, Award, CheckCircle2, Download, FileText, Sparkles } from 'lucide-react'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import {
+  ArrowLeft,
+  Award,
+  CheckCircle2,
+  Download,
+  FileText,
+  Sparkles,
+} from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const templates = [
   {
-    id: 'signature-modern',
-    name: 'Modern Signature',
-    badge: 'Signature',
-    description: 'A clean, professional certificate for today’s learning programs with a strong academic feel.',
-    header: 'Certificate of Completion',
-    accent: 'bg-[#5FBB46]',
-    accentSoft: 'bg-[#ecf9e7]',
-    accentText: 'text-[#5FBB46]',
-    frame: 'bg-[radial-gradient(circle_at_top,_#f5fbf2,_#ffffff_55%)]',
-    panel: 'bg-[#f8fbff]',
-    layoutLabel: 'Signature modern layout',
+    id: "signature-modern",
+    name: "Modern Signature",
+    badge: "Signature",
+    description:
+      "A clean, professional certificate for today’s learning programs with a strong academic feel.",
+    header: "Certificate of Completion",
+    accent: "bg-[#5FBB46]",
+    accentSoft: "bg-[#ecf9e7]",
+    accentText: "text-[#5FBB46]",
+    frame: "bg-[radial-gradient(circle_at_top,_#f5fbf2,_#ffffff_55%)]",
+    panel: "bg-[#f8fbff]",
+    layoutLabel: "Signature modern layout",
   },
   {
-    id: 'heritage-classic',
-    name: 'Heritage Classic',
-    badge: 'Classic',
-    description: 'A timeless, formal layout designed for premium courses and formal recognition ceremonies.',
-    header: 'Official Course Completion',
-    accent: 'bg-[#1C1D52]',
-    accentSoft: 'bg-[#edf0ff]',
-    accentText: 'text-[#1C1D52]',
-    frame: 'bg-[radial-gradient(circle_at_top,_#f2f4ff,_#ffffff_55%)]',
-    panel: 'bg-[#fafaff]',
-    layoutLabel: 'Classic heritage layout',
+    id: "heritage-classic",
+    name: "Heritage Classic",
+    badge: "Classic",
+    description:
+      "A timeless, formal layout designed for premium courses and formal recognition ceremonies.",
+    header: "Official Course Completion",
+    accent: "bg-[#1C1D52]",
+    accentSoft: "bg-[#edf0ff]",
+    accentText: "text-[#1C1D52]",
+    frame: "bg-[radial-gradient(circle_at_top,_#f2f4ff,_#ffffff_55%)]",
+    panel: "bg-[#fafaff]",
+    layoutLabel: "Classic heritage layout",
   },
   {
-    id: 'summit-creative',
-    name: 'Summit Creative',
-    badge: 'Creative',
-    description: 'A vibrant, high-energy design for innovative tracks that need a more contemporary edge.',
-    header: 'Certificate of Achievement',
-    accent: 'bg-[#7C3AED]',
-    accentSoft: 'bg-[#f2ebff]',
-    accentText: 'text-[#7C3AED]',
-    frame: 'bg-[radial-gradient(circle_at_top,_#f5f0ff,_#ffffff_55%)]',
-    panel: 'bg-[#faf8ff]',
-    layoutLabel: 'Creative summit layout',
+    id: "summit-creative",
+    name: "Summit Creative",
+    badge: "Creative",
+    description:
+      "A vibrant, high-energy design for innovative tracks that need a more contemporary edge.",
+    header: "Certificate of Achievement",
+    accent: "bg-[#7C3AED]",
+    accentSoft: "bg-[#f2ebff]",
+    accentText: "text-[#7C3AED]",
+    frame: "bg-[radial-gradient(circle_at_top,_#f5f0ff,_#ffffff_55%)]",
+    panel: "bg-[#faf8ff]",
+    layoutLabel: "Creative summit layout",
   },
   {
-    id: 'zen-minimal',
-    name: 'Zen Minimal',
-    badge: 'Minimal',
-    description: 'A refined and minimal certificate template with plenty of breathing room for premium branding.',
-    header: 'Completion Certificate',
-    accent: 'bg-[#0F766E]',
-    accentSoft: 'bg-[#e6fffb]',
-    accentText: 'text-[#0F766E]',
-    frame: 'bg-[radial-gradient(circle_at_top,_#f0fdfd,_#ffffff_55%)]',
-    panel: 'bg-[#f8fffe]',
-    layoutLabel: 'Zen minimal layout',
+    id: "zen-minimal",
+    name: "Zen Minimal",
+    badge: "Minimal",
+    description:
+      "A refined and minimal certificate template with plenty of breathing room for premium branding.",
+    header: "Completion Certificate",
+    accent: "bg-[#0F766E]",
+    accentSoft: "bg-[#e6fffb]",
+    accentText: "text-[#0F766E]",
+    frame: "bg-[radial-gradient(circle_at_top,_#f0fdfd,_#ffffff_55%)]",
+    panel: "bg-[#f8fffe]",
+    layoutLabel: "Zen minimal layout",
   },
-] as const
+] as const;
 
 export default function CertificateTemplatesPage() {
-  const searchParams = useSearchParams()
-  const selectedTemplateId = searchParams.get('template') ?? templates[0].id
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0]
+  const searchParams = useSearchParams();
+  const selectedTemplateId = searchParams.get("template") ?? templates[0].id;
+  const selectedTemplate =
+    templates.find((template) => template.id === selectedTemplateId) ??
+    templates[0];
 
   const handleDownloadSample = () => {
     const html = `<!doctype html>
@@ -76,7 +89,7 @@ export default function CertificateTemplatesPage() {
             .sheet { max-width: 980px; margin: 48px auto; background: white; border-radius: 32px; box-shadow: 0 20px 40px rgba(28,29,82,0.12); padding: 40px; }
             .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
             .brand { display: flex; align-items: center; gap: 16px; }
-            .brand-mark { width: 62px; height: 62px; border-radius: 20px; display: flex; align-items: center; justify-content: center; background: ${selectedTemplate.accent.replace('bg-', '#')}; color: white; font-size: 24px; }
+            .brand-mark { width: 62px; height: 62px; border-radius: 20px; display: flex; align-items: center; justify-content: center; background: ${selectedTemplate.accent.replace("bg-", "#")}; color: white; font-size: 24px; }
             .eyebrow { margin: 0; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #64748b; }
             .title { margin: 8px 0 0; font-size: 36px; font-weight: 700; }
             .meta { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 28px; margin-top: 36px; }
@@ -125,23 +138,27 @@ export default function CertificateTemplatesPage() {
             </div>
           </div>
         </body>
-      </html>`
+      </html>`;
 
-    const blob = new Blob([html], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${selectedTemplate.id}-sample.html`
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${selectedTemplate.id}-sample.html`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">Certificate management</p>
-          <h1 className="mt-2 text-2xl font-semibold text-[#1C1D52]">Certificate Templates</h1>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">
+            Certificate management
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold text-[#1C1D52]">
+            Certificate Templates
+          </h1>
         </div>
 
         <Link
@@ -159,17 +176,25 @@ export default function CertificateTemplatesPage() {
             <Link
               key={template.id}
               href={`/admin/student/certificates/templates?template=${template.id}`}
-              className={`block rounded-2xl border p-4 transition ${selectedTemplate.id === template.id ? 'border-[#5FBB46] bg-[#f3fbe8]' : 'border-slate-200 bg-[#f8fbff] hover:border-slate-300'}`}
+              className={`block rounded-2xl border p-4 transition ${selectedTemplate.id === template.id ? "border-[#5FBB46] bg-[#f3fbe8]" : "border-slate-200 bg-[#f8fbff] hover:border-slate-300"}`}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className={`inline-flex rounded-full px-2 py-1 text-[8px] font-bold text-white ${template.accent}`}>
+                <span
+                  className={`inline-flex rounded-full px-2 py-1 text-[8px] font-bold text-white ${template.accent}`}
+                >
                   {template.badge}
                 </span>
-                <span className="text-[9px] font-semibold text-slate-500">Design</span>
+                <span className="text-[9px] font-semibold text-slate-500">
+                  Design
+                </span>
               </div>
 
-              <h2 className="mt-3 text-sm font-bold text-[#1C1D52]">{template.name}</h2>
-              <p className="mt-2 text-[10px] leading-5 text-slate-500">{template.description}</p>
+              <h2 className="mt-3 text-sm font-bold text-[#1C1D52]">
+                {template.name}
+              </h2>
+              <p className="mt-2 text-[10px] leading-5 text-slate-500">
+                {template.description}
+              </p>
             </Link>
           ))}
         </aside>
@@ -177,8 +202,12 @@ export default function CertificateTemplatesPage() {
         <section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Preview</p>
-              <h2 className="mt-1 text-xl font-semibold text-[#1C1D52]">{selectedTemplate.name}</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Preview
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-[#1C1D52]">
+                {selectedTemplate.name}
+              </h2>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -200,20 +229,32 @@ export default function CertificateTemplatesPage() {
             </div>
           </div>
 
-          <div className={`mt-6 rounded-[28px] border border-slate-200 p-6 ${selectedTemplate.frame}`}>
+          <div
+            className={`mt-6 rounded-[28px] border border-slate-200 p-6 ${selectedTemplate.frame}`}
+          >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
-                  <img src="/logo.png" alt="Grouh Academy logo" className="h-8 w-auto" />
+                  <img
+                    src="/logo.png"
+                    alt="Grouh Academy logo"
+                    className="h-8 w-auto"
+                  />
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Grouh Academy</p>
-                  <h3 className="mt-2 text-3xl font-bold text-[#1C1D52]">{selectedTemplate.header}</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                    Grouh Academy
+                  </p>
+                  <h3 className="mt-2 text-3xl font-bold text-[#1C1D52]">
+                    {selectedTemplate.header}
+                  </h3>
                 </div>
               </div>
 
-              <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${selectedTemplate.accent}`}>
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-2xl ${selectedTemplate.accent}`}
+              >
                 <Award className="h-8 w-8 text-white" />
               </div>
             </div>
@@ -221,19 +262,28 @@ export default function CertificateTemplatesPage() {
             <div className="mt-6 grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
               <div>
                 <p className="text-sm text-slate-500">This certifies that</p>
-                <p className="mt-3 text-2xl font-semibold text-[#1C1D52]">Learner name</p>
+                <p className="mt-3 text-2xl font-semibold text-[#1C1D52]">
+                  Learner name
+                </p>
                 <div className="mt-4 h-px w-full bg-slate-200" />
 
                 <p className="mt-4 text-sm leading-6 text-slate-600">
-                  Has successfully completed the {selectedTemplate.name} learning journey and demonstrated the required knowledge,
+                  Has successfully completed the {selectedTemplate.name}{" "}
+                  learning journey and demonstrated the required knowledge,
                   effort, and professionalism throughout the program.
                 </p>
               </div>
 
-              <div className={`rounded-2xl p-4 shadow-[inset_0_0_0_1px_#edf2f7] ${selectedTemplate.panel}`}>
+              <div
+                className={`rounded-2xl p-4 shadow-[inset_0_0_0_1px_#edf2f7] ${selectedTemplate.panel}`}
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Status</span>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[8px] font-bold ${selectedTemplate.accentSoft} ${selectedTemplate.accentText}`}>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Status
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[8px] font-bold ${selectedTemplate.accentSoft} ${selectedTemplate.accentText}`}
+                  >
                     <CheckCircle2 className="h-3 w-3" />
                     Verified
                   </span>
@@ -242,15 +292,21 @@ export default function CertificateTemplatesPage() {
                 <div className="mt-4 space-y-3 text-[10px] text-slate-500">
                   <div className="flex items-center justify-between gap-3 rounded-xl bg-white p-3">
                     <span>Template</span>
-                    <span className="font-semibold text-[#1C1D52]">{selectedTemplate.name}</span>
+                    <span className="font-semibold text-[#1C1D52]">
+                      {selectedTemplate.name}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-xl bg-white p-3">
                     <span>Issue date</span>
-                    <span className="font-semibold text-[#1C1D52]">Issued on completion</span>
+                    <span className="font-semibold text-[#1C1D52]">
+                      Issued on completion
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-xl bg-white p-3">
                     <span>Verification code</span>
-                    <span className="font-semibold text-[#1C1D52]">Generated on issue</span>
+                    <span className="font-semibold text-[#1C1D52]">
+                      Generated on issue
+                    </span>
                   </div>
                 </div>
               </div>
@@ -261,8 +317,12 @@ export default function CertificateTemplatesPage() {
                 <FileText className="h-3.5 w-3.5" />
                 Layout: {selectedTemplate.layoutLabel}
               </div>
-              <div className={`flex items-center gap-2 text-[10px] ${selectedTemplate.accentText}`}>
-                <CheckCircle2 className={`h-3.5 w-3.5 ${selectedTemplate.accentText}`} />
+              <div
+                className={`flex items-center gap-2 text-[10px] ${selectedTemplate.accentText}`}
+              >
+                <CheckCircle2
+                  className={`h-3.5 w-3.5 ${selectedTemplate.accentText}`}
+                />
                 Ready for approval
               </div>
             </div>
@@ -270,5 +330,5 @@ export default function CertificateTemplatesPage() {
         </section>
       </div>
     </div>
-  )
+  );
 }

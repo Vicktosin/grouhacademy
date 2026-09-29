@@ -1,12 +1,16 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import StudentSidebar from './StudentSidebar'
-import StudentHeader from './StudentHeader'
-import { Menu, X } from 'lucide-react'
+import React, { useState } from "react";
+import StudentSidebar from "./StudentSidebar";
+import StudentHeader from "./StudentHeader";
+import { Menu, X } from "lucide-react";
 
-export default function StudentShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default function StudentShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#F0F7FF]">
@@ -17,7 +21,11 @@ export default function StudentShell({ children }: { children: React.ReactNode }
             className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
             aria-label="Toggle menu"
           >
-            {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {sidebarOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
           <div className="min-w-0 flex-1">
             <StudentHeader />
@@ -40,7 +48,7 @@ export default function StudentShell({ children }: { children: React.ReactNode }
           fixed z-50 md:hidden
           inset-y-4 left-4 w-[calc(100vw-2rem)] max-w-64
           transform transition-transform duration-300
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-[120%]'}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-[120%]"}
         `}
       >
         <StudentSidebar onNavigate={() => setSidebarOpen(false)} />
@@ -53,5 +61,5 @@ export default function StudentShell({ children }: { children: React.ReactNode }
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,61 +1,81 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { Bell, ChevronDown, Search } from 'lucide-react'
-import Image from 'next/image'
-import logo from '../public/logo.png'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import React, { useEffect, useState } from "react";
+import { Bell, ChevronDown, Search } from "lucide-react";
+import Image from "next/image";
+import logo from "../public/logo.png";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
-type HeaderProfile = { name: string | null; avatarUrl: string | null }
+type HeaderProfile = { name: string | null; avatarUrl: string | null };
 
 export default function StudentHeader() {
-  const [showSearch, setShowSearch] = useState(false)
-  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false)
-  const [profile, setProfile] = useState<HeaderProfile>({ name: null, avatarUrl: null })
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
-  const pathname = usePathname() || '/'
-  const router = useRouter()
-  const isMentorWorkspace = pathname.startsWith('/mentor')
-  const isInternshipWorkspace = pathname.startsWith('/internship')
-  const workspaceName = isMentorWorkspace ? 'Mentor Workspace' : isInternshipWorkspace ? 'Internship Workspace' : 'Student Workspace'
+  const [showSearch, setShowSearch] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [profile, setProfile] = useState<HeaderProfile>({
+    name: null,
+    avatarUrl: null,
+  });
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const pathname = usePathname() || "/";
+  const router = useRouter();
+  const isMentorWorkspace = pathname.startsWith("/mentor");
+  const isInternshipWorkspace = pathname.startsWith("/internship");
+  const workspaceName = isMentorWorkspace
+    ? "Mentor Workspace"
+    : isInternshipWorkspace
+      ? "Internship Workspace"
+      : "Student Workspace";
 
   useEffect(() => {
-    fetch('/api/student/profile', { cache: 'no-store' })
+    fetch("/api/student/profile", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (data) setProfile({ name: data.name ?? null, avatarUrl: data.avatarUrl ?? null })
+        if (data)
+          setProfile({
+            name: data.name ?? null,
+            avatarUrl: data.avatarUrl ?? null,
+          });
       })
-      .catch((error) => console.error('Failed to load header profile:', error))
+      .catch((error) => console.error("Failed to load header profile:", error));
 
     const loadUnreadCount = () => {
-      fetch('/api/student/notifications/unread-count', { cache: 'no-store' })
+      fetch("/api/student/notifications/unread-count", { cache: "no-store" })
         .then((response) => (response.ok ? response.json() : null))
         .then((data) => {
-          if (data) setUnreadCount(data.count ?? 0)
+          if (data) setUnreadCount(data.count ?? 0);
         })
-        .catch((error) => console.error('Failed to load notification count:', error))
-    }
-    loadUnreadCount()
-    window.addEventListener('focus', loadUnreadCount)
-    return () => window.removeEventListener('focus', loadUnreadCount)
-  }, [])
+        .catch((error) =>
+          console.error("Failed to load notification count:", error),
+        );
+    };
+    loadUnreadCount();
+    window.addEventListener("focus", loadUnreadCount);
+    return () => window.removeEventListener("focus", loadUnreadCount);
+  }, []);
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmed = searchQuery.trim()
-    router.push(trimmed ? `/student/explore-courses?q=${encodeURIComponent(trimmed)}` : '/student/explore-courses')
-    setShowSearch(false)
+    event.preventDefault();
+    const trimmed = searchQuery.trim();
+    router.push(
+      trimmed
+        ? `/student/explore-courses?q=${encodeURIComponent(trimmed)}`
+        : "/student/explore-courses",
+    );
+    setShowSearch(false);
   }
 
-  const displayName = profile.name || 'Student'
-  const avatarSrc = profile.avatarUrl || '/avatar-placeholder.png'
+  const displayName = profile.name || "Student";
+  const avatarSrc = profile.avatarUrl || "/avatar-placeholder.png";
 
   return (
     <div className="relative">
       <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
-        <Link href="/student" className="inline-flex flex-shrink-0 items-center">
+        <Link
+          href="/student"
+          className="inline-flex flex-shrink-0 items-center"
+        >
           <Image
             src={logo}
             alt="Grouh Academy logo"
@@ -75,19 +95,47 @@ export default function StudentHeader() {
               className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-[0_4px_14px_rgba(28,29,82,0.08)] transition hover:shadow-md sm:gap-2 sm:px-4"
             >
               <span className="hidden sm:inline">{workspaceName}</span>
-              <span className="sm:hidden">{isMentorWorkspace ? 'Mentor' : isInternshipWorkspace ? 'Internship' : 'Student'}</span>
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showWorkspaceMenu ? 'rotate-180' : ''}`} />
+              <span className="sm:hidden">
+                {isMentorWorkspace
+                  ? "Mentor"
+                  : isInternshipWorkspace
+                    ? "Internship"
+                    : "Student"}
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${showWorkspaceMenu ? "rotate-180" : ""}`}
+              />
             </button>
             {showWorkspaceMenu && (
-              <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl bg-white p-1.5 shadow-[0_10px_28px_rgba(28,29,82,0.16)]">
-                <Link href="/student" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`block rounded-lg px-3 py-2 text-xs font-semibold ${!isInternshipWorkspace && !isMentorWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Student Workspace</Link>
-                <Link href="/internship/dashboard" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isInternshipWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Internship Workspace</Link>
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl bg-white p-1.5 shadow-[0_10px_28px_rgba(28,29,82,0.16)]"
+              >
+                <Link
+                  href="/student"
+                  role="menuitem"
+                  onClick={() => setShowWorkspaceMenu(false)}
+                  className={`block rounded-lg px-3 py-2 text-xs font-semibold ${!isInternshipWorkspace && !isMentorWorkspace ? "bg-[#e8f7eb] text-[#397d3a]" : "text-[#1C1D52] hover:bg-slate-50"}`}
+                >
+                  Student Workspace
+                </Link>
+                <Link
+                  href="/internship/dashboard"
+                  role="menuitem"
+                  onClick={() => setShowWorkspaceMenu(false)}
+                  className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isInternshipWorkspace ? "bg-[#e8f7eb] text-[#397d3a]" : "text-[#1C1D52] hover:bg-slate-50"}`}
+                >
+                  Internship Workspace
+                </Link>
                 {/*<Link href="/mentor" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isMentorWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Mentor Workspace</Link>*/}
               </div>
             )}
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]"
+          >
             <span className="sr-only">Search</span>
             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
               <Search className="h-4 w-4" />
@@ -111,12 +159,16 @@ export default function StudentHeader() {
           <Link
             href="/student/notifications"
             className="relative rounded-full p-1.5 text-gray-800 hover:bg-gray-100"
-            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+            aria-label={
+              unreadCount > 0
+                ? `${unreadCount} unread notifications`
+                : "Notifications"
+            }
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </Link>
@@ -147,5 +199,5 @@ export default function StudentHeader() {
         </div>
       )}
     </div>
-  )
+  );
 }

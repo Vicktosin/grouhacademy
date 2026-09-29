@@ -4,15 +4,15 @@ export function getSiteUrl(): string {
   // not send learners back to a Vercel deployment hostname.
   const configuredUrl = (
     process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL
-  )?.trim()
+  )?.trim();
 
   if (configuredUrl) {
-    return configuredUrl.replace(/\/$/, '')
+    return configuredUrl.replace(/\/$/, "");
   }
 
-  if (typeof window !== 'undefined') {
-    return window.location.origin
+  if (typeof window !== "undefined") {
+    return window.location.origin;
   }
 
-  return 'http://localhost:3000'
+  return "http://localhost:3000";
 }

@@ -1,84 +1,121 @@
-import { NextResponse } from 'next/server'
-import { getCurrentUserId } from '@/lib/route-guards'
-import { getPrisma } from '@/lib/prisma'
-import { CourseStatus } from '@/generated/prisma/client'
-import { courseInclude, serializeCourse } from '@/lib/course-data'
-import { buildCourseRecommendationFilter } from '@/lib/course-recommendation-filter'
+import { NextResponse } from "next/server";
+import { getCurrentUserId } from "@/lib/route-guards";
+import { getPrisma } from "@/lib/prisma";
+import { CourseStatus } from "@/generated/prisma/client";
+import { courseInclude, serializeCourse } from "@/lib/course-data";
+import { buildCourseRecommendationFilter } from "@/lib/course-recommendation-filter";
 
 function parseDurationWeeks(duration: string): number {
-  const match = duration.match(/\d+/)
-  return match ? Number(match[0]) : 12
+  const match = duration.match(/\d+/);
+  return match ? Number(match[0]) : 12;
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function timeAgoLabel(date: Date): string {
-  const diffMs = Date.now() - date.getTime()
-  const hours = Math.floor(diffMs / (1000 * 60 * 60))
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return 'Yesterday'
-  return `${days} days ago`
+  const diffMs = Date.now() - date.getTime();
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) return "Just now";
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
 }
 
 export async function GET() {
-  const userId = await getCurrentUserId()
+  const userId = await getCurrentUserId();
   if (!userId) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
   }
 
-  const prisma = getPrisma()
+  const prisma = getPrisma();
 
   try {
     const application = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
-      include: { program: true, payment: true, attempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
-      orderBy: { createdAt: 'desc' },
-    })
+      include: {
+        program: true,
+        payment: true,
+        attempts: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
     if (!application) {
-      return NextResponse.json({ error: 'Complete internship onboarding before accessing the dashboard.', code: 'ONBOARDING_REQUIRED' }, { status: 403 })
+      return NextResponse.json(
+        {
+          error:
+            "Complete internship onboarding before accessing the dashboard.",
+          code: "ONBOARDING_REQUIRED",
+        },
+        { status: 403 },
+      );
     }
 
     if (!application.onboardingAnswers) {
-      return NextResponse.json({ error: 'Complete internship onboarding before accessing the dashboard.', code: 'ONBOARDING_REQUIRED' }, { status: 403 })
+      return NextResponse.json(
+        {
+          error:
+            "Complete internship onboarding before accessing the dashboard.",
+          code: "ONBOARDING_REQUIRED",
+        },
+        { status: 403 },
+      );
     }
 
-    const { program } = application
-    const paymentStatus = application.payment?.status ?? 'PENDING'
-    const latestAttempt = application.attempts[0]
-    const assessmentStatus = latestAttempt?.status ?? 'NOT_STARTED'
+    const { program } = application;
+    const paymentStatus = application.payment?.status ?? "PENDING";
+    const latestAttempt = application.attempts[0];
+    const assessmentStatus = latestAttempt?.status ?? "NOT_STARTED";
 
     const cohorts = await prisma.internshipCohort.findMany({
       where: { programId: program.id },
-      orderBy: { startDate: 'asc' },
-    })
+      orderBy: { startDate: "asc" },
+    });
 
-    const now = new Date()
-    const assignedCohort = application.cohortId ? cohorts.find((cohort) => cohort.id === application.cohortId) ?? null : null
-    const activeCohort = cohorts.find((cohort) => cohort.startDate <= now && cohort.endDate >= now) ?? null
-    const nextCohort = cohorts.find((cohort) => cohort.startDate > now) ?? null
-    const displayCohort = assignedCohort ?? activeCohort ?? nextCohort
+    const now = new Date();
+    const assignedCohort = application.cohortId
+      ? (cohorts.find((cohort) => cohort.id === application.cohortId) ?? null)
+      : null;
+    const activeCohort =
+      cohorts.find(
+        (cohort) => cohort.startDate <= now && cohort.endDate >= now,
+      ) ?? null;
+    const nextCohort = cohorts.find((cohort) => cohort.startDate > now) ?? null;
+    const displayCohort = assignedCohort ?? activeCohort ?? nextCohort;
 
     const progress = await prisma.internshipProgress.findUnique({
       where: { userId_programId: { userId, programId: program.id } },
-    })
+    });
 
-    const totalWeeks = parseDurationWeeks(program.duration)
-    const startDate = application.createdAt
+    const totalWeeks = parseDurationWeeks(program.duration);
+    const startDate = application.createdAt;
     const weeksElapsed = Math.min(
       totalWeeks,
-      Math.max(1, Math.ceil((Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))),
-    )
-    const expectedCompletion = new Date(startDate.getTime() + totalWeeks * 7 * 24 * 60 * 60 * 1000)
+      Math.max(
+        1,
+        Math.ceil(
+          (Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+        ),
+      ),
+    );
+    const expectedCompletion = new Date(
+      startDate.getTime() + totalWeeks * 7 * 24 * 60 * 60 * 1000,
+    );
 
-    const completedTasks = progress?.completedTasks ?? 0
-    const totalTasks = progress?.totalTasks ?? 0
-    const pendingTasks = Math.max(0, totalTasks - completedTasks)
-    const progressPercent = progress?.progressPercent ?? 0
+    const completedTasks = progress?.completedTasks ?? 0;
+    const totalTasks = progress?.totalTasks ?? 0;
+    const pendingTasks = Math.max(0, totalTasks - completedTasks);
+    const progressPercent = progress?.progressPercent ?? 0;
 
     // Average grade across this program's graded task submissions.
     const gradedSubmissions = await prisma.taskSubmission.findMany({
@@ -88,10 +125,13 @@ export async function GET() {
         task: { module: { programId: program.id } },
       },
       select: { score: true },
-    })
+    });
     const averageGradePercent = gradedSubmissions.length
-      ? Math.round(gradedSubmissions.reduce((sum, s) => sum + (s.score ?? 0), 0) / gradedSubmissions.length)
-      : null
+      ? Math.round(
+          gradedSubmissions.reduce((sum, s) => sum + (s.score ?? 0), 0) /
+            gradedSubmissions.length,
+        )
+      : null;
 
     // Next task with no submission yet, soonest due date first.
     const upcomingTask = await prisma.internshipTask.findFirst({
@@ -99,75 +139,103 @@ export async function GET() {
         module: { programId: program.id },
         submissions: { none: { userId } },
       },
-      orderBy: { dueDate: 'asc' },
+      orderBy: { dueDate: "asc" },
       include: { module: true },
-    })
+    });
 
     const mentorAssignment = await prisma.mentorAssignment.findFirst({
-      where: { internId: userId, programId: program.id, status: 'ACTIVE' },
+      where: { internId: userId, programId: program.id, status: "ACTIVE" },
       include: { mentor: { include: { mentorProfile: true } } },
-    })
+    });
 
     const recentFeedback = await prisma.taskSubmission.findFirst({
-      where: { userId, feedback: { not: null }, task: { module: { programId: program.id } } },
-      orderBy: { reviewedAt: 'desc' },
+      where: {
+        userId,
+        feedback: { not: null },
+        task: { module: { programId: program.id } },
+      },
+      orderBy: { reviewedAt: "desc" },
       include: { task: true },
-    })
+    });
 
     const activeMentorIds = (
       await prisma.mentorAssignment.findMany({
-        where: { internId: userId, status: 'ACTIVE' },
+        where: { internId: userId, status: "ACTIVE" },
         select: { mentorId: true },
       })
-    ).map((a) => a.mentorId)
+    ).map((a) => a.mentorId);
 
     const announcements = await prisma.announcement.findMany({
       where: {
         OR: [
-          { scope: 'GLOBAL' },
-          ...(activeMentorIds.length ? [{ scope: 'MENTOR_MENTEES' as const, authorId: { in: activeMentorIds } }] : []),
+          { scope: "GLOBAL" },
+          ...(activeMentorIds.length
+            ? [
+                {
+                  scope: "MENTOR_MENTEES" as const,
+                  authorId: { in: activeMentorIds },
+                },
+              ]
+            : []),
         ],
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 3,
-    })
+    });
 
     const enrolledCourseIds = (
-      await prisma.enrollment.findMany({ where: { userId }, select: { courseId: true } })
-    ).map((e) => e.courseId)
+      await prisma.enrollment.findMany({
+        where: { userId },
+        select: { courseId: true },
+      })
+    ).map((e) => e.courseId);
 
     const baseCourseFilter = {
       status: CourseStatus.PUBLISHED,
       ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
-    }
+    };
 
-    const trackSpecificCourses = buildCourseRecommendationFilter([program.name])
+    const trackSpecificCourses = buildCourseRecommendationFilter([
+      program.name,
+    ]);
     let recommendedCourses = await prisma.course.findMany({
       where: {
         ...baseCourseFilter,
         ...(trackSpecificCourses ? trackSpecificCourses : {}),
       },
       include: courseInclude,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 3,
-    })
+    });
 
     if (recommendedCourses.length === 0) {
       recommendedCourses = await prisma.course.findMany({
         where: baseCourseFilter,
         include: courseInclude,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 3,
-      })
+      });
     }
 
-    const cohortStatus = activeCohort ? 'ACTIVE' : nextCohort ? 'UPCOMING' : 'COMPLETED'
-    const countdownDays = displayCohort ? Math.max(0, Math.ceil((displayCohort.startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null
+    const cohortStatus = activeCohort
+      ? "ACTIVE"
+      : nextCohort
+        ? "UPCOMING"
+        : "COMPLETED";
+    const countdownDays = displayCohort
+      ? Math.max(
+          0,
+          Math.ceil(
+            (displayCohort.startDate.getTime() - now.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
     const countdownLabel = displayCohort
       ? countdownDays === 0
-        ? 'Your internship starts today.'
-        : `Your internship starts in ${countdownDays} day${countdownDays === 1 ? '' : 's'}.`
-      : 'Your internship has concluded.'
+        ? "Your internship starts today."
+        : `Your internship starts in ${countdownDays} day${countdownDays === 1 ? "" : "s"}.`
+      : "Your internship has concluded.";
 
     return NextResponse.json({
       program: { name: program.name, slug: program.slug },
@@ -192,12 +260,14 @@ export async function GET() {
         ? {
             title: upcomingTask.title,
             moduleTitle: upcomingTask.module.title,
-            dueLabel: upcomingTask.dueDate ? formatDate(upcomingTask.dueDate) : null,
+            dueLabel: upcomingTask.dueDate
+              ? formatDate(upcomingTask.dueDate)
+              : null,
           }
         : null,
       mentor: mentorAssignment
         ? {
-            name: mentorAssignment.mentor.name ?? 'Your mentor',
+            name: mentorAssignment.mentor.name ?? "Your mentor",
             expertise: mentorAssignment.mentor.mentorProfile?.expertise ?? null,
           }
         : null,
@@ -206,7 +276,9 @@ export async function GET() {
             taskTitle: recentFeedback.task.title,
             score: recentFeedback.score,
             feedback: recentFeedback.feedback,
-            timeAgoLabel: timeAgoLabel(recentFeedback.reviewedAt ?? recentFeedback.submittedAt),
+            timeAgoLabel: timeAgoLabel(
+              recentFeedback.reviewedAt ?? recentFeedback.submittedAt,
+            ),
           }
         : null,
       announcements: announcements.map((a) => ({
@@ -214,9 +286,12 @@ export async function GET() {
         postedLabel: timeAgoLabel(a.createdAt),
       })),
       recommendedCourses: recommendedCourses.map((c) => serializeCourse(c)!),
-    })
+    });
   } catch (error) {
-    console.error('Failed to load internship dashboard:', error)
-    return NextResponse.json({ error: 'Unable to load internship dashboard.' }, { status: 500 })
+    console.error("Failed to load internship dashboard:", error);
+    return NextResponse.json(
+      { error: "Unable to load internship dashboard." },
+      { status: 500 },
+    );
   }
 }

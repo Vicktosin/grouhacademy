@@ -1,12 +1,16 @@
-'use client'
+"use client";
 
-import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
-import MentorSidebar from './MentorSidebar'
-import StudentHeader from './StudentHeader'
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import MentorSidebar from "./MentorSidebar";
+import StudentHeader from "./StudentHeader";
 
-export default function MentorShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default function MentorShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#F0F7FF]">
@@ -18,7 +22,11 @@ export default function MentorShell({ children }: { children: React.ReactNode })
             className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
             aria-label="Toggle mentor menu"
           >
-            {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {sidebarOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
           <div className="min-w-0 flex-1">
             <StudentHeader />
@@ -35,10 +43,17 @@ export default function MentorShell({ children }: { children: React.ReactNode })
         </main>
       </div>
 
-      <aside className={`fixed inset-y-4 left-4 z-50 w-[calc(100vw-2rem)] max-w-64 transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-[120%]'}`}>
+      <aside
+        className={`fixed inset-y-4 left-4 z-50 w-[calc(100vw-2rem)] max-w-64 transform transition-transform duration-300 md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-[120%]"}`}
+      >
         <MentorSidebar onNavigate={() => setSidebarOpen(false)} />
       </aside>
-      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/50 md:hidden" />}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+        />
+      )}
     </div>
-  )
+  );
 }

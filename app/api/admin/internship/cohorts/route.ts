@@ -1,51 +1,53 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
 
-import { RoleName } from '@/generated/prisma/client'
-import { getPrisma } from '@/lib/prisma'
-import { userHasRole } from '@/lib/rbac'
-import { getCurrentUserId } from '@/lib/route-guards'
+import { getPrisma } from "@/lib/prisma";
+import { requireAdminApi } from "@/lib/api-guards";
 
 function calculateStatus(startDate: Date, endDate: Date) {
-  const now = new Date()
-  if (now < startDate) return 'UPCOMING'
-  if (now > endDate) return 'COMPLETED'
-  return 'ACTIVE'
+  const now = new Date();
+  if (now < startDate) return "UPCOMING";
+  if (now > endDate) return "COMPLETED";
+  return "ACTIVE";
 }
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function monthName(date: Date) {
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'cohort'
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "cohort"
+  );
 }
 
 export async function GET() {
-  const userId = await getCurrentUserId()
-  if (!userId || !(await userHasRole(userId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+  const userId = await requireAdminApi();
+  if (userId instanceof NextResponse) return userId;
 
-  const prisma = getPrisma()
+  const prisma = getPrisma();
   const [programs, cohorts] = await Promise.all([
     prisma.internshipProgram.findMany({
       select: { id: true, name: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     }),
     prisma.internshipCohort.findMany({
-      orderBy: { startDate: 'asc' },
+      orderBy: { startDate: "asc" },
       include: { program: { select: { id: true, name: true } } },
     }),
-  ])
+  ]);
 
   return NextResponse.json({
     programs,
@@ -64,43 +66,58 @@ export async function GET() {
       endDateLabel: formatDate(cohort.endDate),
       monthLabel: monthName(cohort.startDate),
     })),
-  })
+  });
 }
 
 export async function POST(request: Request) {
-  const userId = await getCurrentUserId()
-  if (!userId || !(await userHasRole(userId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+  const userId = await requireAdminApi();
+  if (userId instanceof NextResponse) return userId;
 
-  const body = await request.json().catch(() => null)
+  const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: 'Cohort data is required.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Cohort data is required." },
+      { status: 400 },
+    );
   }
 
-  const name = String(body.name ?? '').trim()
-  const programId = String(body.programId ?? '').trim()
-  const description = String(body.description ?? '').trim()
+  const name = String(body.name ?? "").trim();
+  const programId = String(body.programId ?? "").trim();
+  const description = String(body.description ?? "").trim();
 
   if (!name || !programId) {
-    return NextResponse.json({ error: 'Cohort name and track are required.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Cohort name and track are required." },
+      { status: 400 },
+    );
   }
 
-  const startDate = new Date(body.startDate)
-  const endDate = new Date(body.endDate)
+  const startDate = new Date(body.startDate);
+  const endDate = new Date(body.endDate);
 
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return NextResponse.json({ error: 'Use valid cohort start and end dates.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Use valid cohort start and end dates." },
+      { status: 400 },
+    );
   }
 
   if (startDate >= endDate) {
-    return NextResponse.json({ error: 'Cohort end date must be after the start date.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Cohort end date must be after the start date." },
+      { status: 400 },
+    );
   }
 
-  const prisma = getPrisma()
-  const program = await prisma.internshipProgram.findUnique({ where: { id: programId } })
+  const prisma = getPrisma();
+  const program = await prisma.internshipProgram.findUnique({
+    where: { id: programId },
+  });
   if (!program) {
-    return NextResponse.json({ error: 'Selected internship track was not found.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Selected internship track was not found." },
+      { status: 400 },
+    );
   }
 
   const cohort = await prisma.internshipCohort.create({
@@ -113,41 +130,75 @@ export async function POST(request: Request) {
       endDate,
       status: calculateStatus(startDate, endDate),
     },
-  })
+  });
 
-  return NextResponse.json({ success: true, cohort: { id: cohort.id, name: cohort.name } })
+  return NextResponse.json({
+    success: true,
+    cohort: { id: cohort.id, name: cohort.name },
+  });
 }
 
 export async function PUT(request: Request) {
-  const userId = await getCurrentUserId()
-  if (!userId || !(await userHasRole(userId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+  const userId = await requireAdminApi();
+  if (userId instanceof NextResponse) return userId;
 
-  const body = await request.json().catch(() => null)
+  const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: 'Cohort update payload is required.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Cohort update payload is required." },
+      { status: 400 },
+    );
   }
 
-  const id = String(body.id ?? '').trim()
-  const name = String(body.name ?? '').trim()
-  const programId = String(body.programId ?? '').trim()
-  const description = String(body.description ?? '').trim()
-  const startDate = new Date(body.startDate)
-  const endDate = new Date(body.endDate)
+  const id = String(body.id ?? "").trim();
+  const name = String(body.name ?? "").trim();
+  const programId = String(body.programId ?? "").trim();
+  const description = String(body.description ?? "").trim();
+  const startDate = new Date(body.startDate);
+  const endDate = new Date(body.endDate);
 
-  if (!id || !name || !programId || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return NextResponse.json({ error: 'Invalid cohort update data.' }, { status: 400 })
+  if (
+    !id ||
+    !name ||
+    !programId ||
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    return NextResponse.json(
+      { error: "Invalid cohort update data." },
+      { status: 400 },
+    );
   }
 
   if (startDate >= endDate) {
-    return NextResponse.json({ error: 'Cohort end date must be after the start date.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Cohort end date must be after the start date." },
+      { status: 400 },
+    );
   }
 
-  const prisma = getPrisma()
-  const cohort = await prisma.internshipCohort.findUnique({ where: { id } })
+  const prisma = getPrisma();
+  const cohort = await prisma.internshipCohort.findUnique({
+    where: { id },
+    include: { _count: { select: { applications: true, groups: true } } },
+  });
   if (!cohort) {
-    return NextResponse.json({ error: 'Cohort not found.' }, { status: 404 })
+    return NextResponse.json({ error: "Cohort not found." }, { status: 404 });
+  }
+
+  // Interns and groups in a cohort belong to its track, so moving the cohort
+  // to another track would leave them attached to the wrong programme.
+  if (
+    programId !== cohort.programId &&
+    (cohort._count.applications > 0 || cohort._count.groups > 0)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "This cohort already has interns or groups, so its track can't be changed. Create a new cohort for the other track instead.",
+      },
+      { status: 409 },
+    );
   }
 
   const updated = await prisma.internshipCohort.update({
@@ -161,31 +212,35 @@ export async function PUT(request: Request) {
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       status: calculateStatus(startDate, endDate),
     },
-  })
+  });
 
-  return NextResponse.json({ success: true, cohort: { id: updated.id, name: updated.name } })
+  return NextResponse.json({
+    success: true,
+    cohort: { id: updated.id, name: updated.name },
+  });
 }
 
 export async function DELETE(request: Request) {
-  const userId = await getCurrentUserId()
-  if (!userId || !(await userHasRole(userId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+  const userId = await requireAdminApi();
+  if (userId instanceof NextResponse) return userId;
 
-  const body = await request.json().catch(() => null)
-  const id = String(body?.id ?? '').trim()
+  const body = await request.json().catch(() => null);
+  const id = String(body?.id ?? "").trim();
 
   if (!id) {
-    return NextResponse.json({ error: 'A cohort id is required.' }, { status: 400 })
+    return NextResponse.json(
+      { error: "A cohort id is required." },
+      { status: 400 },
+    );
   }
 
-  const prisma = getPrisma()
-  const cohort = await prisma.internshipCohort.findUnique({ where: { id } })
+  const prisma = getPrisma();
+  const cohort = await prisma.internshipCohort.findUnique({ where: { id } });
   if (!cohort) {
-    return NextResponse.json({ error: 'Cohort not found.' }, { status: 404 })
+    return NextResponse.json({ error: "Cohort not found." }, { status: 404 });
   }
 
-  await prisma.internshipCohort.delete({ where: { id } })
+  await prisma.internshipCohort.delete({ where: { id } });
 
-  return NextResponse.json({ success: true, deletedId: id })
+  return NextResponse.json({ success: true, deletedId: id });
 }

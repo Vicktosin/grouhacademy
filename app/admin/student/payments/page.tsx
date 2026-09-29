@@ -1,14 +1,215 @@
-'use client'
-import { Download, Search } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import AdminShell from '@/components/AdminShell'
-type Payment = { id: string; reference: string; amount: number; currency: string; provider: string | null; status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'; createdAt: string; student: string; email: string; item: string }
-const style: Record<Payment['status'], string> = { PAID: 'bg-emerald-50 text-emerald-700', PENDING: 'bg-amber-50 text-amber-700', FAILED: 'bg-red-50 text-red-700', CANCELLED: 'bg-slate-100 text-slate-600' }
-const money = (amount: number, currency: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
+"use client";
+import { Download, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import AdminShell from "@/components/AdminShell";
+type Payment = {
+  id: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  provider: string | null;
+  status: "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  createdAt: string;
+  student: string;
+  email: string;
+  item: string;
+};
+const style: Record<Payment["status"], string> = {
+  PAID: "bg-emerald-50 text-emerald-700",
+  PENDING: "bg-amber-50 text-amber-700",
+  FAILED: "bg-red-50 text-red-700",
+  CANCELLED: "bg-slate-100 text-slate-600",
+};
+const money = (amount: number, currency: string) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
 export default function AdminPaymentsPage() {
-  const [items, setItems] = useState<Payment[]>([]); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(''); const [status, setStatus] = useState<'ALL' | Payment['status']>('ALL')
-  useEffect(() => { fetch('/api/admin/student/payments', { cache: 'no-store' }).then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? 'Unable to load payments.'); return r.json() }).then(({ payments }) => setItems(payments)).catch((e) => setError(e.message)) }, [])
-  const visible = useMemo(() => items.filter((x) => (status === 'ALL' || x.status === status) && `${x.reference} ${x.student} ${x.email} ${x.item} ${x.provider ?? ''}`.toLowerCase().includes(query.toLowerCase())), [items, query, status])
-  function exportCsv() { const rows = [['Reference', 'Learner', 'Email', 'Item', 'Amount', 'Currency', 'Provider', 'Status', 'Created'], ...visible.map((x) => [x.reference, x.student, x.email, x.item, x.amount, x.currency, x.provider ?? '', x.status, x.createdAt])]; const url = URL.createObjectURL(new Blob([rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' })); const a = document.createElement('a'); a.href = url; a.download = 'payments.csv'; a.click(); URL.revokeObjectURL(url) }
-  return <AdminShell workspace="student"><div className="mx-auto max-w-[1400px] space-y-5"><header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-semibold text-[#1C1D52] sm:text-3xl">Payments</h1><p className="mt-2 text-xs text-slate-500">Payment records use the currency stored for each transaction.</p></div><button type="button" onClick={exportCsv} className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-semibold text-[#14204f]"><Download className="h-3.5 w-3.5" />Export CSV</button></header><section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5"><div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4">{(['ALL', 'PAID', 'PENDING', 'FAILED', 'CANCELLED'] as const).map((value) => <button key={value} type="button" onClick={() => setStatus(value)} className={`rounded-full px-3 py-2 text-[10px] font-semibold ${status === value ? 'bg-blue-500 text-white' : 'shadow-[inset_0_0_0_1px_#d8dee8]'}`}>{value === 'ALL' ? 'All' : value} <span className="ml-1">{value === 'ALL' ? items.length : items.filter((x) => x.status === value).length}</span></button>)}</div><label className="mt-4 flex max-w-sm items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2.5 text-xs"><Search className="h-3.5 w-3.5" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent outline-none" placeholder="Search reference, learner, or item" /></label>{error ? <p className="py-8 text-center text-xs text-red-600">{error}</p> : <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[800px] text-left text-xs"><thead className="bg-[#f5f8fb] text-slate-600"><tr><th className="p-3">Reference</th><th className="p-3">Learner</th><th className="p-3">Item</th><th className="p-3">Amount</th><th className="p-3">Provider</th><th className="p-3">Status</th><th className="p-3">Created</th></tr></thead><tbody>{visible.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="p-3 font-semibold text-[#1C1D52]">{item.reference}</td><td className="p-3"><strong className="block text-[#1C1D52]">{item.student}</strong><span className="text-[10px] text-slate-500">{item.email}</span></td><td className="p-3">{item.item}</td><td className="p-3 font-semibold">{money(item.amount, item.currency)}</td><td className="p-3 text-slate-500">{item.provider ?? '—'}</td><td className="p-3"><span className={`rounded-md px-2 py-1 text-[10px] font-semibold ${style[item.status]}`}>{item.status}</span></td><td className="p-3 text-slate-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(item.createdAt))}</td></tr>)}</tbody></table>{!visible.length && <p className="py-10 text-center text-xs text-slate-500">No payments found.</p>}</div>}</section></div></AdminShell>
+  const [items, setItems] = useState<Payment[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<"ALL" | Payment["status"]>("ALL");
+  useEffect(() => {
+    fetch("/api/admin/student/payments", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok)
+          throw new Error(
+            (await r.json().catch(() => null))?.error ??
+              "Unable to load payments.",
+          );
+        return r.json();
+      })
+      .then(({ payments }) => setItems(payments))
+      .catch((e) => setError(e.message));
+  }, []);
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (x) =>
+          (status === "ALL" || x.status === status) &&
+          `${x.reference} ${x.student} ${x.email} ${x.item} ${x.provider ?? ""}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [items, query, status],
+  );
+  function exportCsv() {
+    const rows = [
+      [
+        "Reference",
+        "Learner",
+        "Email",
+        "Item",
+        "Amount",
+        "Currency",
+        "Provider",
+        "Status",
+        "Created",
+      ],
+      ...visible.map((x) => [
+        x.reference,
+        x.student,
+        x.email,
+        x.item,
+        x.amount,
+        x.currency,
+        x.provider ?? "",
+        x.status,
+        x.createdAt,
+      ]),
+    ];
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          rows
+            .map((r) =>
+              r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(","),
+            )
+            .join("\n"),
+        ],
+        { type: "text/csv" },
+      ),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payments.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  return (
+    <AdminShell workspace="student">
+      <div className="mx-auto max-w-[1400px] space-y-5">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-[#1C1D52] sm:text-3xl">
+              Payments
+            </h1>
+            <p className="mt-2 text-xs text-slate-500">
+              Payment records use the currency stored for each transaction.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-semibold text-[#14204f]"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+        </header>
+        <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
+          <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+            {(["ALL", "PAID", "PENDING", "FAILED", "CANCELLED"] as const).map(
+              (value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setStatus(value)}
+                  className={`rounded-full px-3 py-2 text-[10px] font-semibold ${status === value ? "bg-blue-500 text-white" : "shadow-[inset_0_0_0_1px_#d8dee8]"}`}
+                >
+                  {value === "ALL" ? "All" : value}{" "}
+                  <span className="ml-1">
+                    {value === "ALL"
+                      ? items.length
+                      : items.filter((x) => x.status === value).length}
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
+          <label className="mt-4 flex max-w-sm items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2.5 text-xs">
+            <Search className="h-3.5 w-3.5" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full bg-transparent outline-none"
+              placeholder="Search reference, learner, or item"
+            />
+          </label>
+          {error ? (
+            <p className="py-8 text-center text-xs text-red-600">{error}</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[800px] text-left text-xs">
+                <thead className="bg-[#f5f8fb] text-slate-600">
+                  <tr>
+                    <th className="p-3">Reference</th>
+                    <th className="p-3">Learner</th>
+                    <th className="p-3">Item</th>
+                    <th className="p-3">Amount</th>
+                    <th className="p-3">Provider</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((item) => (
+                    <tr key={item.id} className="border-b border-slate-100">
+                      <td className="p-3 font-semibold text-[#1C1D52]">
+                        {item.reference}
+                      </td>
+                      <td className="p-3">
+                        <strong className="block text-[#1C1D52]">
+                          {item.student}
+                        </strong>
+                        <span className="text-[10px] text-slate-500">
+                          {item.email}
+                        </span>
+                      </td>
+                      <td className="p-3">{item.item}</td>
+                      <td className="p-3 font-semibold">
+                        {money(item.amount, item.currency)}
+                      </td>
+                      <td className="p-3 text-slate-500">
+                        {item.provider ?? "—"}
+                      </td>
+                      <td className="p-3">
+                        <span
+                          className={`rounded-md px-2 py-1 text-[10px] font-semibold ${style[item.status]}`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-500">
+                        {new Intl.DateTimeFormat(undefined, {
+                          dateStyle: "medium",
+                        }).format(new Date(item.createdAt))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!visible.length && (
+                <p className="py-10 text-center text-xs text-slate-500">
+                  No payments found.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+    </AdminShell>
+  );
 }

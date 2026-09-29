@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
   Archive,
@@ -9,60 +9,65 @@ import {
   Award,
   User,
   Settings,
+  ShieldCheck,
   LogOut,
-} from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 const navItems = [
-  { label: 'Dashboard', href: '/student', icon: LayoutGrid },
-  { label: 'My Courses', href: '/student/my-courses', icon: Archive },
-  { label: 'Explore Courses', href: '/student/explore-courses', icon: Compass },
-  { label: 'Certificates', href: '/student/certificates', icon: Award },
-  { label: 'Settings', href: '/student/settings', icon: Settings },
-  { label: 'Profile', href: '/student/profile', icon: User },
-]
+  { label: "Dashboard", href: "/student", icon: LayoutGrid },
+  { label: "My Courses", href: "/student/my-courses", icon: Archive },
+  { label: "Explore Courses", href: "/student/explore-courses", icon: Compass },
+  { label: "Certificates", href: "/student/certificates", icon: Award },
+  { label: "Settings", href: "/student/settings", icon: Settings },
+  { label: "Profile", href: "/student/profile", icon: User },
+  { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
+];
 
 type StudentProfile = {
-  name: string | null
-  avatarUrl: string | null
-}
+  name: string | null;
+  avatarUrl: string | null;
+};
 
-export default function StudentSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname() || '/student'
+export default function StudentSidebar({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname() || "/student";
 
   const [profile, setProfile] = useState<StudentProfile>({
     name: null,
     avatarUrl: null,
-  })
+  });
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const response = await fetch('/api/student/profile', {
-          cache: 'no-store',
-        })
+        const response = await fetch("/api/student/profile", {
+          cache: "no-store",
+        });
 
         if (!response.ok) {
-          throw new Error('Failed to load student profile')
+          throw new Error("Failed to load student profile");
         }
 
-        const data = await response.json()
+        const data = await response.json();
 
         setProfile({
           name: data.name ?? null,
           avatarUrl: data.avatarUrl ?? null,
-        })
+        });
       } catch (error) {
-        console.error('Failed to load student profile:', error)
+        console.error("Failed to load student profile:", error);
       }
-    }
+    };
 
-    loadProfile()
-  }, [])
+    loadProfile();
+  }, []);
 
-  const studentName = profile.name || 'Student'
-  const studentAvatar =
-    profile.avatarUrl || '/avatar-placeholder.png'
+  const studentName = profile.name || "Student";
+  const studentAvatar = profile.avatarUrl || "/avatar-placeholder.png";
 
   return (
     <div className="flex h-full w-full flex-col rounded-[28px] bg-[#1C1D52] px-4 py-8 text-white shadow-[0_12px_40px_rgba(28,29,82,0.18)]">
@@ -74,18 +79,24 @@ export default function StudentSidebar({ onNavigate }: { onNavigate?: () => void
             className="h-[88px] w-[88px] rounded-full object-cover"
           />
         </div>
-        <h3 className="text-base font-semibold tracking-tight">{profile.name}</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          {profile.name}
+        </h3>
         <p className="mt-1 text-sm font-medium text-white/55">Student</p>
       </div>
 
-      <nav aria-label="Student sidebar" className="mt-8 flex-1 overflow-y-auto px-1">
+      <nav
+        aria-label="Student sidebar"
+        className="mt-8 flex-1 overflow-y-auto px-1"
+      >
         <ul className="space-y-1.5">
           {navItems.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
             const active =
-              item.href === '/student'
-                ? pathname === '/student'
-                : pathname === item.href || pathname.startsWith(`${item.href}/`)
+              item.href === "/student"
+                ? pathname === "/student"
+                : pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
             return (
               <li key={item.href}>
                 <Link
@@ -93,15 +104,15 @@ export default function StudentSidebar({ onNavigate }: { onNavigate?: () => void
                   onClick={onNavigate}
                   className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                     active
-                      ? 'bg-[#5FBB46] text-white'
-                      : 'text-white/90 hover:bg-white/10'
+                      ? "bg-[#5FBB46] text-white"
+                      : "text-white/90 hover:bg-white/10"
                   }`}
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               </li>
-            )
+            );
           })}
         </ul>
       </nav>
@@ -117,5 +128,5 @@ export default function StudentSidebar({ onNavigate }: { onNavigate?: () => void
         </Link>
       </div>
     </div>
-  )
+  );
 }

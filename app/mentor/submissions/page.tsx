@@ -1,4 +1,105 @@
-import { CheckCircle2, FileText, Search } from 'lucide-react'
-import { MentorBadge, MentorPage } from '@/components/MentorPage'
-const submissions = [{ intern: 'Amaka Okafor', task: 'Build a responsive dashboard', submitted: 'Today, 9:20 AM', status: 'Pending review' }, { intern: 'Ifeoma Nwosu', task: 'API documentation exercise', submitted: 'Yesterday', status: 'Reviewed' }, { intern: 'Daniel Mensah', task: 'Product discovery brief', submitted: 'Sep 6, 2026', status: 'Needs changes' }]
-export default function MentorSubmissionsPage() { return <MentorPage title="Submissions" description="Review intern task submissions, leave feedback, and send work back for improvement when needed."><section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-[#5FBB46]" /><h2 className="text-sm font-bold text-[#1C1D52]">Task submissions</h2></div><label className="flex items-center gap-2 rounded-full bg-[#f3f6fb] px-3 py-2 text-[10px] text-slate-400"><Search className="h-3.5 w-3.5" /><input placeholder="Search submissions" className="bg-transparent outline-none" /></label></div><div className="mt-5 space-y-3">{submissions.map((submission) => <article key={`${submission.intern}-${submission.task}`} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-[#1C1D52]">{submission.task}</p><p className="mt-1 text-[10px] text-slate-500">{submission.intern} · Submitted {submission.submitted}</p></div><div className="flex items-center gap-3"><MentorBadge tone={submission.status === 'Reviewed' ? 'green' : submission.status === 'Needs changes' ? 'red' : 'amber'}>{submission.status}</MentorBadge><button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-[#1C1D52] px-3 py-2 text-[10px] font-bold text-white"><CheckCircle2 className="h-3.5 w-3.5" />Review work</button></div></article>)}</div></section></MentorPage> }
+import { FileText } from "lucide-react";
+import Link from "next/link";
+import { RoleName } from "@/generated/prisma/client";
+import MentorSubmissionsList from "@/components/MentorSubmissionsList";
+import { MentorPage } from "@/components/MentorPage";
+import {
+  getMentorInterns,
+  SUBMISSION_LABELS,
+  submissionsForInterns,
+} from "@/lib/mentor-data";
+import { getPrisma } from "@/lib/prisma";
+import { requireRouteAccess } from "@/lib/route-guards";
+
+function formatSubmitted(date: Date) {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export default async function MentorSubmissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ task?: string }>;
+}) {
+  const mentorId = await requireRouteAccess({
+    requiredRoles: [RoleName.MENTOR],
+  });
+  const { task: taskId } = await searchParams;
+  const interns = await getMentorInterns(mentorId);
+  const internNames = new Map(interns.map((i) => [i.internId, i.name]));
+
+  const submissions = await getPrisma().taskSubmission.findMany({
+    where: {
+      ...submissionsForInterns(interns),
+      ...(taskId ? { taskId } : {}),
+    },
+    orderBy: { submittedAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      userId: true,
+      content: true,
+      fileUrl: true,
+      status: true,
+      score: true,
+      feedback: true,
+      submittedAt: true,
+      task: {
+        select: { title: true, maxScore: true, module: { select: { title: true } } },
+      },
+    },
+  });
+  const filteredTaskTitle = taskId ? submissions[0]?.task.title : null;
+
+  return (
+    <MentorPage
+      title="Submissions"
+      description="Review task submissions from your interns. Accept the work, or send it back with feedback so they can resubmit."
+    >
+      <section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <FileText className="h-4 w-4 text-[#5FBB46]" />
+          <h2 className="text-sm font-bold text-[#1C1D52]">
+            {taskId
+              ? `Submissions for ${filteredTaskTitle ?? "this task"}`
+              : "Task submissions"}
+          </h2>
+          {taskId && (
+            <Link
+              href="/mentor/submissions"
+              className="text-[10px] font-bold text-blue-600"
+            >
+              Show all tasks
+            </Link>
+          )}
+        </div>
+        <MentorSubmissionsList
+          submissions={submissions.map((submission) => ({
+            id: submission.id,
+            internName: internNames.get(submission.userId) ?? "Intern",
+            taskTitle: submission.task.title,
+            moduleTitle: submission.task.module.title,
+            content: submission.content,
+            // Only link to web URLs; never render javascript: or data: links.
+            fileUrl:
+              submission.fileUrl && /^https?:\/\//i.test(submission.fileUrl)
+                ? submission.fileUrl
+                : null,
+            submittedLabel: formatSubmitted(submission.submittedAt),
+            status: submission.status,
+            statusLabel: SUBMISSION_LABELS[submission.status].label,
+            statusTone: SUBMISSION_LABELS[submission.status].tone,
+            score: submission.score,
+            maxScore: submission.task.maxScore,
+            feedback: submission.feedback,
+          }))}
+        />
+      </section>
+    </MentorPage>
+  );
+}

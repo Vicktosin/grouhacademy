@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 
 export default function LegacyObjectiveAssessmentPage() {
-  redirect('/internship/assessment/readiness')
+  redirect("/internship/assessment/readiness");
 }

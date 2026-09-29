@@ -1,116 +1,216 @@
-import { assignApplicationCohort } from '@/lib/internship-cohort'
+import { assignApplicationCohort } from "@/lib/internship-cohort";
 
 export type PaystackWebhookEvent = {
-  event?: string
-  status?: string
-  reference?: string | null
-  amount?: number | string | null
-  currency?: string | null
-  metadata?: Record<string, unknown> | null
+  event?: string;
+  status?: string;
+  reference?: string | null;
+  amount?: number | string | null;
+  currency?: string | null;
+  metadata?: Record<string, unknown> | null;
   data?: {
-    event?: string
-    status?: string
-    reference?: string | null
-    amount?: number | string | null
-    currency?: string | null
-    metadata?: Record<string, unknown> | null
-  }
-}
+    event?: string;
+    status?: string;
+    reference?: string | null;
+    amount?: number | string | null;
+    currency?: string | null;
+    metadata?: Record<string, unknown> | null;
+  };
+};
 
 export type PaystackSettlementPrisma = {
   internshipPayment: {
     findUnique(args: Record<string, unknown>): Promise<{
-      id: string
-      applicationId: string
-      status: string
-      amount: number
-      currency: string
-      application: { id: string; programId: string; cohortId: string | null } | null
-    } | null>
-    update(args: Record<string, unknown>): Promise<unknown>
-  }
+      id: string;
+      applicationId: string;
+      status: string;
+      amount: number;
+      currency: string;
+      application: {
+        id: string;
+        programId: string;
+        cohortId: string | null;
+      } | null;
+    } | null>;
+    update(args: Record<string, unknown>): Promise<unknown>;
+  };
   payment: {
-    findUnique(args: Record<string, unknown>): Promise<{ id: string; status: string; amount: number; currency: string } | null>
-    update(args: Record<string, unknown>): Promise<unknown>
-  }
-  internshipApplication: { update(args: Record<string, unknown>): Promise<unknown> }
-  internshipCohort: { findFirst(args: Record<string, unknown>): Promise<{ id: string; startDate?: Date; endDate?: Date } | null> }
-}
+    findUnique(
+      args: Record<string, unknown>,
+    ): Promise<{
+      id: string;
+      status: string;
+      amount: number;
+      currency: string;
+    } | null>;
+    update(args: Record<string, unknown>): Promise<unknown>;
+  };
+  internshipApplication: {
+    update(args: Record<string, unknown>): Promise<unknown>;
+  };
+  internshipCohort: {
+    findFirst(
+      args: Record<string, unknown>,
+    ): Promise<{ id: string; startDate?: Date; endDate?: Date } | null>;
+  };
+};
 
 function amountInSmallestUnit(value: number | string | null | undefined) {
-  const amount = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(amount) ? amount : null
+  const amount = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(amount) ? amount : null;
 }
 
-export async function settleSuccessfulPaystackPayment(prisma: PaystackSettlementPrisma, payload: PaystackWebhookEvent) {
-  const eventData = payload.data ?? payload
-  const reference = typeof eventData.reference === 'string' ? eventData.reference : null
-  const status = eventData.status ?? payload.status
-  const metadata = (eventData.metadata ?? payload.metadata ?? {}) as Record<string, unknown>
-  const applicationId = typeof metadata.applicationId === 'string' ? metadata.applicationId : undefined
-  const purpose = typeof metadata.purpose === 'string' ? metadata.purpose : undefined
-  const paystackAmount = amountInSmallestUnit(eventData.amount ?? payload.amount)
-  const paystackCurrency = typeof eventData.currency === 'string' ? eventData.currency : payload.currency
+export async function settleSuccessfulPaystackPayment(
+  prisma: PaystackSettlementPrisma,
+  payload: PaystackWebhookEvent,
+) {
+  const eventData = payload.data ?? payload;
+  const reference =
+    typeof eventData.reference === "string" ? eventData.reference : null;
+  const status = eventData.status ?? payload.status;
+  const metadata = (eventData.metadata ?? payload.metadata ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const applicationId =
+    typeof metadata.applicationId === "string"
+      ? metadata.applicationId
+      : undefined;
+  const purpose =
+    typeof metadata.purpose === "string" ? metadata.purpose : undefined;
+  const paystackAmount = amountInSmallestUnit(
+    eventData.amount ?? payload.amount,
+  );
+  const paystackCurrency =
+    typeof eventData.currency === "string"
+      ? eventData.currency
+      : payload.currency;
 
-  if (status !== 'success') {
-    return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: true, reason: 'unsuccessful_status' }
+  if (status !== "success") {
+    return {
+      updatedInternshipPayment: false,
+      updatedGenericPayment: false,
+      ignored: true,
+      reason: "unsuccessful_status",
+    };
   }
 
   if (!reference || paystackAmount === null || !paystackCurrency) {
-    console.warn('[paystack-webhook] Successful event missing reference, amount, or currency.')
-    return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: true, reason: 'incomplete_payment_data' }
+    console.warn(
+      "[paystack-webhook] Successful event missing reference, amount, or currency.",
+    );
+    return {
+      updatedInternshipPayment: false,
+      updatedGenericPayment: false,
+      ignored: true,
+      reason: "incomplete_payment_data",
+    };
   }
 
-  let updatedInternshipPayment = false
-  let updatedGenericPayment = false
+  let updatedInternshipPayment = false;
+  let updatedGenericPayment = false;
 
-  if (purpose === 'internship_acceptance_fee' || reference.startsWith('acceptance_')) {
-    const internshipPayment = await prisma.internshipPayment.findUnique({
-      where: { reference },
-      include: { application: { include: { program: true } } },
-    }).catch(() => null)
+  if (
+    purpose === "internship_acceptance_fee" ||
+    reference.startsWith("acceptance_")
+  ) {
+    const internshipPayment = await prisma.internshipPayment
+      .findUnique({
+        where: { reference },
+        include: { application: { include: { program: true } } },
+      })
+      .catch(() => null);
 
-    if (internshipPayment && internshipPayment.amount * 100 === paystackAmount && internshipPayment.currency === paystackCurrency && internshipPayment.application) {
-      if (internshipPayment.status === 'PAID') {
-        return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: false, reason: 'already_settled' }
+    if (
+      internshipPayment &&
+      internshipPayment.amount * 100 === paystackAmount &&
+      internshipPayment.currency === paystackCurrency &&
+      internshipPayment.application
+    ) {
+      if (internshipPayment.status === "PAID") {
+        return {
+          updatedInternshipPayment: false,
+          updatedGenericPayment: false,
+          ignored: false,
+          reason: "already_settled",
+        };
       }
 
       await prisma.internshipPayment.update({
         where: { id: internshipPayment.id },
-        data: { status: 'PAID', paidAt: new Date() },
-      })
+        data: { status: "PAID", paidAt: new Date() },
+      });
 
-      updatedInternshipPayment = true
+      updatedInternshipPayment = true;
 
-      if (internshipPayment.application) await assignApplicationCohort(prisma, internshipPayment.application).catch(() => null)
+      if (internshipPayment.application)
+        await assignApplicationCohort(
+          prisma,
+          internshipPayment.application,
+        ).catch(() => null);
     } else if (internshipPayment) {
-      console.warn('[paystack-webhook] Acceptance payment validation failed.', { reference })
-      return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: true, reason: 'payment_mismatch' }
+      console.warn("[paystack-webhook] Acceptance payment validation failed.", {
+        reference,
+      });
+      return {
+        updatedInternshipPayment: false,
+        updatedGenericPayment: false,
+        ignored: true,
+        reason: "payment_mismatch",
+      };
     }
   }
 
-  if (purpose === 'internship_premium' || reference.startsWith('premium_')) {
-    const genericPayment = await prisma.payment.findUnique({ where: { reference } }).catch(() => null)
+  if (purpose === "internship_premium" || reference.startsWith("premium_")) {
+    const genericPayment = await prisma.payment
+      .findUnique({ where: { reference } })
+      .catch(() => null);
 
-    if (genericPayment && genericPayment.amount * 100 === paystackAmount && genericPayment.currency === paystackCurrency) {
-      if (genericPayment.status === 'PAID') {
-        return { updatedInternshipPayment, updatedGenericPayment: false, ignored: false, reason: 'already_settled' }
+    if (
+      genericPayment &&
+      genericPayment.amount * 100 === paystackAmount &&
+      genericPayment.currency === paystackCurrency
+    ) {
+      if (genericPayment.status === "PAID") {
+        return {
+          updatedInternshipPayment,
+          updatedGenericPayment: false,
+          ignored: false,
+          reason: "already_settled",
+        };
       }
 
       await prisma.payment.update({
         where: { reference },
-        data: { status: 'PAID', paidAt: new Date() },
-      })
-      updatedGenericPayment = true
+        data: { status: "PAID", paidAt: new Date() },
+      });
+      updatedGenericPayment = true;
     } else if (genericPayment) {
-      console.warn('[paystack-webhook] Premium payment validation failed.', { reference })
-      return { updatedInternshipPayment: false, updatedGenericPayment: false, ignored: true, reason: 'payment_mismatch' }
+      console.warn("[paystack-webhook] Premium payment validation failed.", {
+        reference,
+      });
+      return {
+        updatedInternshipPayment: false,
+        updatedGenericPayment: false,
+        ignored: true,
+        reason: "payment_mismatch",
+      };
     }
   }
 
   if (!updatedInternshipPayment && !updatedGenericPayment) {
-    console.warn('[paystack-webhook] Successful event did not match a stored payment.', { reference, applicationId, purpose })
+    console.warn(
+      "[paystack-webhook] Successful event did not match a stored payment.",
+      { reference, applicationId, purpose },
+    );
   }
 
-  return { updatedInternshipPayment, updatedGenericPayment, ignored: false, reason: updatedInternshipPayment || updatedGenericPayment ? 'settled' : 'unmatched' }
+  return {
+    updatedInternshipPayment,
+    updatedGenericPayment,
+    ignored: false,
+    reason:
+      updatedInternshipPayment || updatedGenericPayment
+        ? "settled"
+        : "unmatched",
+  };
 }

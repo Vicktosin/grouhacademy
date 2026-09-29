@@ -1,29 +1,36 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { AlertCircle, ClipboardList, Loader2 } from 'lucide-react'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, ClipboardList, Loader2 } from "lucide-react";
 
 export default function AssessmentReadinessPage() {
-  const router = useRouter()
-  const [starting, setStarting] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
 
   async function startAssessment() {
-    setStarting(true)
-    setError('')
+    setStarting(true);
+    setError("");
     try {
-      const response = await fetch('/api/internship/assessment/start', { method: 'POST' })
-      const data = await response.json()
-      if (data.code === 'ONBOARDING_REQUIRED') {
-        router.replace('/internship/onboarding')
-        return
+      const response = await fetch("/api/internship/assessment/start", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.code === "ONBOARDING_REQUIRED") {
+        router.replace("/internship/onboarding");
+        return;
       }
-      if (!response.ok) throw new Error(data.error || 'Unable to start your assessment.')
-      router.push('/internship/assessment/take')
+      if (!response.ok)
+        throw new Error(data.error || "Unable to start your assessment.");
+      router.push("/internship/assessment/take");
     } catch (startError) {
-      setError(startError instanceof Error ? startError.message : 'Unable to start your assessment.')
-      setStarting(false)
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : "Unable to start your assessment.",
+      );
+      setStarting(false);
     }
   }
 
@@ -39,13 +46,21 @@ export default function AssessmentReadinessPage() {
       </div>
 
       <div className="px-6 pb-8 pt-6 text-center sm:px-8">
-        <h1 className="text-2xl font-bold text-[#1C1D52]">Ready for your assessment?</h1>
+        <h1 className="text-2xl font-bold text-[#1C1D52]">
+          Ready for your assessment?
+        </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          This is a short multiple-choice assessment designed to measure your readiness for the internship program.
-          You can answer at your own pace, and your results will be scored automatically as soon as you submit.
+          This is a short multiple-choice assessment designed to measure your
+          readiness for the internship program. You can answer at your own pace,
+          and your results will be scored automatically as soon as you submit.
         </p>
 
-        {error && <div className="mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-left text-xs text-red-700"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>}
+        {error && (
+          <div className="mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-left text-xs text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <button
           type="button"
@@ -53,9 +68,16 @@ export default function AssessmentReadinessPage() {
           disabled={starting}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-[#14204f] shadow-[0_10px_24px_rgba(95,187,70,0.22)] transition hover:translate-y-[-1px] disabled:cursor-wait disabled:opacity-70"
         >
-          {starting ? <><Loader2 className="h-4 w-4 animate-spin" />Starting...</> : 'Start Assessment'}
+          {starting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Starting...
+            </>
+          ) : (
+            "Start Assessment"
+          )}
         </button>
       </div>
     </div>
-  )
+  );
 }

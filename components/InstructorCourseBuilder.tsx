@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   ArrowLeft,
@@ -15,221 +15,223 @@ import {
   Send,
   Trash2,
   Upload,
-} from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-import type { PublicCourse } from '@/lib/course-data'
+import type { PublicCourse } from "@/lib/course-data";
 
 type LessonResource = {
-  id: string
-  url: string
-}
+  id: string;
+  url: string;
+};
 
 type Lesson = {
-  id: string
-  title: string
-  videoUrl: string
-  content: string
-  resources: LessonResource[]
-}
+  id: string;
+  title: string;
+  videoUrl: string;
+  content: string;
+  resources: LessonResource[];
+};
 
 type Module = {
-  id: string
-  title: string
-  duration: string
-  summary: string
-  hasLessons: boolean
-  videoUrl: string
-  content: string
-  resources: LessonResource[]
-  lessons: Lesson[]
-}
+  id: string;
+  title: string;
+  duration: string;
+  summary: string;
+  hasLessons: boolean;
+  videoUrl: string;
+  content: string;
+  resources: LessonResource[];
+  lessons: Lesson[];
+};
 
 type Question = {
-  id: string
-  question: string
-  options: string[]
-  answer: string
-}
+  id: string;
+  question: string;
+  options: string[];
+  answer: string;
+};
 
 // Local alias to the real API response shape - see course-data.ts for
 // why this must not be hand-typed again.
-type SavedCourse = PublicCourse
-type CourseCategoryOption = { id: string; name: string }
+type SavedCourse = PublicCourse;
+type CourseCategoryOption = { id: string; name: string };
 
 const steps = [
-  { label: 'Basics', icon: BookOpen },
-  { label: 'Curriculum', icon: Layers3 },
-  { label: 'Media', icon: FileText },
-  { label: 'Publish', icon: ImagePlus },
-  { label: 'Review', icon: CircleCheckBig },
-]
+  { label: "Basics", icon: BookOpen },
+  { label: "Curriculum", icon: Layers3 },
+  { label: "Media", icon: FileText },
+  { label: "Publish", icon: ImagePlus },
+  { label: "Review", icon: CircleCheckBig },
+];
 
 const emptyCourse = {
-  title: 'AI Product Design Bootcamp',
-  category: 'Design',
-  level: 'Intermediate',
-  duration: '6 weeks',
-  price: '$0',
-  launchDate: '2026-10-15',
+  title: "AI Product Design Bootcamp",
+  category: "Design",
+  level: "Intermediate",
+  duration: "6 weeks",
+  price: "$0",
+  launchDate: "2026-10-15",
   description:
-    'A hands-on course covering product thinking, UX research, interface systems, and rapid prototyping for digital products.',
+    "A hands-on course covering product thinking, UX research, interface systems, and rapid prototyping for digital products.",
   objectives:
-    'Design better product experiences, work with real user feedback, and build a portfolio-ready case study.',
-  videoUrl: '',
-  thumbnail: '',
-}
+    "Design better product experiences, work with real user feedback, and build a portfolio-ready case study.",
+  videoUrl: "",
+  thumbnail: "",
+};
 
 const startingModules: Module[] = [
   {
-    id: 'new-1',
-    title: 'Foundations of Product Design',
-    duration: '1h 40m',
-    summary: '',
+    id: "new-1",
+    title: "Foundations of Product Design",
+    duration: "1h 40m",
+    summary: "",
     hasLessons: true,
-    videoUrl: '',
-    content: '',
+    videoUrl: "",
+    content: "",
     resources: [],
     lessons: [
       {
-        id: 'new-2',
-        title: 'What makes a product useful?',
-        videoUrl: '',
-        content: '',
+        id: "new-2",
+        title: "What makes a product useful?",
+        videoUrl: "",
+        content: "",
         resources: [],
       },
     ],
   },
-]
+];
 
 const startingQuestions: Question[] = [
   {
-    id: 'q-1',
-    question: 'What is the primary goal of user research?',
+    id: "q-1",
+    question: "What is the primary goal of user research?",
     options: [
-      'To make designs look aesthetic',
-      'To understand user needs and pain points',
-      'To code faster',
-      'To reduce course duration',
+      "To make designs look aesthetic",
+      "To understand user needs and pain points",
+      "To code faster",
+      "To reduce course duration",
     ],
-    answer: 'To understand user needs and pain points',
+    answer: "To understand user needs and pain points",
   },
-]
+];
 
 function newItemId() {
-  return `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function persistedId(id: string) {
-  return id.startsWith('new-') ? undefined : id
+  return id.startsWith("new-") ? undefined : id;
 }
 
 function hydrateModules(course: SavedCourse): Module[] {
   if (!course.modules.length) {
-    return []
+    return [];
   }
 
   return course.modules.map((module) => {
     const moduleResources = module.resources.map((resource) => ({
       id: resource.id,
       url: resource.url,
-    }))
+    }));
 
-    const hasDirectContent = Boolean(module.videoUrl || module.content || moduleResources.length)
+    const hasDirectContent = Boolean(
+      module.videoUrl || module.content || moduleResources.length,
+    );
 
     return {
       id: module.id,
       title: module.title,
-      duration: '',
-      summary: module.description ?? '',
+      duration: "",
+      summary: module.description ?? "",
       // A module is treated as lesson-based unless it has lessons (true),
       // OR it has no lessons but does have direct content saved (false).
       // A brand-new, entirely empty module defaults to lesson-based, same
       // as addModule() below.
       hasLessons: module.lessons.length > 0 || !hasDirectContent,
-      videoUrl: module.videoUrl ?? '',
-      content: module.content ?? '',
+      videoUrl: module.videoUrl ?? "",
+      content: module.content ?? "",
       resources: moduleResources,
       lessons: module.lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.title,
-        videoUrl: lesson.videoUrl ?? '',
-        content: lesson.content ?? '',
+        videoUrl: lesson.videoUrl ?? "",
+        content: lesson.content ?? "",
         resources: lesson.resources.map((resource) => ({
           id: resource.id,
           url: resource.url,
         })),
       })),
-    }
-  })
+    };
+  });
 }
 
 export default function InstructorCourseBuilder({
-  mode = 'create',
+  mode = "create",
   courseSlug,
   courseTitle,
 }: {
-  mode?: 'create' | 'edit'
-  courseSlug?: string
-  courseTitle?: string
+  mode?: "create" | "edit";
+  courseSlug?: string;
+  courseTitle?: string;
 }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const isAdmin = pathname.startsWith('/admin/student/courses')
-  const workspaceLabel = isAdmin ? 'Admin Course Builder' : 'Course Builder'
+  const isAdmin = pathname.startsWith("/admin/student/courses");
+  const workspaceLabel = isAdmin ? "Admin Course Builder" : "Course Builder";
 
-  const backHref = isAdmin
-    ? '/admin/student/courses'
-    : '/instructor/courses'
+  const backHref = isAdmin ? "/admin/student/courses" : "/instructor/courses";
 
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentStep, setCurrentStep] = useState(0);
 
   const [course, setCourse] = useState({
     ...emptyCourse,
     title: courseTitle ?? emptyCourse.title,
-  })
+  });
 
   const [modules, setModules] = useState<Module[]>(
-    mode === 'edit' ? [] : startingModules,
-  )
+    mode === "edit" ? [] : startingModules,
+  );
 
-  const [quizEnabled, setQuizEnabled] = useState(true)
-  const [quizTitle, setQuizTitle] = useState('Module Checkpoint Quiz')
-  const [quizPassingScore, setQuizPassingScore] = useState('80')
-  const [questions, setQuestions] = useState(startingQuestions)
+  const [quizEnabled, setQuizEnabled] = useState(true);
+  const [quizTitle, setQuizTitle] = useState("Module Checkpoint Quiz");
+  const [quizPassingScore, setQuizPassingScore] = useState("80");
+  const [questions, setQuestions] = useState(startingQuestions);
 
-  const [message, setMessage] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(
-    mode === 'edit' && Boolean(courseSlug),
-  )
+    mode === "edit" && Boolean(courseSlug),
+  );
 
-  const [persistedSlug, setPersistedSlug] = useState(courseSlug ?? '')
-  const [categories, setCategories] = useState<CourseCategoryOption[]>([])
+  const [persistedSlug, setPersistedSlug] = useState(courseSlug ?? "");
+  const [categories, setCategories] = useState<CourseCategoryOption[]>([]);
 
-  const isEditMode = mode === 'edit' || Boolean(persistedSlug)
-  const progress = ((currentStep + 1) / steps.length) * 100
+  const isEditMode = mode === "edit" || Boolean(persistedSlug);
+  const progress = ((currentStep + 1) / steps.length) * 100;
 
   useEffect(() => {
-    fetch('/api/course-categories', { cache: 'no-store' })
+    fetch("/api/course-categories", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Unable to load course categories.')
-        const data = (await response.json()) as { categories?: CourseCategoryOption[] }
-        setCategories(data.categories ?? [])
+        if (!response.ok) throw new Error("Unable to load course categories.");
+        const data = (await response.json()) as {
+          categories?: CourseCategoryOption[];
+        };
+        setCategories(data.categories ?? []);
       })
-      .catch(() => setCategories([]))
-  }, [])
+      .catch(() => setCategories([]));
+  }, []);
 
   const field = (name: string, value: string) => {
     setCourse((previous) => ({
       ...previous,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const updateModule = (
     id: string,
@@ -245,8 +247,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const addModule = () => {
     setModules((items) => [
@@ -254,20 +256,20 @@ export default function InstructorCourseBuilder({
       {
         id: newItemId(),
         title: `Module ${items.length + 1}`,
-        duration: '45m',
-        summary: '',
+        duration: "45m",
+        summary: "",
         hasLessons: true,
-        videoUrl: '',
-        content: '',
+        videoUrl: "",
+        content: "",
         resources: [],
         lessons: [],
       },
-    ])
-  }
+    ]);
+  };
 
   const removeModule = (id: string) => {
-    setModules((items) => items.filter((item) => item.id !== id))
-  }
+    setModules((items) => items.filter((item) => item.id !== id));
+  };
 
   const addLesson = (moduleId: string) => {
     setModules((items) =>
@@ -280,16 +282,16 @@ export default function InstructorCourseBuilder({
                 {
                   id: newItemId(),
                   title: `Lesson ${item.lessons.length + 1}`,
-                  videoUrl: '',
-                  content: '',
+                  videoUrl: "",
+                  content: "",
                   resources: [],
                 },
               ],
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const removeLesson = (moduleId: string, lessonId: string) => {
     setModules((items) =>
@@ -297,14 +299,12 @@ export default function InstructorCourseBuilder({
         item.id === moduleId
           ? {
               ...item,
-              lessons: item.lessons.filter(
-                (lesson) => lesson.id !== lessonId,
-              ),
+              lessons: item.lessons.filter((lesson) => lesson.id !== lessonId),
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const updateLesson = (
     moduleId: string,
@@ -328,8 +328,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const addResourceToLesson = (moduleId: string, lessonId: string) => {
     setModules((items) =>
@@ -343,7 +343,7 @@ export default function InstructorCourseBuilder({
                       ...lesson,
                       resources: [
                         ...lesson.resources,
-                        { id: newItemId(), url: '' },
+                        { id: newItemId(), url: "" },
                       ],
                     }
                   : lesson,
@@ -351,8 +351,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const updateLessonResource = (
     moduleId: string,
@@ -378,8 +378,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const removeLessonResource = (
     moduleId: string,
@@ -404,8 +404,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const addModuleResource = (moduleId: string) => {
     setModules((items) =>
@@ -413,12 +413,12 @@ export default function InstructorCourseBuilder({
         item.id === moduleId
           ? {
               ...item,
-              resources: [...item.resources, { id: newItemId(), url: '' }],
+              resources: [...item.resources, { id: newItemId(), url: "" }],
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const updateModuleResource = (
     moduleId: string,
@@ -436,8 +436,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const removeModuleResource = (moduleId: string, resourceId: string) => {
     setModules((items) =>
@@ -449,8 +449,8 @@ export default function InstructorCourseBuilder({
             }
           : item,
       ),
-    )
-  }
+    );
+  };
 
   const addQuestion = () => {
     setQuestions((items) => [
@@ -458,73 +458,73 @@ export default function InstructorCourseBuilder({
       {
         id: newItemId(),
         question: `Question ${items.length + 1}`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        answer: 'Option A',
+        options: ["Option A", "Option B", "Option C", "Option D"],
+        answer: "Option A",
       },
-    ])
-  }
+    ]);
+  };
 
   const applySavedCourse = (data: SavedCourse) => {
-    setPersistedSlug(data.slug)
+    setPersistedSlug(data.slug);
 
     setCourse((previous) => ({
       ...previous,
       title: data.title,
       category: data.category?.name ?? previous.category,
       price: `$${data.price}`,
-      description: data.description ?? '',
-      thumbnail: data.thumbnail ?? '',
-    }))
+      description: data.description ?? "",
+      thumbnail: data.thumbnail ?? "",
+    }));
 
-    setModules(hydrateModules(data))
-  }
+    setModules(hydrateModules(data));
+  };
 
   useEffect(() => {
-    if (mode !== 'edit' || !courseSlug) {
-      return
+    if (mode !== "edit" || !courseSlug) {
+      return;
     }
 
-    let cancelled = false
+    let cancelled = false;
 
     const load = async () => {
       try {
-        const response = await fetch(`/api/courses/${courseSlug}`)
+        const response = await fetch(`/api/courses/${courseSlug}`);
         const data = (await response.json()) as SavedCourse & {
-          error?: string
-        }
+          error?: string;
+        };
 
         if (cancelled) {
-          return
+          return;
         }
 
         if (!response.ok) {
-          setMessage(data.error ?? 'Unable to load course.')
-          setLoading(false)
-          return
+          setMessage(data.error ?? "Unable to load course.");
+          setLoading(false);
+          return;
         }
 
-        applySavedCourse(data)
-        setLoading(false)
+        applySavedCourse(data);
+        setLoading(false);
       } catch {
         if (!cancelled) {
-          setMessage('Unable to load course.')
-          setLoading(false)
+          setMessage("Unable to load course.");
+          setLoading(false);
         }
       }
-    }
+    };
 
-    void load()
+    void load();
 
     return () => {
-      cancelled = true
-    }
-  }, [mode, courseSlug])
+      cancelled = true;
+    };
+  }, [mode, courseSlug]);
 
   const persistCourse = async (
-    action: 'draft' | 'submit' | 'publish' = 'draft',
+    action: "draft" | "submit" | "publish" = "draft",
   ) => {
-    setSaving(true)
-    setMessage(null)
+    setSaving(true);
+    setMessage(null);
 
     try {
       // NOTE: `status` is only included when an admin is explicitly
@@ -539,7 +539,7 @@ export default function InstructorCourseBuilder({
         title: course.title,
         description: course.description,
         category: course.category,
-        price: Number(course.price.replace(/[^0-9.]/g, '')) || 0,
+        price: Number(course.price.replace(/[^0-9.]/g, "")) || 0,
         thumbnail: course.thumbnail || null,
 
         modules: modules.map((module) => ({
@@ -561,7 +561,7 @@ export default function InstructorCourseBuilder({
                 .map((res) => ({
                   id: persistedId(res.id),
                   title: res.url.trim(),
-                  type: 'link',
+                  type: "link",
                   url: res.url.trim(),
                 }))
                 .filter((res) => res.url),
@@ -576,102 +576,91 @@ export default function InstructorCourseBuilder({
                   .map((res) => ({
                     id: persistedId(res.id),
                     title: res.url.trim(),
-                    type: 'link',
+                    type: "link",
                     url: res.url.trim(),
                   }))
                   .filter((res) => res.url),
               }))
             : [],
         })),
+      };
+
+      if (isAdmin && action === "publish") {
+        payload.status = "PUBLISHED";
       }
 
-      if (isAdmin && action === 'publish') {
-        payload.status = 'PUBLISHED'
-      }
-
-      const targetSlug = persistedSlug || courseSlug
+      const targetSlug = persistedSlug || courseSlug;
 
       const response = targetSlug
         ? await fetch(`/api/courses/${targetSlug}`, {
-            method: 'PATCH',
+            method: "PATCH",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),
           })
-        : await fetch('/api/courses', {
-            method: 'POST',
+        : await fetch("/api/courses", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),
-          })
+          });
 
       const data = (await response.json()) as SavedCourse & {
-        error?: string
-      }
+        error?: string;
+      };
 
       if (!response.ok || !data.slug) {
-        setMessage(data.error ?? 'Unable to save course.')
-        return
+        setMessage(data.error ?? "Unable to save course.");
+        return;
       }
 
-      applySavedCourse(data)
+      applySavedCourse(data);
 
-      if (isAdmin && action === 'publish') {
-        setMessage('Course published successfully.')
-      } else if (isAdmin && action === 'draft') {
-        setMessage('Course draft saved successfully.')
-      } else if (!isAdmin && action === 'submit') {
-        const submission = await fetch(
-          `/api/courses/${data.slug}/submit`,
-          {
-            method: 'POST',
-          },
-        )
+      if (isAdmin && action === "publish") {
+        setMessage("Course published successfully.");
+      } else if (isAdmin && action === "draft") {
+        setMessage("Course draft saved successfully.");
+      } else if (!isAdmin && action === "submit") {
+        const submission = await fetch(`/api/courses/${data.slug}/submit`, {
+          method: "POST",
+        });
 
         const submissionData = (await submission.json()) as {
-          error?: string
-        }
+          error?: string;
+        };
 
         if (!submission.ok) {
           setMessage(
-            submissionData.error ??
-              'Unable to submit course for review.',
-          )
-          return
+            submissionData.error ?? "Unable to submit course for review.",
+          );
+          return;
         }
 
-        setMessage('Course submitted for admin review.')
+        setMessage("Course submitted for admin review.");
       } else {
-        setMessage('Course saved successfully.')
+        setMessage("Course saved successfully.");
       }
 
-      if (
-        !targetSlug &&
-        pathname.startsWith('/instructor/courses')
-      ) {
-        router.replace(
-          `/instructor/courses/${data.slug}/edit`,
-        )
+      if (!targetSlug && pathname.startsWith("/instructor/courses")) {
+        router.replace(`/instructor/courses/${data.slug}/edit`);
       }
 
-      router.refresh()
+      router.refresh();
     } catch {
-      setMessage('Unable to save course.')
+      setMessage("Unable to save course.");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex min-h-[500px] items-center justify-center">
-        <p className="text-sm text-slate-500">
-          Loading course...
-        </p>
+        <p className="text-sm text-slate-500">Loading course...</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -699,26 +688,24 @@ export default function InstructorCourseBuilder({
               </p>
 
               <h1 className="mt-1 text-2xl font-semibold text-[#1C1D52]">
-                {isEditMode
-                  ? 'Edit Course'
-                  : 'Create New Course'}
+                {isEditMode ? "Edit Course" : "Create New Course"}
               </h1>
 
               <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
                 {isAdmin
-                  ? 'Create, edit, save, and publish courses directly to the student catalogue.'
-                  : 'Create your course, save your progress, and submit it to an administrator when it is ready for review.'}
+                  ? "Create, edit, save, and publish courses directly to the student catalogue."
+                  : "Create your course, save your progress, and submit it to an administrator when it is ready for review."}
               </p>
             </div>
 
             <button
               type="button"
               disabled={saving}
-              onClick={() => void persistCourse('draft')}
+              onClick={() => void persistCourse("draft")}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
-              {saving ? 'Saving...' : 'Save Draft'}
+              {saving ? "Saving..." : "Save Draft"}
             </button>
           </div>
 
@@ -735,7 +722,7 @@ export default function InstructorCourseBuilder({
             <div className="mb-3 flex items-center justify-between">
               <div className="flex gap-2 overflow-x-auto">
                 {steps.map((step, index) => {
-                  const Icon = step.icon
+                  const Icon = step.icon;
 
                   return (
                     <button
@@ -744,14 +731,14 @@ export default function InstructorCourseBuilder({
                       onClick={() => setCurrentStep(index)}
                       className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-[10px] font-semibold ${
                         currentStep === index
-                          ? 'bg-[#1C1D52] text-white'
-                          : 'bg-slate-100 text-slate-500'
+                          ? "bg-[#1C1D52] text-white"
+                          : "bg-slate-100 text-slate-500"
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
                       {step.label}
                     </button>
-                  )
+                  );
                 })}
               </div>
 
@@ -812,11 +799,7 @@ export default function InstructorCourseBuilder({
           )}
 
           {currentStep === 3 && (
-            <BuilderPublish
-              course={course}
-              field={field}
-              isAdmin={isAdmin}
-            />
+            <BuilderPublish course={course} field={field} isAdmin={isAdmin} />
           )}
 
           {currentStep === 4 && (
@@ -832,9 +815,7 @@ export default function InstructorCourseBuilder({
           <button
             type="button"
             disabled={currentStep === 0}
-            onClick={() =>
-              setCurrentStep((step) => Math.max(0, step - 1))
-            }
+            onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -845,9 +826,7 @@ export default function InstructorCourseBuilder({
             <button
               type="button"
               onClick={() =>
-                setCurrentStep((step) =>
-                  Math.min(steps.length - 1, step + 1),
-                )
+                setCurrentStep((step) => Math.min(steps.length - 1, step + 1))
               }
               className="inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-semibold text-white"
             >
@@ -858,29 +837,27 @@ export default function InstructorCourseBuilder({
             <button
               type="button"
               disabled={saving}
-              onClick={() => void persistCourse('publish')}
+              onClick={() => void persistCourse("publish")}
               className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-bold text-[#14204f] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Check className="h-4 w-4" />
-              {saving ? 'Publishing...' : 'Publish Course'}
+              {saving ? "Publishing..." : "Publish Course"}
             </button>
           ) : (
             <button
               type="button"
               disabled={saving}
-              onClick={() => void persistCourse('submit')}
+              onClick={() => void persistCourse("submit")}
               className="inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Send className="h-4 w-4" />
-              {saving
-                ? 'Submitting...'
-                : 'Submit for Admin Review'}
+              {saving ? "Submitting..." : "Submit for Admin Review"}
             </button>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function BuilderHeading({
@@ -888,33 +865,80 @@ function BuilderHeading({
   title,
   text,
 }: {
-  icon: typeof BookOpen
-  title: string
-  text: string
+  icon: typeof BookOpen;
+  title: string;
+  text: string;
 }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-[#5FBB46]" />
-        <h2 className="text-lg font-semibold text-[#1C1D52]">
-          {title}
-        </h2>
+        <h2 className="text-lg font-semibold text-[#1C1D52]">{title}</h2>
       </div>
 
-      <p className="mt-2 text-xs leading-5 text-slate-500">
-        {text}
-      </p>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{text}</p>
     </div>
-  )
+  );
 }
 
-function CategorySelect({ value, categories, onChange }: { value: string; categories: CourseCategoryOption[]; onChange: (value: string) => void }) {
-  return <label className="text-[10px] font-semibold text-[#1C1D52]">Category<select required value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-[#5FBB46]"><option value="">Select a category</option>{categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}{value && !categories.some((category) => category.name === value) && <option value={value}>{value} (legacy)</option>}</select></label>
+function CategorySelect({
+  value,
+  categories,
+  onChange,
+}: {
+  value: string;
+  categories: CourseCategoryOption[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="text-[10px] font-semibold text-[#1C1D52]">
+      Category
+      <select
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-[#5FBB46]"
+      >
+        <option value="">Select a category</option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.name}>
+            {category.name}
+          </option>
+        ))}
+        {value && !categories.some((category) => category.name === value) && (
+          <option value={value}>{value} (legacy)</option>
+        )}
+      </select>
+    </label>
+  );
 }
 
-function PriceInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const pricingEnabled = process.env.NEXT_PUBLIC_COURSE_PRICING_ENABLED === 'true'
-  return <label className="text-[10px] font-semibold text-[#1C1D52]">Price<input type="text" value={pricingEnabled ? value : '$0'} onChange={(event) => onChange(event.target.value)} disabled={!pricingEnabled} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-normal outline-none focus:border-[#5FBB46] disabled:cursor-not-allowed disabled:text-slate-500" /><span className="mt-1 block text-[9px] font-normal text-slate-500">{pricingEnabled ? 'This price will be shown to learners.' : 'Courses are currently free. Pricing can be enabled later without changing the course.'}</span></label>
+function PriceInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const pricingEnabled =
+    process.env.NEXT_PUBLIC_COURSE_PRICING_ENABLED === "true";
+  return (
+    <label className="text-[10px] font-semibold text-[#1C1D52]">
+      Price
+      <input
+        type="text"
+        value={pricingEnabled ? value : "$0"}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={!pricingEnabled}
+        className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-normal outline-none focus:border-[#5FBB46] disabled:cursor-not-allowed disabled:text-slate-500"
+      />
+      <span className="mt-1 block text-[9px] font-normal text-slate-500">
+        {pricingEnabled
+          ? "This price will be shown to learners."
+          : "Courses are currently free. Pricing can be enabled later without changing the course."}
+      </span>
+    </label>
+  );
 }
 
 function BuilderBasics({
@@ -922,9 +946,9 @@ function BuilderBasics({
   categories,
   field,
 }: {
-  course: typeof emptyCourse
-  categories: CourseCategoryOption[]
-  field: (name: string, value: string) => void
+  course: typeof emptyCourse;
+  categories: CourseCategoryOption[];
+  field: (name: string, value: string) => void;
 }) {
   return (
     <>
@@ -938,32 +962,39 @@ function BuilderBasics({
         <Input
           label="Course title"
           value={course.title}
-          onChange={(value) => field('title', value)}
+          onChange={(value) => field("title", value)}
           placeholder="Enter course title"
         />
 
-        <CategorySelect value={course.category} categories={categories} onChange={(value) => field('category', value)} />
+        <CategorySelect
+          value={course.category}
+          categories={categories}
+          onChange={(value) => field("category", value)}
+        />
 
         <Input
           label="Level"
           value={course.level}
-          onChange={(value) => field('level', value)}
+          onChange={(value) => field("level", value)}
           placeholder="e.g. Intermediate"
         />
 
         <Input
           label="Duration"
           value={course.duration}
-          onChange={(value) => field('duration', value)}
+          onChange={(value) => field("duration", value)}
           placeholder="e.g. 6 weeks"
         />
 
-        <PriceInput value={course.price} onChange={(value) => field('price', value)} />
+        <PriceInput
+          value={course.price}
+          onChange={(value) => field("price", value)}
+        />
 
         <Input
           label="Launch date"
           value={course.launchDate}
-          onChange={(value) => field('launchDate', value)}
+          onChange={(value) => field("launchDate", value)}
           type="date"
         />
       </div>
@@ -972,7 +1003,7 @@ function BuilderBasics({
         <Textarea
           label="Course summary"
           value={course.description}
-          onChange={(value) => field('description', value)}
+          onChange={(value) => field("description", value)}
           placeholder="Describe what students will learn..."
         />
       </div>
@@ -981,12 +1012,12 @@ function BuilderBasics({
         <Textarea
           label="Learning goals"
           value={course.objectives}
-          onChange={(value) => field('objectives', value)}
+          onChange={(value) => field("objectives", value)}
           placeholder="What should students be able to do after completing this course?"
         />
       </div>
     </>
-  )
+  );
 }
 
 function BuilderCurriculum({
@@ -1004,41 +1035,41 @@ function BuilderCurriculum({
   updateModuleResource,
   removeModuleResource,
 }: {
-  modules: Module[]
+  modules: Module[];
   updateModule: (
     id: string,
     key: keyof Module,
     value: string | boolean,
-  ) => void
-  addModule: () => void
-  removeModule: (id: string) => void
-  addLesson: (moduleId: string) => void
-  removeLesson: (moduleId: string, lessonId: string) => void
+  ) => void;
+  addModule: () => void;
+  removeModule: (id: string) => void;
+  addLesson: (moduleId: string) => void;
+  removeLesson: (moduleId: string, lessonId: string) => void;
   updateLesson: (
     moduleId: string,
     lessonId: string,
     key: keyof Lesson,
     value: Lesson[keyof Lesson],
-  ) => void
-  addResourceToLesson: (moduleId: string, lessonId: string) => void
+  ) => void;
+  addResourceToLesson: (moduleId: string, lessonId: string) => void;
   updateLessonResource: (
     moduleId: string,
     lessonId: string,
     resourceId: string,
     url: string,
-  ) => void
+  ) => void;
   removeLessonResource: (
     moduleId: string,
     lessonId: string,
     resourceId: string,
-  ) => void
-  addModuleResource: (moduleId: string) => void
+  ) => void;
+  addModuleResource: (moduleId: string) => void;
   updateModuleResource: (
     moduleId: string,
     resourceId: string,
     url: string,
-  ) => void
-  removeModuleResource: (moduleId: string, resourceId: string) => void
+  ) => void;
+  removeModuleResource: (moduleId: string, resourceId: string) => void;
 }) {
   return (
     <>
@@ -1063,11 +1094,7 @@ function BuilderCurriculum({
                 <input
                   value={module.title}
                   onChange={(event) =>
-                    updateModule(
-                      module.id,
-                      'title',
-                      event.target.value,
-                    )
+                    updateModule(module.id, "title", event.target.value)
                   }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-[#1C1D52] outline-none focus:border-[#5FBB46]"
                   placeholder="Module title"
@@ -1087,13 +1114,7 @@ function BuilderCurriculum({
               <Textarea
                 label="Module summary"
                 value={module.summary}
-                onChange={(value) =>
-                  updateModule(
-                    module.id,
-                    'summary',
-                    value,
-                  )
-                }
+                onChange={(value) => updateModule(module.id, "summary", value)}
                 placeholder="Describe this module..."
               />
             </div>
@@ -1105,22 +1126,22 @@ function BuilderCurriculum({
               <div className="inline-flex rounded-lg border border-slate-200 p-1">
                 <button
                   type="button"
-                  onClick={() => updateModule(module.id, 'hasLessons', true)}
+                  onClick={() => updateModule(module.id, "hasLessons", true)}
                   className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${
                     module.hasLessons
-                      ? 'bg-[#1C1D52] text-white'
-                      : 'text-slate-500'
+                      ? "bg-[#1C1D52] text-white"
+                      : "text-slate-500"
                   }`}
                 >
                   Lessons
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateModule(module.id, 'hasLessons', false)}
+                  onClick={() => updateModule(module.id, "hasLessons", false)}
                   className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${
                     !module.hasLessons
-                      ? 'bg-[#1C1D52] text-white'
-                      : 'text-slate-500'
+                      ? "bg-[#1C1D52] text-white"
+                      : "text-slate-500"
                   }`}
                 >
                   Direct content
@@ -1128,8 +1149,8 @@ function BuilderCurriculum({
               </div>
               <p className="mt-2 text-[10px] text-slate-500">
                 {module.hasLessons
-                  ? 'Break this module into individual lessons students step through.'
-                  : 'This module is one piece of content - a single video/workshop - with no separate lessons.'}
+                  ? "Break this module into individual lessons students step through."
+                  : "This module is one piece of content - a single video/workshop - with no separate lessons."}
               </p>
             </div>
 
@@ -1138,14 +1159,18 @@ function BuilderCurriculum({
                 <Input
                   label="Video URL"
                   value={module.videoUrl}
-                  onChange={(value) => updateModule(module.id, 'videoUrl', value)}
+                  onChange={(value) =>
+                    updateModule(module.id, "videoUrl", value)
+                  }
                   placeholder="https://..."
                 />
 
                 <Textarea
                   label="Module content"
                   value={module.content}
-                  onChange={(value) => updateModule(module.id, 'content', value)}
+                  onChange={(value) =>
+                    updateModule(module.id, "content", value)
+                  }
                   placeholder="Workshop brief, instructions, or notes for this module..."
                 />
 
@@ -1164,16 +1189,27 @@ function BuilderCurriculum({
                   </div>
                   <div className="space-y-2">
                     {module.resources.map((resource) => (
-                      <div key={resource.id} className="flex items-center gap-2">
+                      <div
+                        key={resource.id}
+                        className="flex items-center gap-2"
+                      >
                         <input
                           value={resource.url}
-                          onChange={(e) => updateModuleResource(module.id, resource.id, e.target.value)}
+                          onChange={(e) =>
+                            updateModuleResource(
+                              module.id,
+                              resource.id,
+                              e.target.value,
+                            )
+                          }
                           placeholder="https://..."
                           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
                         />
                         <button
                           type="button"
-                          onClick={() => removeModuleResource(module.id, resource.id)}
+                          onClick={() =>
+                            removeModuleResource(module.id, resource.id)
+                          }
                           className="text-red-500 p-1 hover:bg-red-50 rounded"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1181,7 +1217,9 @@ function BuilderCurriculum({
                       </div>
                     ))}
                     {module.resources.length === 0 && (
-                      <p className="text-[10px] text-slate-400 italic">No resources added yet.</p>
+                      <p className="text-[10px] text-slate-400 italic">
+                        No resources added yet.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -1189,137 +1227,129 @@ function BuilderCurriculum({
             )}
 
             {module.hasLessons && (
-            <div className="mt-4 space-y-3">
-              {module.lessons.map((lesson, lessonIndex) => (
-                <div
-                  key={lesson.id}
-                  className="rounded-lg bg-[#f8fbff] p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                      Lesson {lessonIndex + 1}
-                    </p>
+              <div className="mt-4 space-y-3">
+                {module.lessons.map((lesson, lessonIndex) => (
+                  <div key={lesson.id} className="rounded-lg bg-[#f8fbff] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                        Lesson {lessonIndex + 1}
+                      </p>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeLesson(module.id, lesson.id)
-                      }
-                      className="text-red-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <input
-                    value={lesson.title}
-                    onChange={(event) =>
-                      updateLesson(
-                        module.id,
-                        lesson.id,
-                        'title',
-                        event.target.value,
-                      )
-                    }
-                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                    placeholder="Lesson title"
-                  />
-
-                  <div className="mt-3">
-                    <Textarea
-                      label="Lesson content"
-                      value={lesson.content}
-                      onChange={(value) =>
-                        updateLesson(
-                          module.id,
-                          lesson.id,
-                          'content',
-                          value,
-                        )
-                      }
-                      placeholder="Lesson notes or text..."
-                    />
-                  </div>
-
-                  <div className="mt-3">
-                    <Input
-                      label="Video URL"
-                      value={lesson.videoUrl}
-                      onChange={(value) =>
-                        updateLesson(
-                          module.id,
-                          lesson.id,
-                          'videoUrl',
-                          value,
-                        )
-                      }
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                        Course materials
-                      </span>
                       <button
                         type="button"
-                        onClick={() => addResourceToLesson(module.id, lesson.id)}
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1C1D52]"
+                        onClick={() => removeLesson(module.id, lesson.id)}
+                        className="text-red-500"
                       >
-                        <Plus className="h-3 w-3" /> Add Resource URL
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="space-y-2">
-                      {lesson.resources.map((resource) => (
-                        <div key={resource.id} className="flex items-center gap-2">
-                          <input
-                            value={resource.url}
-                            onChange={(e) =>
-                              updateLessonResource(
-                                module.id,
-                                lesson.id,
-                                resource.id,
-                                e.target.value,
-                              )
-                            }
-                            placeholder="https://..."
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeLessonResource(
-                                module.id,
-                                lesson.id,
-                                resource.id,
-                              )
-                            }
-                            className="text-red-500 p-1 hover:bg-red-50 rounded"
+
+                    <input
+                      value={lesson.title}
+                      onChange={(event) =>
+                        updateLesson(
+                          module.id,
+                          lesson.id,
+                          "title",
+                          event.target.value,
+                        )
+                      }
+                      className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
+                      placeholder="Lesson title"
+                    />
+
+                    <div className="mt-3">
+                      <Textarea
+                        label="Lesson content"
+                        value={lesson.content}
+                        onChange={(value) =>
+                          updateLesson(module.id, lesson.id, "content", value)
+                        }
+                        placeholder="Lesson notes or text..."
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <Input
+                        label="Video URL"
+                        value={lesson.videoUrl}
+                        onChange={(value) =>
+                          updateLesson(module.id, lesson.id, "videoUrl", value)
+                        }
+                        placeholder="https://..."
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                          Course materials
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addResourceToLesson(module.id, lesson.id)
+                          }
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1C1D52]"
+                        >
+                          <Plus className="h-3 w-3" /> Add Resource URL
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {lesson.resources.map((resource) => (
+                          <div
+                            key={resource.id}
+                            className="flex items-center gap-2"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                      {lesson.resources.length === 0 && (
-                        <p className="text-[10px] text-slate-400 italic">No resources added yet.</p>
-                      )}
+                            <input
+                              value={resource.url}
+                              onChange={(e) =>
+                                updateLessonResource(
+                                  module.id,
+                                  lesson.id,
+                                  resource.id,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="https://..."
+                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeLessonResource(
+                                  module.id,
+                                  lesson.id,
+                                  resource.id,
+                                )
+                              }
+                              className="text-red-500 p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        {lesson.resources.length === 0 && (
+                          <p className="text-[10px] text-slate-400 italic">
+                            No resources added yet.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             )}
 
             {module.hasLessons && (
-            <button
-              type="button"
-              onClick={() => addLesson(module.id)}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Lesson
-            </button>
+              <button
+                type="button"
+                onClick={() => addLesson(module.id)}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Lesson
+              </button>
             )}
           </div>
         ))}
@@ -1334,7 +1364,7 @@ function BuilderCurriculum({
         Add Module
       </button>
     </>
-  )
+  );
 }
 
 function BuilderMedia({
@@ -1349,16 +1379,16 @@ function BuilderMedia({
   questions,
   addQuestion,
 }: {
-  course: typeof emptyCourse
-  field: (name: string, value: string) => void
-  quizEnabled: boolean
-  setQuizEnabled: (value: boolean) => void
-  quizTitle: string
-  setQuizTitle: (value: string) => void
-  quizPassingScore: string
-  setQuizPassingScore: (value: string) => void
-  questions: Question[]
-  addQuestion: () => void
+  course: typeof emptyCourse;
+  field: (name: string, value: string) => void;
+  quizEnabled: boolean;
+  setQuizEnabled: (value: boolean) => void;
+  quizTitle: string;
+  setQuizTitle: (value: string) => void;
+  quizPassingScore: string;
+  setQuizPassingScore: (value: string) => void;
+  questions: Question[];
+  addQuestion: () => void;
 }) {
   return (
     <>
@@ -1371,7 +1401,7 @@ function BuilderMedia({
       <Input
         label="Course trailer video URL"
         value={course.videoUrl}
-        onChange={(value) => field('videoUrl', value)}
+        onChange={(value) => field("videoUrl", value)}
         placeholder="https://..."
       />
 
@@ -1379,7 +1409,7 @@ function BuilderMedia({
         <ImageUploadInput
           label="Course thumbnail"
           value={course.thumbnail}
-          onChange={(value) => field('thumbnail', value)}
+          onChange={(value) => field("thumbnail", value)}
         />
       </div>
 
@@ -1407,11 +1437,11 @@ function BuilderMedia({
             onClick={() => setQuizEnabled(!quizEnabled)}
             className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${
               quizEnabled
-                ? 'bg-[#e8f7eb] text-[#397d3a]'
-                : 'bg-slate-100 text-slate-500'
+                ? "bg-[#e8f7eb] text-[#397d3a]"
+                : "bg-slate-100 text-slate-500"
             }`}
           >
-            {quizEnabled ? 'Enabled' : 'Disabled'}
+            {quizEnabled ? "Enabled" : "Disabled"}
           </button>
         </div>
 
@@ -1432,10 +1462,7 @@ function BuilderMedia({
 
             <div className="space-y-3">
               {questions.map((question) => (
-                <div
-                  key={question.id}
-                  className="rounded-lg bg-[#f8fbff] p-4"
-                >
+                <div key={question.id} className="rounded-lg bg-[#f8fbff] p-4">
                   <p className="text-xs font-semibold text-[#1C1D52]">
                     {question.question}
                   </p>
@@ -1466,7 +1493,7 @@ function BuilderMedia({
         )}
       </div>
     </>
-  )
+  );
 }
 
 function BuilderPublish({
@@ -1474,9 +1501,9 @@ function BuilderPublish({
   field,
   isAdmin,
 }: {
-  course: typeof emptyCourse
-  field: (name: string, value: string) => void
-  isAdmin: boolean
+  course: typeof emptyCourse;
+  field: (name: string, value: string) => void;
+  isAdmin: boolean;
 }) {
   return (
     <>
@@ -1485,8 +1512,8 @@ function BuilderPublish({
         title="Publish settings"
         text={
           isAdmin
-            ? 'Review the publishing information before making this course available to students.'
-            : 'Prepare the course before submitting it to an administrator for review.'
+            ? "Review the publishing information before making this course available to students."
+            : "Prepare the course before submitting it to an administrator for review."
         }
       />
 
@@ -1495,37 +1522,33 @@ function BuilderPublish({
           label="Launch date"
           type="date"
           value={course.launchDate}
-          onChange={(value) => field('launchDate', value)}
+          onChange={(value) => field("launchDate", value)}
         />
 
         <ImageUploadInput
           label="Thumbnail"
           value={course.thumbnail}
-          onChange={(value) => field('thumbnail', value)}
+          onChange={(value) => field("thumbnail", value)}
         />
       </div>
 
       <div
         className={`mt-6 rounded-xl p-4 ${
-          isAdmin
-            ? 'bg-[#e8f7eb]'
-            : 'bg-amber-50'
+          isAdmin ? "bg-[#e8f7eb]" : "bg-amber-50"
         }`}
       >
         <p
           className={`text-xs font-semibold ${
-            isAdmin
-              ? 'text-[#397d3a]'
-              : 'text-amber-700'
+            isAdmin ? "text-[#397d3a]" : "text-amber-700"
           }`}
         >
           {isAdmin
-            ? 'As an administrator, you can publish this course directly. It does not need to go through admin review.'
-            : 'Instructors can save drafts and submit courses for review. Only an administrator can publish the course.'}
+            ? "As an administrator, you can publish this course directly. It does not need to go through admin review."
+            : "Instructors can save drafts and submit courses for review. Only an administrator can publish the course."}
         </p>
       </div>
     </>
-  )
+  );
 }
 
 function BuilderReview({
@@ -1533,9 +1556,9 @@ function BuilderReview({
   modules,
   isAdmin,
 }: {
-  course: typeof emptyCourse
-  modules: Module[]
-  isAdmin: boolean
+  course: typeof emptyCourse;
+  modules: Module[];
+  isAdmin: boolean;
 }) {
   return (
     <>
@@ -1544,73 +1567,45 @@ function BuilderReview({
         title="Review"
         text={
           isAdmin
-            ? 'Review the final course setup before publishing it.'
-            : 'Check the final setup before submitting the course for administrator review.'
+            ? "Review the final course setup before publishing it."
+            : "Check the final setup before submitting the course for administrator review."
         }
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ReviewItem
-          label="Course title"
-          value={course.title}
-        />
+        <ReviewItem label="Course title" value={course.title} />
 
-        <ReviewItem
-          label="Category"
-          value={course.category}
-        />
+        <ReviewItem label="Category" value={course.category} />
 
-        <ReviewItem
-          label="Level"
-          value={course.level}
-        />
+        <ReviewItem label="Level" value={course.level} />
 
-        <ReviewItem
-          label="Duration"
-          value={course.duration}
-        />
+        <ReviewItem label="Duration" value={course.duration} />
 
-        <ReviewItem
-          label="Price"
-          value={course.price}
-        />
+        <ReviewItem label="Price" value={course.price} />
 
-        <ReviewItem
-          label="Modules"
-          value={String(modules.length)}
-        />
+        <ReviewItem label="Modules" value={String(modules.length)} />
       </div>
 
       <div
         className={`mt-6 rounded-xl p-4 ${
-          isAdmin
-            ? 'bg-[#e8f7eb]'
-            : 'bg-amber-50'
+          isAdmin ? "bg-[#e8f7eb]" : "bg-amber-50"
         }`}
       >
         <p
           className={`text-xs font-semibold ${
-            isAdmin
-              ? 'text-[#397d3a]'
-              : 'text-amber-700'
+            isAdmin ? "text-[#397d3a]" : "text-amber-700"
           }`}
         >
           {isAdmin
-            ? 'Ready to publish. Publishing will make this course available in the student catalogue.'
-            : 'Ready to submit. Your course will be marked as pending review until an administrator approves it.'}
+            ? "Ready to publish. Publishing will make this course available in the student catalogue."
+            : "Ready to submit. Your course will be marked as pending review until an administrator approves it."}
         </p>
       </div>
     </>
-  )
+  );
 }
 
-function ReviewItem({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
+function ReviewItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-[#f8fbff] p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
@@ -1618,10 +1613,10 @@ function ReviewItem({
       </p>
 
       <p className="mt-1 text-sm font-semibold text-[#1C1D52]">
-        {value || 'Not provided'}
+        {value || "Not provided"}
       </p>
     </div>
-  )
+  );
 }
 
 function Input({
@@ -1629,13 +1624,13 @@ function Input({
   value,
   onChange,
   placeholder,
-  type = 'text',
+  type = "text",
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  type?: string
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
 }) {
   return (
     <label className="block">
@@ -1651,7 +1646,7 @@ function Input({
         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
       />
     </label>
-  )
+  );
 }
 
 function ImageUploadInput({
@@ -1659,22 +1654,22 @@ function ImageUploadInput({
   value,
   onChange,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (uploadEvent) => {
       if (uploadEvent.target?.result) {
-        onChange(uploadEvent.target.result as string)
+        onChange(uploadEvent.target.result as string);
       }
-    }
-    reader.readAsDataURL(file)
-  }
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="block">
@@ -1715,7 +1710,7 @@ function ImageUploadInput({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function Textarea({
@@ -1724,10 +1719,10 @@ function Textarea({
   onChange,
   placeholder,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
@@ -1743,5 +1738,5 @@ function Textarea({
         className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs leading-5 text-[#1C1D52] outline-none focus:border-[#5FBB46]"
       />
     </label>
-  )
+  );
 }

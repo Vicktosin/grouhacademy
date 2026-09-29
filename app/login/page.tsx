@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Container from "@/components/Container";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isSafeInternalPath } from "@/lib/safe-redirect";
 import { getSiteUrl } from "@/lib/site-url";
 import GoogleIcon from "@/components/GoogleIcon";
 import { Eye, EyeOff } from "lucide-react";
@@ -35,7 +36,8 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: assurance } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance?.currentLevel === "aal1" && assurance.nextLevel === "aal2") {
       router.replace("/auth/mfa");
       return;
@@ -49,10 +51,12 @@ export default function LoginPage() {
       }
 
       const data = (await response.json()) as { redirectTo?: string };
-      const requestedNext = new URLSearchParams(window.location.search).get("next");
+      const requestedNext = new URLSearchParams(window.location.search).get(
+        "next",
+      );
       const redirectTo = requestedNext?.startsWith("/internship/")
         ? "/internship/onboarding"
-        : requestedNext?.startsWith("/")
+        : isSafeInternalPath(requestedNext)
           ? requestedNext
           : data.redirectTo || "/student";
 
@@ -74,7 +78,9 @@ export default function LoginPage() {
     const supabase = createSupabaseBrowserClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${getSiteUrl()}/auth/callback?next=/internship/onboarding` },
+      options: {
+        redirectTo: `${getSiteUrl()}/auth/callback?next=/internship/onboarding`,
+      },
     });
     if (oauthError) setError(oauthError.message);
   };
@@ -89,14 +95,32 @@ export default function LoginPage() {
             <div className="flex items-center px-6 py-12 sm:px-12 lg:px-16">
               <div className="mx-auto w-full max-w-md">
                 <div className="mb-10">
-                  <Link href="/" className="inline-flex"><Image src="/logo.png" alt="Grouh Academy logo" width={160} height={64} className="mb-3 h-10 w-auto" /></Link>
-                  <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">Welcome back</h1>
-                  <p className="mt-3 text-sm leading-6 text-slate-500">Sign in to continue building the skills that move you forward.</p>
+                  <Link href="/" className="inline-flex">
+                    <Image
+                      src="/logo.png"
+                      alt="Grouh Academy logo"
+                      width={160}
+                      height={64}
+                      className="mb-3 h-10 w-auto"
+                    />
+                  </Link>
+                  <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">
+                    Welcome back
+                  </h1>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    Sign in to continue building the skills that move you
+                    forward.
+                  </p>
                 </div>
 
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div>
-                    <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">Email address</label>
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Email address
+                    </label>
                     <input
                       id="email"
                       type="email"
@@ -109,8 +133,18 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
-                      <Link href="/forgot-password" className="text-xs font-semibold text-[#4d9d39] hover:underline">Forgot password?</Link>
+                      <label
+                        htmlFor="password"
+                        className="text-sm font-semibold text-slate-700"
+                      >
+                        Password
+                      </label>
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs font-semibold text-[#4d9d39] hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
                     </div>
                     <div className="relative">
                       <input
@@ -126,9 +160,15 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -155,40 +195,73 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <button type="button" onClick={handleOAuth} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" aria-label="Continue with Google">
+                  <button
+                    type="button"
+                    onClick={handleOAuth}
+                    className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    aria-label="Continue with Google"
+                  >
                     <GoogleIcon />
                     Continue with Google
                   </button>
                 </div>
 
-                <p className="mt-8 text-center text-sm text-slate-500">Don&apos;t have an account? <Link href="/register" className="font-semibold text-[#4d9d39] hover:underline">Register now</Link></p>
+                <p className="mt-8 text-center text-sm text-slate-500">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    href="/register"
+                    className="font-semibold text-[#4d9d39] hover:underline"
+                  >
+                    Register now
+                  </Link>
+                </p>
               </div>
             </div>
 
-        <div className="hidden md:block relative bg-cover bg-center" style={{ backgroundImage: "url('/right-bg.png')" }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black/10 to-black/20"></div>
+            <div
+              className="hidden md:block relative bg-cover bg-center"
+              style={{ backgroundImage: "url('/right-bg.png')" }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black/10 to-black/20"></div>
 
-          {/* Glassmorphism Card */}
-          <div className="absolute left-16 top-16 w-[420px] h-[420px] rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 p-8 flex items-start">
-            <div className="max-w-sm">
-                <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#f0be43]">Learn with purpose</p>
-                <h2 className="text-4xl font-bold leading-tight lg:text-5xl text-white">Your next chapter starts here.</h2>
-                <p className="mt-5 max-w-xs text-sm leading-6 text-white/75">Access practical courses, supportive mentors, and a community that keeps you moving.</p>
+              {/* Glassmorphism Card */}
+              <div className="absolute left-16 top-16 w-[420px] h-[420px] rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 p-8 flex items-start">
+                <div className="max-w-sm">
+                  <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#f0be43]">
+                    Learn with purpose
+                  </p>
+                  <h2 className="text-4xl font-bold leading-tight lg:text-5xl text-white">
+                    Your next chapter starts here.
+                  </h2>
+                  <p className="mt-5 max-w-xs text-sm leading-6 text-white/75">
+                    Access practical courses, supportive mentors, and a
+                    community that keeps you moving.
+                  </p>
+                </div>
+              </div>
+
+              {/* Woman Image */}
+              <div className="absolute right-8 bottom-0 w-80">
+                <Image
+                  src="/woman-with-tab.png"
+                  alt="Woman with tablet"
+                  width={640}
+                  height={760}
+                  className="h-auto w-full"
+                />
+              </div>
+
+              {/* Thunderbolt Badge */}
+              <div className="absolute left-8 top-72 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md">
+                <Image
+                  src="/thunderbolt.png"
+                  alt="Thunderbolt icon"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8"
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Woman Image */}
-          <div className="absolute right-8 bottom-0 w-80">
-            <Image src="/woman-with-tab.png" alt="Woman with tablet" width={640} height={760} className="h-auto w-full" />
-          </div>
-
-          {/* Thunderbolt Badge */}
-          <div className="absolute left-8 top-72 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md">
-            <Image src="/thunderbolt.png" alt="Thunderbolt icon" width={32} height={32} className="h-8 w-8" />
-          </div>
-        </div>
-
-    
           </div>
         </Container>
       </section>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Container from "@/components/Container";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isSafeInternalPath } from "@/lib/safe-redirect";
 import { getSiteUrl } from "@/lib/site-url";
 import GoogleIcon from "@/components/GoogleIcon";
 
@@ -38,12 +39,14 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     const supabase = createSupabaseBrowserClient();
-      const requestedNext = new URLSearchParams(window.location.search).get("next");
-      const nextPath = requestedNext?.startsWith("/internship/")
-        ? "/internship/onboarding"
-        : requestedNext?.startsWith("/")
-          ? requestedNext
-          : "/internship/onboarding";
+    const requestedNext = new URLSearchParams(window.location.search).get(
+      "next",
+    );
+    const nextPath = requestedNext?.startsWith("/internship/")
+      ? "/internship/onboarding"
+      : isSafeInternalPath(requestedNext)
+        ? requestedNext
+        : "/internship/onboarding";
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -56,33 +59,41 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message || "Unable to create your account right now.");
+      setError(
+        signUpError.message || "Unable to create your account right now.",
+      );
       setIsSubmitting(false);
       return;
     }
 
     if (data.session) {
-        router.push(nextPath);
+      router.push(nextPath);
       router.refresh();
       return;
     }
 
-    setSuccess("Account created. Please check your email to verify your address before signing in.");
+    setSuccess(
+      "Account created. Please check your email to verify your address before signing in.",
+    );
     setIsSubmitting(false);
   };
 
   const handleOAuth = async () => {
     setError(null);
     const supabase = createSupabaseBrowserClient();
-      const requestedNext = new URLSearchParams(window.location.search).get("next");
-      const nextPath = requestedNext?.startsWith("/internship/")
-        ? "/internship/onboarding"
-        : requestedNext?.startsWith("/")
-          ? requestedNext
-          : "/internship/onboarding";
+    const requestedNext = new URLSearchParams(window.location.search).get(
+      "next",
+    );
+    const nextPath = requestedNext?.startsWith("/internship/")
+      ? "/internship/onboarding"
+      : isSafeInternalPath(requestedNext)
+        ? requestedNext
+        : "/internship/onboarding";
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-        options: { redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}` },
+      options: {
+        redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+      },
     });
     if (oauthError) setError(oauthError.message);
   };
@@ -97,13 +108,31 @@ export default function RegisterPage() {
             <div className="flex items-center px-6 py-12 sm:px-12 lg:px-16">
               <div className="mx-auto w-full max-w-md">
                 <div className="mb-8">
-                  <Link href="/" className="inline-flex"><Image src="/logo.png" alt="Grouh Academy logo" width={160} height={64} className="mb-3 h-10 w-auto" /></Link>
-                  <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">Create account</h1>
-                  <p className="mt-3 text-sm leading-6 text-slate-500">Join Grouh Academy and start building the skills that move you forward.</p>
+                  <Link href="/" className="inline-flex">
+                    <Image
+                      src="/logo.png"
+                      alt="Grouh Academy logo"
+                      width={160}
+                      height={64}
+                      className="mb-3 h-10 w-auto"
+                    />
+                  </Link>
+                  <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">
+                    Create account
+                  </h1>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    Join Grouh Academy and start building the skills that move
+                    you forward.
+                  </p>
                 </div>
 
                 <div>
-                  <button type="button" onClick={handleOAuth} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" aria-label="Continue with Google">
+                  <button
+                    type="button"
+                    onClick={handleOAuth}
+                    className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    aria-label="Continue with Google"
+                  >
                     <GoogleIcon />
                     Continue with Google
                   </button>
@@ -117,7 +146,12 @@ export default function RegisterPage() {
 
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div>
-                    <label htmlFor="fullName" className="mb-2 block text-sm font-semibold text-slate-700">Full name</label>
+                    <label
+                      htmlFor="fullName"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Full name
+                    </label>
                     <input
                       id="fullName"
                       type="text"
@@ -129,7 +163,12 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">Email address</label>
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Email address
+                    </label>
                     <input
                       id="email"
                       type="email"
@@ -141,7 +180,12 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+                    <label
+                      htmlFor="password"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Password
+                    </label>
                     <input
                       id="password"
                       type="password"
@@ -153,12 +197,19 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-slate-700">Confirm password</label>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Confirm password
+                    </label>
                     <input
                       id="confirmPassword"
                       type="password"
                       value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
                       placeholder="Confirm your password"
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#5fbb46] focus:bg-white focus:ring-4 focus:ring-[#5fbb46]/15"
                       required
@@ -196,32 +247,57 @@ export default function RegisterPage() {
                   </button>
                 </form>
 
-
                 <p className="mt-8 text-center text-sm text-slate-500">
-                  Already have an account? <Link href="/login" className="font-semibold text-[#4d9d39] hover:underline">Log in</Link>
+                  Already have an account?{" "}
+                  <Link
+                    href="/login"
+                    className="font-semibold text-[#4d9d39] hover:underline"
+                  >
+                    Log in
+                  </Link>
                 </p>
               </div>
             </div>
 
             {/* Glassmorphism Card */}
-            <div className="hidden md:block flex items-center relative bg-cover bg-center" style={{ backgroundImage: "url('/right-bg.png')" }}>
+            <div
+              className="hidden md:block flex items-center relative bg-cover bg-center"
+              style={{ backgroundImage: "url('/right-bg.png')" }}
+            >
               <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black/10 to-black/20" />
 
               <div className="absolute left-16 top-60 w-[480px] h-[420px] rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 p-8 flex items-start">
                 <div className="max-w-sm">
-                  <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#f0be43]">Learn with purpose</p>
-                  <h2 className="text-4xl font-bold leading-tight lg:text-5xl text-white">Your next chapter starts here.</h2>
-                  <p className="mt-5 max-w-xs text-sm leading-6 text-white/75">Access practical courses, supportive mentors, and a community that keeps you moving.</p>
+                  <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#f0be43]">
+                    Learn with purpose
+                  </p>
+                  <h2 className="text-4xl font-bold leading-tight lg:text-5xl text-white">
+                    Your next chapter starts here.
+                  </h2>
+                  <p className="mt-5 max-w-xs text-sm leading-6 text-white/75">
+                    Access practical courses, supportive mentors, and a
+                    community that keeps you moving.
+                  </p>
                 </div>
                 <div className="absolute right-[-40] bottom-0 w-60">
-                  <Image src="/woman-with-tab.png" alt="Woman with tablet" width={640} height={760} className="h-auto w-full" />
+                  <Image
+                    src="/woman-with-tab.png"
+                    alt="Woman with tablet"
+                    width={640}
+                    height={760}
+                    className="h-auto w-full"
+                  />
                 </div>
               </div>
 
-              
-
               <div className="absolute left-8 top-72 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md">
-                <Image src="/thunderbolt.png" alt="Thunderbolt icon" width={32} height={32} className="h-8 w-8" />
+                <Image
+                  src="/thunderbolt.png"
+                  alt="Thunderbolt icon"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8"
+                />
               </div>
             </div>
           </div>

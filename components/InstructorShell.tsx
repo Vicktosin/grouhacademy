@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
-import InstructorSidebar from './InstructorSidebar'
-import InstructorHeader from './InstructorHeader'
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import InstructorSidebar from "./InstructorSidebar";
+import InstructorHeader from "./InstructorHeader";
 
 export default function InstructorShell({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#F0F7FF]">
@@ -52,12 +52,10 @@ export default function InstructorShell({
       {/* Mobile sidebar */}
       <aside
         className={`fixed inset-y-4 left-4 z-50 w-[calc(100vw-2rem)] max-w-64 transform transition-transform duration-300 md:hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-[120%]'
+          sidebarOpen ? "translate-x-0" : "-translate-x-[120%]"
         }`}
       >
-        <InstructorSidebar
-          onNavigate={() => setSidebarOpen(false)}
-        />
+        <InstructorSidebar onNavigate={() => setSidebarOpen(false)} />
       </aside>
 
       {/* Mobile overlay */}
@@ -68,5 +66,5 @@ export default function InstructorShell({
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,0 +1,43 @@
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+
+export const MFA_CHALLENGE_PATH = "/auth/mfa";
+
+/**
+ * Destinations the auth callback and MFA challenge may forward to after
+ * sign-in. Anything else falls back to the user's role-based home route.
+ */
+export function isAllowedPostAuthPath(path: string | null): path is string {
+  return path === "/reset-password" || Boolean(path?.startsWith("/internship/"));
+}
+
+/**
+ * True when the user has a verified MFA factor but the current session has
+ * only completed the first factor (AAL1).
+ *
+ * `user` must come from `supabase.auth.getUser()`, which is verified by the
+ * Supabase Auth server. The session cookie's copy of the user (used by
+ * `mfa.getAuthenticatorAssuranceLevel()` without a JWT) is client-controlled
+ * and must not be trusted to report whether factors exist.
+ */
+export function hasVerifiedFactor(user: Pick<User, "factors">): boolean {
+  return user.factors?.some((factor) => factor.status === "verified") ?? false;
+}
+
+export async function isMfaVerificationPending(
+  supabase: Pick<SupabaseClient, "auth">,
+  user: Pick<User, "factors">,
+): Promise<boolean> {
+  if (!hasVerifiedFactor(user)) {
+    return false;
+  }
+
+  const { data, error } = await supabase.auth.getClaims();
+
+  // Fail closed: if the session's assurance level cannot be verified, the
+  // user must complete the challenge again.
+  if (error || !data) {
+    return true;
+  }
+
+  return data.claims.aal !== "aal2";
+}

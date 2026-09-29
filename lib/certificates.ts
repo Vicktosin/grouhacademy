@@ -1,39 +1,41 @@
-import type { CourseDb } from '@/lib/course-data'
-import { getPlatformSettings } from '@/lib/platform-settings'
+import type { CourseDb } from "@/lib/course-data";
+import { getPlatformSettings } from "@/lib/platform-settings";
 
 export type StudentCertificate = {
-  id: string
-  certificateNumber: string
-  verificationId: string
-  courseTitle: string
-  courseSlug: string
-  studentName: string
-  issuedAt: string
-}
+  id: string;
+  certificateNumber: string;
+  verificationId: string;
+  courseTitle: string;
+  courseSlug: string;
+  studentName: string;
+  issuedAt: string;
+};
 
 async function nextCertificateNumber(db: CourseDb): Promise<string> {
-  const settings = await getPlatformSettings()
-  const year = new Date().getUTCFullYear()
-  const yearStart = new Date(Date.UTC(year, 0, 1))
-  const yearEnd = new Date(Date.UTC(year + 1, 0, 1))
+  const settings = await getPlatformSettings();
+  const year = new Date().getUTCFullYear();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const count = await db.certificate.count({
       where: { issuedAt: { gte: yearStart, lt: yearEnd } },
-    })
+    });
 
-    const candidate = `${settings.certificatePrefix}-${year}-${String(count + 1 + attempt).padStart(5, '0')}`
-    const existing = await db.certificate.findUnique({ where: { certificateNumber: candidate } })
+    const candidate = `${settings.certificatePrefix}-${year}-${String(count + 1 + attempt).padStart(5, "0")}`;
+    const existing = await db.certificate.findUnique({
+      where: { certificateNumber: candidate },
+    });
 
     if (!existing) {
-      return candidate
+      return candidate;
     }
   }
 
   // Sequential numbering collided repeatedly (e.g. concurrent
   // completions racing for the same count). Fall back to something
   // effectively guaranteed unique rather than looping forever.
-  return `${settings.certificatePrefix}-${year}-${Date.now().toString(36).toUpperCase()}`
+  return `${settings.certificatePrefix}-${year}-${Date.now().toString(36).toUpperCase()}`;
 }
 
 /**
@@ -46,21 +48,25 @@ async function nextCertificateNumber(db: CourseDb): Promise<string> {
  */
 export async function ensureCertificateIssued(
   db: CourseDb,
-  { userId, courseId, enrollmentId }: { userId: string; courseId: string; enrollmentId: string },
+  {
+    userId,
+    courseId,
+    enrollmentId,
+  }: { userId: string; courseId: string; enrollmentId: string },
 ) {
   const existing = await db.certificate.findUnique({
     where: { userId_courseId: { userId, courseId } },
-  })
+  });
 
   if (existing) {
-    return existing
+    return existing;
   }
 
-  const certificateNumber = await nextCertificateNumber(db)
+  const certificateNumber = await nextCertificateNumber(db);
 
   return db.certificate.upsert({
     where: { userId_courseId: { userId, courseId } },
     update: {},
     create: { userId, courseId, enrollmentId, certificateNumber },
-  })
+  });
 }

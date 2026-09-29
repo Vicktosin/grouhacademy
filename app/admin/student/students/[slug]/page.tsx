@@ -1,23 +1,324 @@
-'use client'
+"use client";
 
-import { ArrowLeft, Award, BookOpen, CalendarDays, Mail, MapPin, Phone } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import {
+  ArrowLeft,
+  Award,
+  BookOpen,
+  CalendarDays,
+  Mail,
+  MapPin,
+  Phone,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-import AdminShell from '@/components/AdminShell'
+import AdminShell from "@/components/AdminShell";
 
-type Student = { id: string; name: string | null; email: string; avatarUrl: string | null; status: string; createdAt: string; completedCourses: number; profile: { firstName: string | null; lastName: string | null; phone: string | null; bio: string | null; country: string | null; state: string | null; institution: string | null; program: string | null; studentId: string | null } | null; _count: { enrollments: number; certificates: number }; enrollments: Array<{ id: string; status: string; enrolledAt: string; completedAt: string | null; totalLessons: number; completedLessons: number; progressPercent: number; course: { id: string; title: string; slug: string; thumbnail: string | null } }> }
+type Student = {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+  status: string;
+  createdAt: string;
+  completedCourses: number;
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    bio: string | null;
+    country: string | null;
+    state: string | null;
+    institution: string | null;
+    program: string | null;
+    studentId: string | null;
+  } | null;
+  _count: { enrollments: number; certificates: number };
+  enrollments: Array<{
+    id: string;
+    status: string;
+    enrolledAt: string;
+    completedAt: string | null;
+    totalLessons: number;
+    completedLessons: number;
+    progressPercent: number;
+    course: {
+      id: string;
+      title: string;
+      slug: string;
+      thumbnail: string | null;
+    };
+  }>;
+};
 
-export default function StudentProfilePage({ params }: { params: Promise<{ slug: string }> }) {
-  const [student, setStudent] = useState<Student | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => { void params.then(({ slug }) => fetch(`/api/admin/student/students/${slug}`, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? 'Unable to load learner.'); return response.json() as Promise<Student> }).then(setStudent).catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load learner.'))) }, [params])
-  const name = student?.name || [student?.profile?.firstName, student?.profile?.lastName].filter(Boolean).join(' ') || 'Unnamed learner'
-  const location = [student?.profile?.state, student?.profile?.country].filter(Boolean).join(', ') || 'Not provided'
-  const averageProgress = student?.enrollments.length ? Math.round(student.enrollments.reduce((total, enrollment) => total + enrollment.progressPercent, 0) / student.enrollments.length) : 0
-  return <AdminShell workspace="student"><div className="mx-auto max-w-[1100px] space-y-5"><Link href="/admin/student/students" className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"><ArrowLeft className="h-4 w-4" />Back to learners</Link>{error && <p className="rounded-xl bg-red-50 p-4 text-xs text-red-600">{error}</p>}{!student && !error && <p className="py-12 text-center text-xs text-slate-500">Loading learner profile...</p>}{student && <><section className="flex flex-col gap-5 rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:flex-row sm:items-center sm:p-7"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#dceeff] text-2xl font-bold text-blue-600">{student.avatarUrl ? <Image src={student.avatarUrl} alt="" width={80} height={80} className="h-full w-full object-cover" /> : name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-bold text-[#1C1D52]">{name}</h1><span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">{student.status.toLowerCase()}</span></div><p className="mt-1 text-xs text-slate-500">{student.profile?.program ?? 'No programme recorded'}{student.profile?.studentId ? ` · ${student.profile.studentId}` : ''}</p><p className="mt-2 flex items-center gap-2 text-[11px] text-slate-500"><Mail className="h-3.5 w-3.5" />{student.email}</p></div></section><div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Kpi icon={<BookOpen className="h-4 w-4" />} value={student._count.enrollments} label="Enrolled courses" /><Kpi icon={<BookOpen className="h-4 w-4" />} value={student.completedCourses} label="Completed courses" /><Kpi icon={<Award className="h-4 w-4" />} value={student._count.certificates} label="Certificates" /><Kpi icon={<CalendarDays className="h-4 w-4" />} value={`${averageProgress}%`} label="Average progress" /></div><div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]"><section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]"><h2 className="text-sm font-bold text-[#1C1D52]">Profile details</h2><div className="mt-5 space-y-4 text-xs text-slate-600"><Detail icon={<Mail className="h-4 w-4" />} label="Email" value={student.email} /><Detail icon={<Phone className="h-4 w-4" />} label="Phone" value={student.profile?.phone ?? 'Not provided'} /><Detail icon={<MapPin className="h-4 w-4" />} label="Location" value={location} /><Detail icon={<BookOpen className="h-4 w-4" />} label="Institution" value={student.profile?.institution ?? 'Not provided'} /><Detail icon={<CalendarDays className="h-4 w-4" />} label="Joined" value={new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(new Date(student.createdAt))} /></div>{student.profile?.bio && <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-600">{student.profile.bio}</p>}</section><section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]"><div className="flex items-center justify-between"><h2 className="text-sm font-bold text-[#1C1D52]">Enrolled courses</h2><span className="text-[10px] text-slate-500">{student.enrollments.length} total</span></div>{student.enrollments.length === 0 ? <p className="py-10 text-center text-xs text-slate-500">This learner has not enrolled in a course yet.</p> : <div className="mt-4 space-y-3">{student.enrollments.map((enrollment) => <div key={enrollment.id} className="rounded-xl border border-slate-100 p-4"><div className="flex gap-3"><div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">{enrollment.course.thumbnail && <Image src={enrollment.course.thumbnail} alt="" width={64} height={44} className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#1C1D52]">{enrollment.course.title}</p><p className="mt-1 text-[10px] text-slate-500">{enrollment.completedLessons} of {enrollment.totalLessons} lessons complete · {enrollment.status.toLowerCase()}</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#5FBB46]" style={{ width: `${enrollment.progressPercent}%` }} /></div><p className="mt-1 text-right text-[10px] font-semibold text-slate-500">{enrollment.progressPercent}%</p></div></div></div>)}</div>}</section></div></>}</div></AdminShell>
+export default function StudentProfilePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const [student, setStudent] = useState<Student | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void params.then(({ slug }) =>
+      fetch(`/api/admin/student/students/${slug}`, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok)
+            throw new Error(
+              (await response.json().catch(() => null))?.error ??
+                "Unable to load learner.",
+            );
+          return response.json() as Promise<Student>;
+        })
+        .then(setStudent)
+        .catch((loadError) =>
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Unable to load learner.",
+          ),
+        ),
+    );
+  }, [params]);
+  const name =
+    student?.name ||
+    [student?.profile?.firstName, student?.profile?.lastName]
+      .filter(Boolean)
+      .join(" ") ||
+    "Unnamed learner";
+  const location =
+    [student?.profile?.state, student?.profile?.country]
+      .filter(Boolean)
+      .join(", ") || "Not provided";
+  const averageProgress = student?.enrollments.length
+    ? Math.round(
+        student.enrollments.reduce(
+          (total, enrollment) => total + enrollment.progressPercent,
+          0,
+        ) / student.enrollments.length,
+      )
+    : 0;
+  return (
+    <AdminShell workspace="student">
+      <div className="mx-auto max-w-[1100px] space-y-5">
+        <Link
+          href="/admin/student/students"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to learners
+        </Link>
+        {error && (
+          <p className="rounded-xl bg-red-50 p-4 text-xs text-red-600">
+            {error}
+          </p>
+        )}
+        {!student && !error && (
+          <p className="py-12 text-center text-xs text-slate-500">
+            Loading learner profile...
+          </p>
+        )}
+        {student && (
+          <>
+            <section className="flex flex-col gap-5 rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:flex-row sm:items-center sm:p-7">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#dceeff] text-2xl font-bold text-blue-600">
+                {student.avatarUrl ? (
+                  <Image
+                    src={student.avatarUrl}
+                    alt=""
+                    width={80}
+                    height={80}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-2xl font-bold text-[#1C1D52]">{name}</h1>
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">
+                    {student.status.toLowerCase()}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {student.profile?.program ?? "No programme recorded"}
+                  {student.profile?.studentId
+                    ? ` · ${student.profile.studentId}`
+                    : ""}
+                </p>
+                <p className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+                  <Mail className="h-3.5 w-3.5" />
+                  {student.email}
+                </p>
+              </div>
+            </section>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Kpi
+                icon={<BookOpen className="h-4 w-4" />}
+                value={student._count.enrollments}
+                label="Enrolled courses"
+              />
+              <Kpi
+                icon={<BookOpen className="h-4 w-4" />}
+                value={student.completedCourses}
+                label="Completed courses"
+              />
+              <Kpi
+                icon={<Award className="h-4 w-4" />}
+                value={student._count.certificates}
+                label="Certificates"
+              />
+              <Kpi
+                icon={<CalendarDays className="h-4 w-4" />}
+                value={`${averageProgress}%`}
+                label="Average progress"
+              />
+            </div>
+            <div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
+              <section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">
+                <h2 className="text-sm font-bold text-[#1C1D52]">
+                  Profile details
+                </h2>
+                <div className="mt-5 space-y-4 text-xs text-slate-600">
+                  <Detail
+                    icon={<Mail className="h-4 w-4" />}
+                    label="Email"
+                    value={student.email}
+                  />
+                  <Detail
+                    icon={<Phone className="h-4 w-4" />}
+                    label="Phone"
+                    value={student.profile?.phone ?? "Not provided"}
+                  />
+                  <Detail
+                    icon={<MapPin className="h-4 w-4" />}
+                    label="Location"
+                    value={location}
+                  />
+                  <Detail
+                    icon={<BookOpen className="h-4 w-4" />}
+                    label="Institution"
+                    value={student.profile?.institution ?? "Not provided"}
+                  />
+                  <Detail
+                    icon={<CalendarDays className="h-4 w-4" />}
+                    label="Joined"
+                    value={new Intl.DateTimeFormat(undefined, {
+                      dateStyle: "long",
+                    }).format(new Date(student.createdAt))}
+                  />
+                </div>
+                {student.profile?.bio && (
+                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-600">
+                    {student.profile.bio}
+                  </p>
+                )}
+              </section>
+              <section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-[#1C1D52]">
+                    Enrolled courses
+                  </h2>
+                  <span className="text-[10px] text-slate-500">
+                    {student.enrollments.length} total
+                  </span>
+                </div>
+                {student.enrollments.length === 0 ? (
+                  <p className="py-10 text-center text-xs text-slate-500">
+                    This learner has not enrolled in a course yet.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {student.enrollments.map((enrollment) => (
+                      <div
+                        key={enrollment.id}
+                        className="rounded-xl border border-slate-100 p-4"
+                      >
+                        <div className="flex gap-3">
+                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                            {enrollment.course.thumbnail && (
+                              <Image
+                                src={enrollment.course.thumbnail}
+                                alt=""
+                                width={64}
+                                height={44}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-[#1C1D52]">
+                              {enrollment.course.title}
+                            </p>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              {enrollment.completedLessons} of{" "}
+                              {enrollment.totalLessons} lessons complete ·{" "}
+                              {enrollment.status.toLowerCase()}
+                            </p>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-[#5FBB46]"
+                                style={{
+                                  width: `${enrollment.progressPercent}%`,
+                                }}
+                              />
+                            </div>
+                            <p className="mt-1 text-right text-[10px] font-semibold text-slate-500">
+                              {enrollment.progressPercent}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </>
+        )}
+      </div>
+    </AdminShell>
+  );
 }
 
-function Kpi({ icon, value, label }: { icon: React.ReactNode; value: number | string; label: string }) { return <div className="rounded-xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)]"><span className="text-blue-600">{icon}</span><strong className="mt-3 block text-xl text-[#1C1D52]">{value}</strong><span className="text-[10px] text-slate-500">{label}</span></div> }
-function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div><p className="flex items-center gap-2 text-[10px] uppercase text-slate-400">{icon}{label}</p><p className="mt-1 font-medium text-[#1C1D52]">{value}</p></div> }
+function Kpi({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+}) {
+  return (
+    <div className="rounded-xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">
+      <span className="text-blue-600">{icon}</span>
+      <strong className="mt-3 block text-xl text-[#1C1D52]">{value}</strong>
+      <span className="text-[10px] text-slate-500">{label}</span>
+    </div>
+  );
+}
+function Detail({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="flex items-center gap-2 text-[10px] uppercase text-slate-400">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 font-medium text-[#1C1D52]">{value}</p>
+    </div>
+  );
+}

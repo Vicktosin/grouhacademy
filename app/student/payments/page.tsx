@@ -1,9 +1,16 @@
-import React from 'react'
+import React from "react";
+
+const money = (amount: number) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 const transactions = [
-  { id: 'INV-1001', date: '2026-07-12', amount: '$199', status: 'Paid' },
-  { id: 'INV-1002', date: '2026-06-01', amount: '$49', status: 'Paid' },
-]
+  { id: "INV-1001", date: "2026-07-12", amount: 199000, status: "Paid" },
+  { id: "INV-1002", date: "2026-06-01", amount: 49000, status: "Paid" },
+];
 
 export default function PaymentsPage() {
   return (
@@ -30,14 +37,18 @@ export default function PaymentsPage() {
                 <tr key={t.id} className="border-t hover:bg-gray-50 transition">
                   <td className="py-3 text-sm">{t.id}</td>
                   <td className="py-3 text-sm text-gray-600">{t.date}</td>
-                  <td className="py-3 text-sm font-medium">{t.amount}</td>
+                  <td className="py-3 text-sm font-medium">{money(t.amount)}</td>
                   <td className="py-3 text-sm">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${t.status === 'Paid' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${t.status === "Paid" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}
+                    >
                       {t.status}
                     </span>
                   </td>
                   <td className="py-3 text-right">
-                    <button className="text-sm text-indigo-600">Download</button>
+                    <button className="text-sm text-indigo-600">
+                      Download
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -49,12 +60,16 @@ export default function PaymentsPage() {
       <aside className="space-y-6">
         <div className="rounded-lg bg-white p-4 shadow">
           <h3 className="font-medium">Assignments Due</h3>
-          <div className="mt-3 text-sm text-gray-600">No upcoming assignments due this week.</div>
+          <div className="mt-3 text-sm text-gray-600">
+            No upcoming assignments due this week.
+          </div>
         </div>
 
         <div className="rounded-lg bg-white p-4 shadow">
           <h3 className="font-medium">Certificates</h3>
-          <div className="mt-3 text-sm text-gray-600">You have earned 0 certificates.</div>
+          <div className="mt-3 text-sm text-gray-600">
+            You have earned 0 certificates.
+          </div>
         </div>
 
         <div className="rounded-lg bg-white p-4 shadow">
@@ -66,9 +81,11 @@ export default function PaymentsPage() {
 
         <div className="rounded-lg bg-white p-4 shadow">
           <h3 className="font-medium">Upcoming Deadlines</h3>
-          <div className="mt-2 text-sm text-gray-600">No upcoming deadlines.</div>
+          <div className="mt-2 text-sm text-gray-600">
+            No upcoming deadlines.
+          </div>
         </div>
       </aside>
     </div>
-  )
+  );
 }

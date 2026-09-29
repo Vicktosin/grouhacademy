@@ -11,50 +11,55 @@ import { getSiteUrl } from "@/lib/site-url";
 
 export const metadata: Metadata = {
   title: "Practical Digital Skills, Courses, and Internships",
-  description: "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with Grouh Academy courses and internships.",
+  description:
+    "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with Grouh Academy courses and internships.",
   alternates: { canonical: "/" },
 };
 
 const page = () => {
   const siteUrl = getSiteUrl();
   const structuredData = {
-    '@context': 'https://schema.org',
-    '@graph': [
+    "@context": "https://schema.org",
+    "@graph": [
       {
-        '@type': 'EducationalOrganization',
-        '@id': `${siteUrl}/#organization`,
-        name: 'Grouh Academy',
+        "@type": "EducationalOrganization",
+        "@id": `${siteUrl}/#organization`,
+        name: "Grouh Academy",
         url: siteUrl,
         logo: `${siteUrl}/logo.png`,
-        description: 'Practical digital skills, career-ready courses, and real-world internship opportunities.',
+        description:
+          "Practical digital skills, career-ready courses, and real-world internship opportunities.",
       },
       {
-        '@type': 'WebSite',
-        '@id': `${siteUrl}/#website`,
-        name: 'Grouh Academy',
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        name: "Grouh Academy",
         url: siteUrl,
-        publisher: { '@id': `${siteUrl}/#organization` },
+        publisher: { "@id": `${siteUrl}/#organization` },
       },
     ],
-  }
+  };
 
   return (
     <main className="relative min-h-screen overflow-x-hidden">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <section className="relative min-h-screen pt-24 pb-8 md:pt-32 md:pb-14">
         <div className="pointer-events-none absolute inset-0 -z-10 h-full">
-      {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 h-full w-full object-cover"
-        >
-          <source src="CAN_YOU_CONVERT_THESE_IMAGE_TO.mp4" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#000C33_0%,rgba(0,12,51,0.9)_25%,rgba(0,12,51,0.6)_50%,rgba(0,12,51,0.25)_75%,rgba(0,12,51,0)_100%)]" />
+          {/* Background Video */}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+          >
+            <source src="CAN_YOU_CONVERT_THESE_IMAGE_TO.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#000C33_0%,rgba(0,12,51,0.9)_25%,rgba(0,12,51,0.6)_50%,rgba(0,12,51,0.25)_75%,rgba(0,12,51,0)_100%)]" />
         </div>
         <Container className="relative z-10">
           <div className="grid gap-10 xl:grid-cols-[1.5fr_0.5fr] xl:items-center">
@@ -65,11 +70,14 @@ const page = () => {
               </span>
 
               <h1 className="hero-title mt-8 text-5xl font-bold tracking-tight text-white sm:text-6xl">
-                Become Job-Ready With Our <span className="text-[#5FBB46]">Internship</span>.
+                Become Job-Ready With Our{" "}
+                <span className="text-[#5FBB46]">Internship</span>.
               </h1>
 
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/75">
-                Your gateway to elite learning and real-world internships. Learn from industry experts, build in-demand skills, and launch a future you&apos;re proud of.
+                Your gateway to elite learning and real-world internships. Learn
+                from industry experts, build in-demand skills, and launch a
+                future you&apos;re proud of.
               </p>
 
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -88,7 +96,7 @@ const page = () => {
               </div>
             </div>
 
-           {/* <div className="grid gap-5">
+            {/* <div className="grid gap-5">
               <div
                 className="rounded-[2rem] border border-white/10 bg-[#ffffff]/10 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl opacity-0 animate-slide-in-up"
                 style={{ animationDelay: "0.15s" }}
@@ -134,13 +142,6 @@ const page = () => {
             </div>*/}
           </div>
 
-          {/*<div className="mt-12 rounded-4xl border border-white/10 bg-white shadow-2xl shadow-slate-950/20  max-w-xl align-center backdrop-blur-xl">
-            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <img src="Avatar.png" alt="students" width={150} height={150} />
-              </div>
-            </div>
-          </div>*/}
         </Container>
       </section>
       <Whyus />
@@ -150,8 +151,6 @@ const page = () => {
       <Testimonials />
       <FAQ />
     </main>
-
-    
   );
 };
 

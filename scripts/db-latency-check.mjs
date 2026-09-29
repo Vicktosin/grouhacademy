@@ -14,36 +14,36 @@
 //   node -r dotenv/config scripts/db-latency-check.mjs DATABASE_URL
 // instead.)
 
-import { Client } from 'pg'
+import { Client } from "pg";
 
-const envVarName = process.argv[2] ?? 'DATABASE_URL'
-const connectionString = process.env[envVarName]
+const envVarName = process.argv[2] ?? "DATABASE_URL";
+const connectionString = process.env[envVarName];
 
 if (!connectionString) {
-  console.error(`${envVarName} is not set.`)
-  process.exit(1)
+  console.error(`${envVarName} is not set.`);
+  process.exit(1);
 }
 
 async function main() {
-  console.log(`Testing ${envVarName}...`)
+  console.log(`Testing ${envVarName}...`);
 
-  const client = new Client({ connectionString })
+  const client = new Client({ connectionString });
 
-  const t0 = Date.now()
-  await client.connect()
-  const t1 = Date.now()
+  const t0 = Date.now();
+  await client.connect();
+  const t1 = Date.now();
 
-  await client.query('SELECT 1')
-  const t2 = Date.now()
+  await client.query("SELECT 1");
+  const t2 = Date.now();
 
-  await client.end()
+  await client.end();
 
-  console.log(`Connect time: ${t1 - t0}ms`)
-  console.log(`Query time:   ${t2 - t1}ms`)
-  console.log(`Total:        ${t2 - t0}ms`)
+  console.log(`Connect time: ${t1 - t0}ms`);
+  console.log(`Query time:   ${t2 - t1}ms`);
+  console.log(`Total:        ${t2 - t0}ms`);
 }
 
 main().catch((error) => {
-  console.error('Failed:', error)
-  process.exit(1)
-})
+  console.error("Failed:", error);
+  process.exit(1);
+});

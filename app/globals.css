@@ -68,11 +68,11 @@
   --type-ui: 0.875rem;
   --type-caption: 0.75rem;
   --type-micro: 0.6875rem;
-  --brand-blue: #1C1D52;
-  --brand-green: #5FBB46;
-  --brand-gold: #F0BE43;
+  --brand-blue: #1c1d52;
+  --brand-green: #5fbb46;
+  --brand-gold: #f0be43;
   --brand-black: #000000;
-  --brand-white: #FFFFFF;
+  --brand-white: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -153,31 +153,34 @@
     overflow-x: hidden;
   }
 
+  /* The internship landing page (.lp) carries its own display type scale,
+     so it is excluded from the enforced hierarchy below. */
+
   /* Semantic hierarchy is deliberately enforced so local utility sizes from
      the previous type system cannot reintroduce inconsistent headings. */
-  h1,
-  h2,
-  h3 {
+  h1:not(.lp *),
+  h2:not(.lp *),
+  h3:not(.lp *) {
     font-family: var(--font-heading-family) !important;
     font-weight: 700 !important;
   }
 
-  h1 {
+  h1:not(.lp *) {
     font-size: var(--type-h1) !important;
     line-height: 1.2 !important;
   }
 
-  h2 {
+  h2:not(.lp *) {
     font-size: var(--type-h2) !important;
     line-height: 1.25 !important;
   }
 
-  h3 {
+  h3:not(.lp *) {
     font-size: var(--type-h3) !important;
     line-height: 1.3 !important;
   }
 
-  h4 {
+  h4:not(.lp *) {
     font-family: var(--font-body) !important;
     font-size: var(--type-h4) !important;
     font-weight: 700 !important;
@@ -188,9 +191,9 @@
     line-height: 1.5;
   }
 
-  button,
-  a,
-  [role="button"] {
+  button:not(.lp *),
+  a:not(.lp *),
+  [role="button"]:not(.lp *) {
     font-family: var(--font-body);
     font-size: var(--type-ui);
     font-weight: 500;
@@ -221,32 +224,38 @@
     font-family: var(--font-body) !important;
   }
 
-  .text-xs {
+  .text-xs:not(.lp *) {
     font-size: var(--type-caption) !important;
     line-height: 1.4 !important;
   }
 
-  [class~="text-[10px]"],
-  [class~="text-[8px]"] {
+  [class~="text-[10px]"]:not(.lp *),
+  [class~="text-[8px]"]:not(.lp *) {
     font-size: var(--type-micro) !important;
     line-height: 1.3 !important;
   }
 
-  .text-sm {
+  .text-sm:not(.lp *) {
     font-size: var(--type-body) !important;
     line-height: 1.5 !important;
   }
 
-  .text-base {
+  .text-base:not(.lp *) {
     font-size: var(--type-body-large) !important;
     line-height: 1.6 !important;
   }
 
-  .font-normal { font-weight: 400 !important; }
-  .font-medium { font-weight: 500 !important; }
-  .font-semibold,
-  .font-bold,
-  .font-black { font-weight: 700 !important; }
+  .font-normal:not(.lp *) {
+    font-weight: 400 !important;
+  }
+  .font-medium:not(.lp *) {
+    font-weight: 500 !important;
+  }
+  .font-semibold:not(.lp *),
+  .font-bold:not(.lp *),
+  .font-black:not(.lp *) {
+    font-weight: 700 !important;
+  }
 
   /* The landing hero needs a larger display treatment than standard H1s. */
   .hero-title {
@@ -254,11 +263,193 @@
   }
 
   @media (max-width: 639px) {
-    h1 { font-size: 1.75rem !important; }
-    h2 { font-size: 1.375rem !important; }
-    h3 { font-size: 1.125rem !important; }
-    .text-base { font-size: 0.9375rem !important; }
-    .hero-title { font-size: 2.25rem !important; }
+    h1:not(.lp *) {
+      font-size: 1.75rem !important;
+    }
+    h2:not(.lp *) {
+      font-size: 1.375rem !important;
+    }
+    h3:not(.lp *) {
+      font-size: 1.125rem !important;
+    }
+    .text-base:not(.lp *) {
+      font-size: 0.9375rem !important;
+    }
+    .hero-title {
+      font-size: 2.25rem !important;
+    }
+  }
+}
+
+/* Internship landing page (app/Landingpage, components/Lp*). Unlayered and
+   scoped to .lp so it matches the original design without leaking site-wide. */
+html:has(.lp) {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
+.lp {
+  /* Reset the app-wide 14px body size so unsized landing copy reads at 16px. */
+  font-size: 1rem;
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+.lp button,
+.lp a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp .hero-grid {
+  background-image:
+    linear-gradient(rgba(20, 22, 80, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 22, 80, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to right, black, transparent 65%);
+}
+
+.lp .button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border-radius: 9999px;
+  background: #5fbb46;
+  padding: 0.85rem 1.35rem;
+  font-weight: 800;
+  color: white;
+  box-shadow: 0 10px 24px -12px rgba(95, 187, 70, 0.85);
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.lp .button-primary:hover {
+  transform: translateY(-1px);
+  background: #4aaa3e;
+  box-shadow: 0 14px 28px -12px rgba(74, 170, 62, 0.8);
+}
+
+.lp .button-primary:focus-visible,
+.lp .button-secondary:focus-visible,
+.lp .nav-link:focus-visible {
+  outline: 3px solid rgba(95, 187, 70, 0.35);
+  outline-offset: 3px;
+}
+
+.lp .button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border: 1px solid #dcdeec;
+  border-radius: 9999px;
+  background: white;
+  padding: 0.85rem 1.35rem;
+  font-weight: 800;
+  color: #141650;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.lp .button-secondary:hover {
+  transform: translateY(-1px);
+  border-color: rgba(95, 187, 70, 0.6);
+  background: #f8fcf7;
+}
+
+.lp .nav-link {
+  position: relative;
+  padding-block: 0.5rem;
+  transition: color 180ms ease;
+}
+
+.lp .nav-link::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  content: "";
+  background: #5fbb46;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+
+.lp .nav-link:hover {
+  color: #141650;
+}
+
+.lp .nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.lp .section {
+  padding-block: 6.5rem;
+}
+
+.lp .section-heading {
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  text-align: center;
+}
+
+.lp .section-heading h2 {
+  margin-top: 1.25rem;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.lp .section-heading > p:last-child {
+  max-width: 41rem;
+  margin: 1.25rem auto 0;
+  color: #64748b;
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+
+.lp .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: #469f3c;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lp .eyebrow::before {
+  width: 1.6rem;
+  height: 2px;
+  content: "";
+  background: #5fbb46;
+}
+
+@media (max-width: 640px) {
+  .lp .section {
+    padding-block: 4.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.lp) {
+    scroll-behavior: auto;
+  }
+
+  .lp .button-primary,
+  .lp .button-secondary,
+  .lp .nav-link::after {
+    transition: none;
   }
 }
 

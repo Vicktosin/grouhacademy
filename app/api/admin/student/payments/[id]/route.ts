@@ -1,20 +1,23 @@
-import { NextResponse } from 'next/server'
-import { RoleName } from '@/generated/prisma/client'
-import { getPrisma } from '@/lib/prisma'
-import { getCurrentUserId } from '@/lib/route-guards'
-import { userHasRole } from '@/lib/rbac'
+import { NextResponse } from "next/server";
+import { getPrisma } from "@/lib/prisma";
+import { requireAdminApi } from "@/lib/api-guards";
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(date)
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const adminId = await getCurrentUserId()
-  if (!adminId || !(await userHasRole(adminId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const adminId = await requireAdminApi();
+  if (adminId instanceof NextResponse) return adminId;
 
-  const { id } = await params
+  const { id } = await params;
   const payment = await getPrisma().payment.findUnique({
     where: { id },
     include: {
@@ -22,9 +25,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       course: { select: { title: true } },
       internshipProgram: { select: { name: true } },
     },
-  })
+  });
 
-  if (!payment) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 })
+  if (!payment)
+    return NextResponse.json({ error: "Payment not found." }, { status: 404 });
 
   return NextResponse.json({
     payment: {
@@ -33,13 +37,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       invoice: payment.reference,
       student: payment.user.name || payment.user.email,
       email: payment.user.email,
-      item: payment.course?.title || payment.internshipProgram?.name || 'Platform payment',
+      item:
+        payment.course?.title ||
+        payment.internshipProgram?.name ||
+        "Platform payment",
       amount: payment.amount,
-      currency: payment.currency || 'NGN',
-      provider: payment.provider || 'Not specified',
+      currency: payment.currency || "NGN",
+      provider: payment.provider || "Not specified",
       status: payment.status,
       createdAt: payment.createdAt.toISOString(),
       dateLabel: formatDate(payment.paidAt ?? payment.createdAt),
     },
-  })
+  });
 }

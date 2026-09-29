@@ -1,12 +1,12 @@
-import { RoleName } from '@/generated/prisma/client'
-import { getPrisma } from '@/lib/prisma'
-import { getUserRBAC } from '@/lib/rbac'
+import { RoleName } from "@/generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
+import { getUserRBAC } from "@/lib/rbac";
 
 export type SupabaseAuthUser = {
-  id: string
-  email?: string | null
-  user_metadata?: Record<string, unknown> | null
-}
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+};
 
 const rolePriority: RoleName[] = [
   RoleName.ADMIN,
@@ -14,77 +14,79 @@ const rolePriority: RoleName[] = [
   RoleName.MENTOR,
   RoleName.INTERN,
   RoleName.STUDENT,
-]
+];
 
-export function getAuthorizedHomeRouteForRoles(
-  roles: RoleName[],
-): string {
+export function getAuthorizedHomeRouteForRoles(roles: RoleName[]): string {
   for (const role of rolePriority) {
     if (roles.includes(role)) {
       switch (role) {
         case RoleName.ADMIN:
-          return '/admin/student'
+          return "/admin/student";
         case RoleName.INSTRUCTOR:
-          return '/instructor'
+          return "/instructor";
         case RoleName.MENTOR:
-          return '/mentor'
+          return "/mentor";
         case RoleName.INTERN:
-          return '/internship/dashboard'
+          return "/internship/dashboard";
         case RoleName.STUDENT:
         default:
-          return '/student'
+          return "/student";
       }
     }
   }
 
-  return '/student'
+  return "/student";
 }
 
-export function getInitialStudentRoute(hasInternshipApplication: boolean): string {
-  return hasInternshipApplication ? '/internship/dashboard' : '/internship/onboarding'
+export function getInitialStudentRoute(
+  hasInternshipApplication: boolean,
+): string {
+  return hasInternshipApplication
+    ? "/internship/dashboard"
+    : "/internship/onboarding";
 }
 
 export async function getAuthorizedHomeRouteForUserId(
   userId: string,
 ): Promise<string> {
-  const { roles } = await getUserRBAC(userId)
-  const baseRoute = getAuthorizedHomeRouteForRoles(roles)
+  const { roles } = await getUserRBAC(userId);
+  const baseRoute = getAuthorizedHomeRouteForRoles(roles);
 
   // Privileged roles take precedence even when an administrator also retains
   // their original Student or Intern role. Only learner-only accounts need
   // the application-aware internship destination.
-  if (baseRoute === '/student' || baseRoute === '/internship/dashboard') {
-    const prisma = getPrisma()
+  if (baseRoute === "/student" || baseRoute === "/internship/dashboard") {
+    const prisma = getPrisma();
     const existingApplication = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: { createdAt: "desc" },
+    });
 
-    return getInitialStudentRoute(Boolean(existingApplication))
+    return getInitialStudentRoute(Boolean(existingApplication));
   }
 
-  return baseRoute
+  return baseRoute;
 }
 
 export async function ensurePrismaUserForSupabaseAuth(
   authUser: SupabaseAuthUser,
 ): Promise<string> {
   if (!authUser.id) {
-    throw new Error('Supabase auth user is missing an id.')
+    throw new Error("Supabase auth user is missing an id.");
   }
 
-  const prisma = getPrisma()
+  const prisma = getPrisma();
 
   const existingUser = await prisma.user.findUnique({
     where: { id: authUser.id },
     include: { roles: { include: { role: true } } },
-  })
+  });
 
   if (existingUser) {
     if (existingUser.roles.length === 0) {
       const studentRole = await prisma.role.findUnique({
         where: { name: RoleName.STUDENT },
-      })
+      });
 
       if (studentRole) {
         await prisma.userRole.upsert({
@@ -99,21 +101,19 @@ export async function ensurePrismaUserForSupabaseAuth(
             userId: existingUser.id,
             roleId: studentRole.id,
           },
-        })
+        });
       }
     }
 
-    return existingUser.id
+    return existingUser.id;
   }
 
   const studentRole = await prisma.role.findUnique({
     where: { name: RoleName.STUDENT },
-  })
+  });
 
   if (!studentRole) {
-    throw new Error(
-      'The STUDENT role was not found in the Prisma RBAC data.',
-    )
+    throw new Error("The STUDENT role was not found in the Prisma RBAC data.");
   }
 
   const createdUser = await prisma.user.create({
@@ -121,21 +121,21 @@ export async function ensurePrismaUserForSupabaseAuth(
       id: authUser.id,
       email: authUser.email ?? `${authUser.id}@supabase.local`,
       name:
-        typeof authUser.user_metadata?.full_name === 'string'
+        typeof authUser.user_metadata?.full_name === "string"
           ? authUser.user_metadata.full_name
-          : typeof authUser.user_metadata?.name === 'string'
+          : typeof authUser.user_metadata?.name === "string"
             ? authUser.user_metadata.name
-            : authUser.email?.split('@')[0] ?? 'Supabase User',
-      status: 'ACTIVE',
+            : (authUser.email?.split("@")[0] ?? "Supabase User"),
+      status: "ACTIVE",
     },
-  })
+  });
 
   await prisma.userRole.create({
     data: {
       userId: createdUser.id,
       roleId: studentRole.id,
     },
-  })
+  });
 
-  return createdUser.id
+  return createdUser.id;
 }

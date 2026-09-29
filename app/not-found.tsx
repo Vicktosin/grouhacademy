@@ -1,12 +1,16 @@
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-[calc(100vh-7rem)] items-center justify-center bg-[#f8f9fb] px-4 py-12">
       <div className="w-full max-w-xl rounded-2xl border bg-white p-8 text-center shadow-xl shadow-grey-200 sm:p-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5FBB46]">404</p>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-[#1C1D52] sm:text-5xl">Page not found</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5FBB46]">
+          404
+        </p>
+        <h1 className="mt-4 text-4xl font-bold tracking-tight text-[#1C1D52] sm:text-5xl">
+          Page not found
+        </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">
           The page you were looking for doesn’t exist or may have moved.
         </p>
@@ -28,5 +32,5 @@ export default function NotFound() {
         </div>
       </div>
     </main>
-  )
+  );
 }

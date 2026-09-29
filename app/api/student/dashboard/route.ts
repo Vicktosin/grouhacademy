@@ -1,39 +1,46 @@
-import { NextResponse } from 'next/server'
-import { EnrollmentStatus, CourseStatus } from '@/generated/prisma/client'
-import { getCurrentUserId } from '@/lib/route-guards'
-import { getPrisma } from '@/lib/prisma'
+import { NextResponse } from "next/server";
+import { EnrollmentStatus, CourseStatus } from "@/generated/prisma/client";
+import { getCurrentUserId } from "@/lib/route-guards";
+import { getPrisma } from "@/lib/prisma";
 import {
   courseInclude,
   serializeCourse,
   type DashboardCourseProgress,
   type StudentDashboardResponse,
-} from '@/lib/course-data'
-import { buildCourseRecommendationFilter } from '@/lib/course-recommendation-filter'
+} from "@/lib/course-data";
+import { buildCourseRecommendationFilter } from "@/lib/course-recommendation-filter";
 
 export async function GET() {
-  const userId = await getCurrentUserId()
+  const userId = await getCurrentUserId();
 
   if (!userId) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
   }
 
-  const prisma = getPrisma()
+  const prisma = getPrisma();
 
   const enrollments = await prisma.enrollment.findMany({
     where: { userId, status: { not: EnrollmentStatus.CANCELLED } },
     include: { course: { include: courseInclude } },
-    orderBy: { enrolledAt: 'desc' },
-  })
+    orderBy: { enrolledAt: "desc" },
+  });
 
-  const enrolledCourseIds = enrollments.map((enrollment) => enrollment.courseId)
+  const enrolledCourseIds = enrollments.map(
+    (enrollment) => enrollment.courseId,
+  );
 
   const progressRows = enrolledCourseIds.length
     ? await prisma.courseProgress.findMany({
         where: { userId, courseId: { in: enrolledCourseIds } },
       })
-    : []
+    : [];
 
-  const progressByCourseId = new Map(progressRows.map((row) => [row.courseId, row]))
+  const progressByCourseId = new Map(
+    progressRows.map((row) => [row.courseId, row]),
+  );
 
   // "In progress" surfaces active enrollments for the "keep going" section.
   // Completed enrollments are still counted in stats below, just not
@@ -42,11 +49,11 @@ export async function GET() {
     .filter((enrollment) => enrollment.status === EnrollmentStatus.ACTIVE)
     .slice(0, 3)
     .map((enrollment) => {
-      const progress = progressByCourseId.get(enrollment.courseId)
+      const progress = progressByCourseId.get(enrollment.courseId);
       const totalLessonsFromCourse = enrollment.course.modules.reduce(
         (total, module) => total + module.lessons.length,
         0,
-      )
+      );
 
       return {
         slug: enrollment.course.slug,
@@ -55,52 +62,64 @@ export async function GET() {
         completedLessons: progress?.completedLessons ?? 0,
         totalLessons: progress?.totalLessons ?? totalLessonsFromCourse,
         progressPercent: progress?.progressPercent ?? 0,
-      }
-    })
+      };
+    });
 
   const completedCourses = enrollments.filter(
     (enrollment) => enrollment.status === EnrollmentStatus.COMPLETED,
-  ).length
+  ).length;
 
   const overallProgressPercent = progressRows.length
     ? Math.round(
-        progressRows.reduce((total, row) => total + row.progressPercent, 0) / progressRows.length,
+        progressRows.reduce((total, row) => total + row.progressPercent, 0) /
+          progressRows.length,
       )
-    : 0
+    : 0;
 
   const baseCourseFilter = {
     status: CourseStatus.PUBLISHED,
     ...(enrolledCourseIds.length ? { id: { notIn: enrolledCourseIds } } : {}),
-  }
+  };
 
   const studentProfile = await prisma.profile.findUnique({
     where: { userId },
     select: { skills: true },
-  })
+  });
 
   const interestLabels = (studentProfile?.skills ?? [])
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean))
+    .filter(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    )
+    .flatMap((value) =>
+      value
+        .split(/[;,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    );
 
-  const personalizedRecommendationFilter = buildCourseRecommendationFilter(interestLabels)
+  const personalizedRecommendationFilter =
+    buildCourseRecommendationFilter(interestLabels);
 
   let recommendedCourses = await prisma.course.findMany({
     where: {
       ...baseCourseFilter,
-      ...(personalizedRecommendationFilter ? personalizedRecommendationFilter : {}),
+      ...(personalizedRecommendationFilter
+        ? personalizedRecommendationFilter
+        : {}),
     },
     include: courseInclude,
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 3,
-  })
+  });
 
   if (recommendedCourses.length === 0) {
     recommendedCourses = await prisma.course.findMany({
       where: baseCourseFilter,
       include: courseInclude,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 3,
-    })
+    });
   }
 
   const response: StudentDashboardResponse = {
@@ -111,7 +130,7 @@ export async function GET() {
     },
     inProgress,
     recommended: recommendedCourses.map((course) => serializeCourse(course)!),
-  }
+  };
 
-  return NextResponse.json(response)
+  return NextResponse.json(response);
 }

@@ -1,66 +1,84 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
 
-import { InternshipPaymentStatus, RoleName } from '@/generated/prisma/client'
-import { getPrisma } from '@/lib/prisma'
-import { userHasRole } from '@/lib/rbac'
-import { getCurrentUserId } from '@/lib/route-guards'
+import { InternshipPaymentStatus } from "@/generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
+import { requireAdminApi } from "@/lib/api-guards";
 
 function formatTier(value: string | null | undefined) {
-  if (!value || value === 'NONE') return 'Free Tier'
-  const normalized = value.replace(/_/g, ' ').toLowerCase()
+  if (!value || value === "NONE") return "Free Tier";
+  const normalized = value.replace(/_/g, " ").toLowerCase();
   return normalized
-    .split(' ')
+    .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+    .join(" ");
 }
 
 function formatPaymentStatus(status: InternshipPaymentStatus) {
   const mapping: Record<InternshipPaymentStatus, string> = {
-    PENDING: 'Pending',
-    PAID: 'Paid',
-    FAILED: 'Failed',
-    CANCELLED: 'Cancelled',
-  }
+    PENDING: "Pending",
+    PAID: "Paid",
+    FAILED: "Failed",
+    CANCELLED: "Cancelled",
+  };
 
-  return mapping[status]
+  return mapping[status];
 }
 
-function formatInternshipStatus(applicationStatus: string | null | undefined, paymentStatus: InternshipPaymentStatus, cohortStatus?: string | null) {
-  if (paymentStatus === InternshipPaymentStatus.PAID && cohortStatus === 'COMPLETED') return 'Completed'
-  if (paymentStatus === InternshipPaymentStatus.PAID && (applicationStatus === 'ACTIVE' || !applicationStatus)) return 'In Progress'
-  if (paymentStatus === InternshipPaymentStatus.PAID && applicationStatus === 'ON_HOLD') return 'Awaiting Next Course'
-  if (paymentStatus === InternshipPaymentStatus.PENDING || paymentStatus === InternshipPaymentStatus.FAILED || paymentStatus === InternshipPaymentStatus.CANCELLED) return 'Awaiting Next Course'
-  if (cohortStatus === 'ACTIVE') return 'In Progress'
-  return 'Awaiting Next Course'
+function formatInternshipStatus(
+  applicationStatus: string | null | undefined,
+  paymentStatus: InternshipPaymentStatus,
+  cohortStatus?: string | null,
+) {
+  if (
+    paymentStatus === InternshipPaymentStatus.PAID &&
+    cohortStatus === "COMPLETED"
+  )
+    return "Completed";
+  if (
+    paymentStatus === InternshipPaymentStatus.PAID &&
+    (applicationStatus === "ACTIVE" || !applicationStatus)
+  )
+    return "In Progress";
+  if (
+    paymentStatus === InternshipPaymentStatus.PAID &&
+    applicationStatus === "ON_HOLD"
+  )
+    return "Awaiting Next Course";
+  if (
+    paymentStatus === InternshipPaymentStatus.PENDING ||
+    paymentStatus === InternshipPaymentStatus.FAILED ||
+    paymentStatus === InternshipPaymentStatus.CANCELLED
+  )
+    return "Awaiting Next Course";
+  if (cohortStatus === "ACTIVE") return "In Progress";
+  return "Awaiting Next Course";
 }
 
 function formatDate(date: Date | null | undefined) {
-  if (!date) return 'Not available'
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date)
+  if (!date) return "Not available";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
-function formatMoney(amount: number, currency = 'NGN') {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
+function formatMoney(amount: number, currency = "NGN") {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amount);
 }
 
 export async function GET() {
-  const adminId = await getCurrentUserId()
-  if (!adminId || !(await userHasRole(adminId, RoleName.ADMIN))) {
-    return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 })
-  }
+  const adminId = await requireAdminApi();
+  if (adminId instanceof NextResponse) return adminId;
 
-  const prisma = getPrisma()
+  const prisma = getPrisma();
 
   const payments = await prisma.internshipPayment.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     include: {
       application: {
         include: {
@@ -92,7 +110,7 @@ export async function GET() {
             },
           },
           attempts: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
             select: {
               status: true,
@@ -103,18 +121,26 @@ export async function GET() {
         },
       },
     },
-  })
+  });
 
   return NextResponse.json({
     payments: payments.map((payment) => {
-      const application = payment.application
-      const studentName = application.student.name || [application.student.profile?.firstName, application.student.profile?.lastName].filter(Boolean).join(' ') || 'Unnamed intern'
+      const application = payment.application;
+      const studentName =
+        application.student.name ||
+        [
+          application.student.profile?.firstName,
+          application.student.profile?.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ") ||
+        "Unnamed intern";
 
       const internshipStatus = formatInternshipStatus(
         application.status,
         payment.status,
         application.cohort?.status ?? null,
-      )
+      );
 
       return {
         id: payment.id,
@@ -127,19 +153,25 @@ export async function GET() {
         tier: formatTier(application.premiumTier),
         amount: payment.amount,
         amountLabel: formatMoney(payment.amount),
-        paymentType: payment.amount === application.program.acceptanceFee ? 'Acceptance Fee' : 'Internship Payment',
+        paymentType:
+          payment.amount === application.program.acceptanceFee
+            ? "Acceptance Fee"
+            : "Internship Payment",
         paymentStatus: payment.status,
         paymentStatusLabel: formatPaymentStatus(payment.status),
         internshipStatus,
         paymentDate: payment.paidAt ?? payment.createdAt,
         paymentDateLabel: formatDate(payment.paidAt ?? payment.createdAt),
-        cohort: application.cohort?.name ?? 'Unassigned',
+        cohort: application.cohort?.name ?? "Unassigned",
         cohortStatus: application.cohort?.status ?? null,
         courseFee: application.program.acceptanceFee,
-        accessFeeNote: application.premiumTier === 'NONE' ? 'Free Tier access fee recorded at ₦1,000' : 'Premium tier payment recorded',
+        accessFeeNote:
+          application.premiumTier === "NONE"
+            ? "Free Tier access fee recorded at ₦1,000"
+            : "Premium tier payment recorded",
         latestAttemptStatus: application.attempts[0]?.status ?? null,
         latestAssessmentPercent: application.attempts[0]?.scorePercent ?? null,
-      }
+      };
     }),
-  })
+  });
 }
