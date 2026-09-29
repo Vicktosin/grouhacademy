@@ -69,8 +69,8 @@ const page = () => {
                 5,000+ students already learning
               </span>
 
-              <h1 className="hero-title mt-8 text-5xl font-bold tracking-tight text-white sm:text-6xl">
-                Become Job-Ready With Our{" "}
+              <h1 className="hero-title mt-8 text-5xl font-bold tracking-tight text-white sm:text-7xl">
+                Become <span className="whitespace-nowrap">Job-Ready</span> With Our{" "}
                 <span className="text-[#5FBB46]">Internship</span>.
               </h1>
 

@@ -257,11 +257,6 @@
     font-weight: 700 !important;
   }
 
-  /* The landing hero needs a larger display treatment than standard H1s. */
-  .hero-title {
-    font-size: 3.75rem !important;
-  }
-
   @media (max-width: 639px) {
     h1:not(.lp *) {
       font-size: 1.75rem !important;
@@ -275,9 +270,14 @@
     .text-base:not(.lp *) {
       font-size: 0.9375rem !important;
     }
-    .hero-title {
-      font-size: 2.25rem !important;
-    }
+  }
+
+  /* The landing hero needs a larger display treatment than standard H1s.
+     Qualified with h1 so it outranks the enforced h1:not(.lp *) size, including
+     the small-screen override above; keep it after that media query. */
+  h1.hero-title {
+    font-size: clamp(2.75rem, 6.5vw, 4.0rem) !important;
+    line-height: 1.05 !important;
   }
 }
 
