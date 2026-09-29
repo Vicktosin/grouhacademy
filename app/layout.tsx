@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import HeaderGuard from "../components/HeaderGuard";
 import FooterGuard from "@/components/FooterGuard";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { getSiteUrl } from "@/lib/site-url";
+
+// Google Analytics 4 measurement ID (G-XXXXXXXXXX). Analytics stays off when
+// it is unset, e.g. in local development.
+const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
 const lato = Lato({
   subsets: ["latin"],
@@ -84,6 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <FooterGuard />
       </body>
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   );
 }

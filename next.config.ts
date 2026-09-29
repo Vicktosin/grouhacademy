@@ -9,14 +9,21 @@ const supabaseRealtime = supabaseUrl.replace(/^https:/, "wss:");
 // content-security-policy.md), so inline scripts stay allowed. Images, media
 // and frames accept any https source because course thumbnails, avatars and
 // lesson videos are URLs entered by instructors and admins.
+// Google Analytics loads gtag.js from Tag Manager and reports to these hosts.
+const googleAnalytics = {
+  script: "https://www.googletagmanager.com",
+  connect:
+    "https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
+};
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime}${isDev ? " ws:" : ""}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect}${isDev ? " ws:" : ""}`,
   "frame-src https:",
   "worker-src 'self'",
   "manifest-src 'self'",
