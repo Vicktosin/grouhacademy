@@ -9,7 +9,7 @@ const navLinks = [
   ['What you get', '#benefits'],
   ['Career tracks', '#tracks'],
   ['How it works', '#how-it-works'],
-  ['Tuition', '#tuition'],
+  ['Community', '#community'],
 ] as const
 
 const HeaderLP = () => {

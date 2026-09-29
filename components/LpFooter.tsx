@@ -5,8 +5,8 @@ import logo from '../public/logo.png'
 const LpFooter = () => {
   return (
     <footer className="border-t border-slate-100 bg-white">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-9 sm:px-8 md:flex-row md:items-center md:justify-between">
-        <Image className="h-9 w-auto self-start md:self-center" src={logo} alt="Grouh Academy" />
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-5 py-9 text-center sm:px-8">
+        <Image className="h-9 w-auto" src={logo} alt="Grouh Academy" />
         <p className="text-sm text-slate-500">
           Practical digital skills. Real experience. A stronger start.
         </p>

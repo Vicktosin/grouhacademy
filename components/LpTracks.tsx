@@ -61,13 +61,13 @@ const LpTracks = () => {
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#141650] text-white">
                 <LpIcon name={track.icon} />
               </span>
-              <h3 className="flex-1 text-base font-extrabold leading-snug">{track.title}</h3>
+              <h3 className="flex-1 text-center text-base font-extrabold leading-snug">{track.title}</h3>
               <LpIcon
                 name="chevron"
                 className="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180 group-open:text-[#469f3c]"
               />
             </summary>
-            <div className="px-4 pb-4 pl-[4.25rem]">
+            <div className="px-4 pb-4 text-center">
               <p className="text-sm leading-6 text-slate-500">{track.text}</p>
               <a
                 className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#469f3c]"
@@ -82,19 +82,17 @@ const LpTracks = () => {
       <div className="mx-auto mt-14 hidden max-w-7xl gap-4 px-5 sm:px-8 md:grid md:grid-cols-2 lg:grid-cols-3">
         {tracks.map((track, index) => (
           <article
-            className={`group relative flex min-h-52 flex-col rounded-2xl border border-[#e8e9f8] bg-white p-7 transition duration-300 hover:border-[#5FBB46]/50 hover:shadow-xl hover:shadow-[#141650]/5 ${
-              index === 6 ? 'md:col-span-2 lg:col-span-1' : ''
+            className={`group relative flex min-h-52 flex-col items-center rounded-2xl border border-[#e8e9f8] bg-white p-7 text-center transition duration-300 hover:border-[#5FBB46]/50 hover:shadow-xl hover:shadow-[#141650]/5 ${
+              index === 6 ? 'md:col-span-2 lg:col-span-1 lg:col-start-2' : ''
             }`}
             key={track.title}
           >
-            <div className="flex items-start justify-between">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#141650] text-white">
-                <LpIcon name={track.icon} />
-              </span>
-              <span className="text-xs font-black text-slate-300">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-            </div>
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#141650] text-white">
+              <LpIcon name={track.icon} />
+            </span>
+            <span className="absolute right-7 top-7 text-xs font-black text-slate-300">
+              {String(index + 1).padStart(2, '0')}
+            </span>
             <h3 className="mt-6 text-xl font-extrabold">{track.title}</h3>
             <p className="mt-3 text-[0.9375rem] leading-6 text-slate-500">{track.text}</p>
             {/* The link's overlay makes the whole card clickable. */}

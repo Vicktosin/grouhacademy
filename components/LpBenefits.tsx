@@ -33,11 +33,7 @@ const LpBenefits = () => {
   return (
     <section className="py-[6.5rem] max-sm:py-[4.75rem]" id="benefits">
           <div className="mx-auto max-w-3xl px-5 text-center">
-            <span
-              className="text-xs font-bold tracking-widest uppercase"
-              style={{ color: "#4db848" }}
-            ></span>
-            What you get
+            <p className="eyebrow">What you get</p>
             <h2 className="mt-5 text-[clamp(2.25rem,5vw,3.5rem)] font-black leading-[1.08] tracking-[-0.035em]">
               Why This is Unique
             </h2>
@@ -46,15 +42,15 @@ const LpBenefits = () => {
               to help you practise, collaborate, and build confidence.
             </p>
           </div>
-          <div className="mx-auto mt-14 grid max-w-7xl gap-5 px-5 sm:flex sm:col-span-2 sm:px-8 lg:flex lg:col-span-5">
+          <div className="mx-auto mt-14 grid max-w-7xl gap-5 px-5 sm:grid-cols-2 sm:px-8 lg:grid-cols-4">
             {benefits.map((benefit, index) => (
               <article
                 key={benefit.title}
-                className={`group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#5FBB46]/40 hover:shadow-xl hover:shadow-slate-200/60 ${
+                className={`group rounded-2xl border border-slate-200 bg-white p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-[#5FBB46]/40 hover:shadow-xl hover:shadow-slate-200/60 ${
                   index === 4 ? "sm:col-span-2 lg:col-span-1" : ""
                 }`}
               >
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#f0faed] text-[#429c38] transition group-hover:bg-[#5FBB46] group-hover:text-white">
+                <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-[#f0faed] text-[#429c38] transition group-hover:bg-[#5FBB46] group-hover:text-white">
                    <LpIcon name={benefit.icon} />
                 </span>
                 <h3 className="mt-5 text-lg font-extrabold">{benefit.title}</h3>

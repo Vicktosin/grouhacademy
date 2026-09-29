@@ -31,7 +31,7 @@ const LpHero = () => {
             </a>
           </div>
           <div className="mt-8 flex flex-wrap gap-x-7 gap-y-3 text-sm font-semibold text-[#141650]/70">
-            {['₦0 tuition', '100% virtual', 'Certificate included'].map((item) => (
+            {['Fully Practical', '100% virtual', 'Certificate included'].map((item) => (
               <span className="flex items-center gap-2" key={item}>
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[#5FBB46]/15 text-[#429c38]">
                   <LpIcon name="check" className="h-3.5 w-3.5" />

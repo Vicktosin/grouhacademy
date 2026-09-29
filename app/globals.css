@@ -281,7 +281,7 @@
   }
 }
 
-/* Internship landing page (app/Landingpage, components/Lp*). Unlayered and
+/* Internship landing page (app/landingpage, components/Lp*). Unlayered and
    scoped to .lp so it matches the original design without leaking site-wide. */
 html:has(.lp) {
   scroll-behavior: smooth;

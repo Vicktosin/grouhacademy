@@ -20,7 +20,7 @@ const LpRegister = () => {
             Proceed to register
             <LpIcon name="arrow" />
           </Link>
-          <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-[#5FBB46]/25 bg-white/80 p-5 text-left text-[0.9375rem] leading-7 text-slate-600">
+          <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-[#5FBB46]/25 bg-white/80 p-5 text-center text-[0.9375rem] leading-7 text-slate-600">
             <strong className="font-extrabold text-[#141650]">Please read before you register:</strong>{' '}
             Continue only if you understand and agree to pay the <span className="text-[#5FBB46]">₦3,000</span> acceptance fee after
             successfully passing the entrance examination.

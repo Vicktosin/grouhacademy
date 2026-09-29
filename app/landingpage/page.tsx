@@ -5,7 +5,7 @@ import LpHero from '@/components/LpHero'
 import LpBenefits from '@/components/LpBenefits'
 import LpTracks from '@/components/LpTracks'
 import LpHowItWorks from '@/components/LpHowItWorks'
-import LpTuition from '@/components/LpTuition'
+import LpCommunity from '@/components/LpCommunity'
 import LpRegister from '@/components/LpRegister'
 import LpFooter from '@/components/LpFooter'
 
@@ -23,7 +23,7 @@ const page = () => {
         <LpBenefits />
         <LpHowItWorks />
         <LpRegister />
-        <LpTuition />
+        <LpCommunity />
       </main>
       <LpFooter />
     </div>

@@ -1,25 +1,36 @@
 import React from 'react'
+import LpIcon, { COMMUNITY_URL } from './LpIcon'
 
 const requirements = [
   ['Pass the entrance examination', 'Complete and pass our simple examination before admission.'],
   ['Pay the ₦1,000 acceptance fee', 'Only successful applicants pay this fee to confirm their place.'],
 ]
 
-const LpTuition = () => {
+const LpCommunity = () => {
   return (
-    <section className="section bg-[#141650] text-white" id="tuition">
-      <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[1fr_.9fr] lg:items-center lg:gap-20">
+    <section className="section bg-[#141650] text-white" id="community">
+      <div className="mx-auto max-w-4xl px-5 text-center sm:px-8">
         <div>
-          <p className="eyebrow text-[#8ed77d] before:bg-[#5FBB46]">Tuition is free</p>
+          <p className="eyebrow text-[#8ed77d] before:bg-[#5FBB46]">Join our community</p>
           <h2 className="mt-5 text-5xl font-black leading-none tracking-[-0.04em] sm:text-6xl">
-            Yes. Your tuition costs <span className="text-[#73cf60]">₦0.</span>
+            Are you still <span className="text-[#73cf60]">undecided?</span>
           </h2>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-white/65">
-            Financial limitations should not prevent you from gaining valuable digital skills.
-            That is why tuition for this internship is completely free.
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-white/65">
+            Join our community to learn more about the program
+            and get answers to your questions. You can also connect with other applicants
+            and interns to learn about their experiences.
           </p>
+          <a
+            className="button-primary mt-9 text-base"
+            href="https://chat.whatsapp.com/Fo0Ah8wtIoUBhg1Jio36Cu"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Join our community
+            <LpIcon name="group" />
+          </a>
         </div>
-        <div className="rounded-[1.75rem] bg-white p-6 text-[#141650] shadow-2xl sm:p-8">
+       {/* <div className="rounded-[1.75rem] bg-white p-6 text-[#141650] shadow-2xl sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400">
             Two admission requirements
           </p>
@@ -44,10 +55,10 @@ const LpTuition = () => {
             The acceptance fee is only required after you successfully pass the entrance
             examination.
           </div>
-        </div>
+        </div>*/}
       </div>
     </section>
   )
 }
 
-export default LpTuition
+export default LpCommunity

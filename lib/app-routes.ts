@@ -25,7 +25,7 @@ const APP_ROUTE_SECTIONS = [
   "/offline",
 
   // Standalone landing pages that render their own header and footer
-  "/Landingpage",
+  "/landingpage",
 ];
 
 export function isAppRoute(pathname: string): boolean {
