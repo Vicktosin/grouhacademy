@@ -19,7 +19,6 @@ const page = () => {
       <HeaderLP />
       <main id="top">
         <LpHero />
-        <LpTracks />
         <LpBenefits />
         <LpHowItWorks />
         <LpRegister />

@@ -9,7 +9,8 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import CommunityInvite from "@/components/CommunityInvite";
+import CommunityInvite, { WhatsAppIcon } from "@/components/CommunityInvite";
+import { COMMUNITY_URL } from "@/lib/community";
 
 type Result = {
   programName: string;
@@ -235,6 +236,18 @@ export default function AssessmentResultsPage() {
                   Review results
                 </button>
               </div>
+              <a
+                href={COMMUNITY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center justify-center gap-1.5 text-xs text-slate-500 transition hover:text-[#1C1D52]"
+              >
+                <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                Not ready yet?{" "}
+                <span className="font-semibold text-[#1fae55] underline underline-offset-2">
+                  Join our community
+                </span>
+              </a>
             </div>
           </div>
         </div>

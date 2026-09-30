@@ -74,7 +74,7 @@ export default function InternshipPaymentPage() {
     );
   if (error || !result || !result.passed)
     return (
-      <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+      <div className="mx-auto my-8 max-w-xl rounded-2xl bg-white p-8 text-center sm:my-12 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
         <AlertCircle className="mx-auto h-9 w-9 text-amber-500" />
         <h1 className="mt-4 text-xl font-bold text-[#1C1D52]">
           Assessment required
@@ -93,7 +93,7 @@ export default function InternshipPaymentPage() {
     );
   if (result.acceptanceFeePaid)
     return (
-      <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+      <div className="mx-auto my-8 max-w-xl rounded-2xl bg-white p-8 text-center sm:my-12 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
         <CheckCircle2 className="mx-auto h-10 w-10 text-[#5FBB46]" />
         <h1 className="mt-4 text-xl font-bold text-[#1C1D52]">
           Acceptance fee paid
@@ -111,7 +111,7 @@ export default function InternshipPaymentPage() {
     );
 
   return (
-    <div className="mx-auto max-w-xl space-y-5">
+    <div className="mx-auto max-w-xl space-y-5 py-8 sm:py-12">
       <div className="rounded-2xl bg-white p-6 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-8">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f7eb] text-[#5FBB46]">

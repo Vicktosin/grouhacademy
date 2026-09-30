@@ -3,13 +3,14 @@
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { CONTACT_INBOX, CONTACT_TOPICS } from "@/lib/contact";
 
 const contactDetails = [
   {
     icon: Mail,
     label: "Email us",
-    value: "hello@grouhacademy.com",
-    href: "mailto:hello@grouhacademy.com",
+    value: CONTACT_INBOX,
+    href: `mailto:${CONTACT_INBOX}`,
   },
   {
     icon: Phone,
@@ -22,10 +23,34 @@ const contactDetails = [
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(true);
+    setSending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          Object.fromEntries(new FormData(event.currentTarget)),
+        ),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok)
+        throw new Error(body?.error ?? "Your message couldn't be sent.");
+      setSubmitted(true);
+    } catch (sendError) {
+      setError(
+        sendError instanceof Error
+          ? sendError.message
+          : "Your message couldn't be sent.",
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -138,11 +163,11 @@ export default function ContactPage() {
                   defaultValue="course"
                   className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 font-normal outline-none focus:border-[#4db848]"
                 >
-                  <option value="course">Choosing a course</option>
-                  <option value="enrollment">Enrollment and payment</option>
-                  <option value="internship">Internship program</option>
-                  <option value="partnership">Partnerships</option>
-                  <option value="other">Something else</option>
+                  {Object.entries(CONTACT_TOPICS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="block text-sm font-semibold">
@@ -155,11 +180,29 @@ export default function ContactPage() {
                   className="mt-2 w-full resize-y rounded-lg border border-slate-200 px-4 py-3 font-normal outline-none transition focus:border-[#4db848] focus:ring-2 focus:ring-[#4db848]/15"
                 />
               </label>
+              {/* Spam trap: hidden from people, filled in by bots. */}
+              <input
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="hidden"
+              />
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                  {error}
+                </p>
+              )}
               <button
                 type="submit"
-                className="w-full rounded-full bg-[#5fbb46] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#4aaa3e]"
+                disabled={sending}
+                className="w-full rounded-full bg-[#5fbb46] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#4aaa3e] disabled:cursor-wait disabled:opacity-70"
               >
-                Send message
+                {sending ? "Sending…" : "Send message"}
               </button>
             </form>
           )}

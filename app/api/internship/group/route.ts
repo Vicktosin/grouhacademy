@@ -72,6 +72,43 @@ export async function GET(request: Request) {
       );
     }
 
+    // Poll requests (every few seconds while the chat is open) only need new
+    // messages. The first load already placed the intern in a group and sent
+    // members, the meeting and the task, so skip that work here.
+    if (after) {
+      const since = new Date(after);
+      if (Number.isNaN(since.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid 'after' timestamp." },
+          { status: 400 },
+        );
+      }
+
+      const membership = await prisma.internshipGroupMember.findUnique({
+        where: {
+          programId_userId: { programId: application.programId, userId },
+        },
+        select: { groupId: true },
+      });
+      if (!membership) return notInCohortResponse();
+
+      const newMessages = await prisma.groupMessage.findMany({
+        where: { groupId: membership.groupId, createdAt: { gt: since } },
+        orderBy: { createdAt: "asc" },
+        take: 200,
+      });
+
+      return NextResponse.json({
+        messages: newMessages.map((m) => ({
+          id: m.id,
+          senderId: m.senderId,
+          content: m.content,
+          createdAt: m.createdAt.toISOString(),
+          isMine: m.senderId === userId,
+        })),
+      });
+    }
+
     const group = await ensureGroupMembership(application);
     if (!group) return notInCohortResponse();
 
@@ -81,12 +118,11 @@ export async function GET(request: Request) {
         include: { user: true },
         orderBy: { joinedAt: "asc" },
       }),
+      // Newest 200 (fetched newest-first, reversed below) so a long chat opens
+      // on the latest conversation rather than the oldest.
       prisma.groupMessage.findMany({
-        where: {
-          groupId: group.id,
-          ...(after ? { createdAt: { gt: new Date(after) } } : {}),
-        },
-        orderBy: { createdAt: "asc" },
+        where: { groupId: group.id },
+        orderBy: { createdAt: "desc" },
         take: 200,
       }),
       prisma.groupMeeting.findFirst({
@@ -106,7 +142,7 @@ export async function GET(request: Request) {
         isLeader: m.userId === group.leaderId,
         isMe: m.userId === userId,
       })),
-      messages: messages.map((m) => ({
+      messages: messages.reverse().map((m) => ({
         id: m.id,
         senderId: m.senderId,
         content: m.content,
