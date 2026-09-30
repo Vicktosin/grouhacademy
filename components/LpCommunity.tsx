@@ -1,6 +1,6 @@
 import React from 'react'
 import LpIcon from './LpIcon'
-import { COMMUNITY_URL } from '@/lib/community'
+import CommunityLink from './CommunityLink'
 
 const requirements = [
   ['Pass the entrance examination', 'Complete and pass our simple examination before admission.'],
@@ -21,15 +21,10 @@ const LpCommunity = () => {
             and get answers to your questions. You can also connect with other applicants
             and interns to learn about their experiences.
           </p>
-          <a
-            className="button-primary mt-9 text-base"
-            href={COMMUNITY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <CommunityLink location="landing_page" className="button-primary mt-9 text-base">
             Join our community
             <LpIcon name="group" />
-          </a>
+          </CommunityLink>
         </div>
        {/* <div className="rounded-[1.75rem] bg-white p-6 text-[#141650] shadow-2xl sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400">

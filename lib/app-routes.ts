@@ -26,6 +26,7 @@ const APP_ROUTE_SECTIONS = [
 
   // Standalone landing pages that render their own header and footer
   "/landingpage",
+  "/ad-redirect",
 ];
 
 export function isAppRoute(pathname: string): boolean {

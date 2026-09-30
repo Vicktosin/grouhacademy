@@ -1,4 +1,4 @@
-import { COMMUNITY_URL } from "@/lib/community";
+import CommunityLink from "@/components/CommunityLink";
 
 /** WhatsApp logo (brand mark), sized by className and coloured by currentColor. */
 export function WhatsAppIcon({
@@ -22,10 +22,13 @@ export function WhatsAppIcon({
 export default function CommunityInvite({
   title,
   description,
+  location,
   className = "",
 }: {
   title: string;
   description: string;
+  /** Where the invite is shown, reported with the GA click event. */
+  location: string;
   className?: string;
 }) {
   return (
@@ -39,15 +42,13 @@ export default function CommunityInvite({
         <h2 className="text-base font-bold text-[#1C1D52]">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
       </div>
-      <a
-        href={COMMUNITY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <CommunityLink
+        location={location}
         className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(37,211,102,0.3)] transition hover:-translate-y-px hover:bg-[#1ebe5b]"
       >
         <WhatsAppIcon className="h-5 w-5" />
         Join the community
-      </a>
+      </CommunityLink>
     </aside>
   );
 }

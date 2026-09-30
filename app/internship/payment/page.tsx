@@ -163,6 +163,7 @@ export default function InternshipPaymentPage() {
       </div>
 
       <CommunityInvite
+        location="payment_page"
         title="Not ready to pay yet?"
         description="Join our WhatsApp community to ask questions, learn more about the programme, and hear from current interns."
       />

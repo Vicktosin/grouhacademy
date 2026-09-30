@@ -10,7 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import CommunityInvite, { WhatsAppIcon } from "@/components/CommunityInvite";
-import { COMMUNITY_URL } from "@/lib/community";
+import CommunityLink from "@/components/CommunityLink";
 
 type Result = {
   programName: string;
@@ -188,6 +188,7 @@ export default function AssessmentResultsPage() {
 
       {!result.acceptanceFeePaid && (
         <CommunityInvite
+          location="results_page"
           className="mx-auto mt-5 max-w-xl"
           title={
             result.passed
@@ -236,10 +237,8 @@ export default function AssessmentResultsPage() {
                   Review results
                 </button>
               </div>
-              <a
-                href={COMMUNITY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              <CommunityLink
+                location="results_popup"
                 className="mt-6 inline-flex items-center justify-center gap-1.5 text-xs text-slate-500 transition hover:text-[#1C1D52]"
               >
                 <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
@@ -247,7 +246,7 @@ export default function AssessmentResultsPage() {
                 <span className="font-semibold text-[#1fae55] underline underline-offset-2">
                   Join our community
                 </span>
-              </a>
+              </CommunityLink>
             </div>
           </div>
         </div>
