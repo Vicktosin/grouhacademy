@@ -103,7 +103,14 @@ export async function GET(request: Request) {
 
     await assignApplicationCohort(prisma as unknown as CohortDb, application);
 
-    return NextResponse.json({ status: "success" });
+    // Amount and currency let the browser report the purchase value to
+    // Google Analytics and Meta Pixel.
+    return NextResponse.json({
+      status: "success",
+      amount: application.program.acceptanceFee,
+      currency: data.data.currency,
+      programName: application.program.name,
+    });
   } catch (error) {
     console.error("Failed to verify acceptance fee payment:", error);
     return NextResponse.json(

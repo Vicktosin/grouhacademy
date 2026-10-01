@@ -1,6 +1,5 @@
 import React from 'react'
-import Link from 'next/link'
-import LpIcon, { ENROLL_URL } from './LpIcon'
+import ApplyButton from './ApplyButton'
 
 const LpRegister = () => {
   return (
@@ -16,10 +15,7 @@ const LpRegister = () => {
             Take the entrance exam, choose your preferred track, and begin building practical
             digital skills and experience.
           </p>
-          <Link className="button-primary mt-8 text-base" href={ENROLL_URL}>
-            Proceed to register
-            <LpIcon name="arrow" />
-          </Link>
+          <ApplyButton />
           <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-[#5FBB46]/25 bg-white/80 p-5 text-center text-[0.9375rem] leading-7 text-slate-600">
             <strong className="font-extrabold text-[#141650]">Please read before you register:</strong>{' '}
             Continue only if you understand and agree to pay the <span className="text-[#5FBB46]">₦3,000</span> acceptance fee after

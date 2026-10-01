@@ -13,17 +13,23 @@ const supabaseRealtime = supabaseUrl.replace(/^https:/, "wss:");
 const googleAnalytics = {
   script: "https://www.googletagmanager.com",
   connect:
-    "https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
+    "https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com",
+};
+
+// Meta Pixel loads fbevents.js from connect.facebook.net and reports to facebook.com.
+const metaPixel = {
+  script: "https://connect.facebook.net",
+  connect: "https://connect.facebook.net https://www.facebook.com",
 };
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script}${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script} ${metaPixel.script}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect}${isDev ? " ws:" : ""}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect}${isDev ? " ws:" : ""}`,
   "frame-src https:",
   "worker-src 'self'",
   "manifest-src 'self'",

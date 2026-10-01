@@ -6,6 +6,7 @@ import HeaderGuard from "../components/HeaderGuard";
 import FooterGuard from "@/components/FooterGuard";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { getSiteUrl } from "@/lib/site-url";
+import MetaPixel from "@/components/MetaPixel";
 
 // Google Analytics 4 measurement ID (G-XXXXXXXXXX). Analytics stays off when
 // it is unset, e.g. in local development.
@@ -86,6 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <HeaderGuard />
+         <MetaPixel />
         {children}
         <FooterGuard />
       </body>

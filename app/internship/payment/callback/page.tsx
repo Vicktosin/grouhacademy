@@ -3,6 +3,45 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { sendGAEvent } from "@next/third-parties/google";
+import { trackMetaEvent } from "@/lib/meta-pixel";
+
+type VerifiedPayment = {
+  amount?: number;
+  currency?: string;
+  programName?: string;
+};
+
+// Reports a confirmed acceptance fee as a purchase. Both platforms also drop
+// repeats of the same reference, but skip refreshes here so they never resend.
+function trackAcceptancePurchase(reference: string, payment: VerifiedPayment) {
+  if (typeof payment.amount !== "number") return;
+  const key = `tracked-purchase-${reference}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // Storage unavailable (private mode); the reference still dedupes.
+  }
+  const currency = payment.currency ?? "NGN";
+  trackMetaEvent(
+    "Purchase",
+    { value: payment.amount, currency },
+    { eventID: reference },
+  );
+  sendGAEvent("event", "purchase", {
+    transaction_id: reference,
+    value: payment.amount,
+    currency,
+    items: [
+      {
+        item_name: `${payment.programName ?? "Internship"} acceptance fee`,
+        price: payment.amount,
+        quantity: 1,
+      },
+    ],
+  });
+}
 
 export default function PaymentCallbackPage() {
   const params = useMemo(
@@ -44,6 +83,9 @@ export default function PaymentCallbackPage() {
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
+        // Premium upgrades aren't intern conversions, so only the
+        // acceptance fee is reported.
+        if (type === "acceptance") trackAcceptancePurchase(reference, data);
         setStatus("success");
       })
       .catch((error) => {

@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { sendGAEvent } from "@next/third-parties/google";
 import CommunityInvite from "@/components/CommunityInvite";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type Result = {
   programName: string;
@@ -46,6 +48,18 @@ export default function InternshipPaymentPage() {
   }, []);
 
   async function payAcceptanceFee() {
+    // Reported before the Paystack redirect so the event isn't cut off.
+    if (result) {
+      trackMetaEvent("InitiateCheckout", {
+        value: result.acceptanceFee,
+        currency: "NGN",
+      });
+      sendGAEvent("event", "begin_checkout", {
+        value: result.acceptanceFee,
+        currency: "NGN",
+        items: [{ item_name: `${result.programName} acceptance fee` }],
+      });
+    }
     setPaying(true);
     setError("");
     try {
