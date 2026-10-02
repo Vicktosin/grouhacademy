@@ -4,7 +4,7 @@ import LpIcon, { EXAM_URL } from './LpIcon'
 const steps = [
   ['Apply', 'Register and take our simple entrance examination.'],
   ['Entrance examination', 'Pass the examination and proceed with your admission.'],
-  ['Confirm your place', 'Pay the ₦3,000 acceptance fee after selection.'],
+  ['Confirm your place', 'Pay the ₦990 acceptance fee after selection.'],
   ['Start learning', 'Access your courses through our app at your own pace.'],
   ['Complete your tasks', 'Submit weekly work and participate in group projects.'],
   ['Graduate', 'Complete the programme, get certified, and join graduation.'],
