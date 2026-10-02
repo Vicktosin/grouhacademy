@@ -22,14 +22,22 @@ const metaPixel = {
   connect: "https://connect.facebook.net https://www.facebook.com",
 };
 
+// ProveSource (landing page social proof) loads provesrc.js from its CDN, talks
+// to its client API, and pulls the popup font from fonts.bunny.net.
+const proveSource = {
+  script: "https://cdn.provesrc.com",
+  connect: "https://client-api.provesrc.com",
+  fonts: "https://fonts.bunny.net",
+};
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script} ${metaPixel.script}${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script} ${metaPixel.script} ${proveSource.script}${isDev ? " 'unsafe-eval'" : ""}`,
+  `style-src 'self' 'unsafe-inline' ${proveSource.fonts}`,
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
-  "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect}${isDev ? " ws:" : ""}`,
+  `font-src 'self' data: ${proveSource.fonts}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect} ${proveSource.connect}${isDev ? " ws:" : ""}`,
   "frame-src https:",
   "worker-src 'self'",
   "manifest-src 'self'",
