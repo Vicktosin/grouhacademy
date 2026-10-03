@@ -1329,3 +1329,23 @@ model GroupMeeting {
 
   @@index([groupId, scheduledAt])
 }
+
+// Admin-managed image banners that slide at the top of every internship
+// workspace page. A banner is live while isActive and inside its optional
+// startsAt/endsAt window; live banners show in sortOrder.
+model DashboardBanner {
+  id             String    @id @default(cuid())
+  title          String
+  imageUrl       String
+  mobileImageUrl String?
+  buttonLabel    String?
+  buttonUrl      String?
+  isActive       Boolean   @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([isActive, sortOrder])
+}

@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import InternshipSidebar from "./InternshipSidebar";
 import StudentHeader from "./StudentHeader";
+import CommunityLink from "./CommunityLink";
+import { WhatsAppIcon } from "./CommunityInvite";
+import DashboardBanner from "./DashboardBanner";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
 // Routes reachable before the acceptance fee is paid — the onboarding →
@@ -106,7 +109,27 @@ export default function InternshipShell({
           <div className="min-w-0 flex-1">
             <StudentHeader />
           </div>
+          {status?.acceptanceFeePaid && (
+            <CommunityLink
+              location="internship_header"
+              className="hidden shrink-0 items-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(37,211,102,0.35)] transition hover:-translate-y-px hover:bg-[#1ebe5b] sm:inline-flex"
+            >
+              <WhatsAppIcon className="h-5 w-5" />
+              Join WhatsApp Community
+            </CommunityLink>
+          )}
         </div>
+        {/* The header row is too narrow on phones for the full label, so
+            phones get the button on its own full-width row instead. */}
+        {status?.acceptanceFeePaid && (
+          <CommunityLink
+            location="internship_header"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-[0_8px_20px_rgba(37,211,102,0.35)] transition active:bg-[#1ebe5b] sm:hidden"
+          >
+            <WhatsAppIcon className="h-5 w-5" />
+            Join WhatsApp Community
+          </CommunityLink>
+        )}
       </header>
 
       <div className="flex min-h-0 flex-1 gap-5 overflow-hidden px-3 pb-3 sm:px-5 lg:gap-6 lg:px-6">
@@ -114,6 +137,7 @@ export default function InternshipShell({
           <InternshipSidebar />
         </aside>
         <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto py-2">
+          <DashboardBanner />
           {children}
         </main>
       </div>
