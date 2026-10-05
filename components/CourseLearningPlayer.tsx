@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { resolveLessonMedia } from "@/lib/video-embed";
 
 export type LearnLessonResource = {
   id: string;
@@ -128,6 +129,11 @@ export default function CourseLearningPlayer({
       : [];
   const isLessonComplete = lesson ? completedLessonIds.has(lesson.id) : false;
   const mediaKey = `${selectedModule}-${selectedLesson}`;
+  // Pasted links (watch pages, youtu.be, no https…) become playable embeds.
+  const media = resolveLessonMedia(
+    mediaUrl,
+    typeof window === "undefined" ? undefined : window.location.origin,
+  );
 
   const isLastLesson =
     selectedModule === modules.length - 1 &&
@@ -395,12 +401,33 @@ export default function CourseLearningPlayer({
                 ref={mediaContainerRef}
                 className="mt-6 aspect-video overflow-hidden rounded-xl bg-[#101426] shadow-[0_12px_30px_rgba(28,29,82,0.16)]"
               >
-                {playingMedia === mediaKey ? (
+                {playingMedia === mediaKey && media?.kind === "file" ? (
+                  <video
+                    src={media.src}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="h-full w-full bg-black"
+                  />
+                ) : playingMedia === mediaKey && media?.kind === "embed" ? (
+                  <iframe
+                    className="h-full w-full"
+                    src={media.src}
+                    title={`${title} lesson media`}
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                    allowFullScreen
+                  />
+                ) : playingMedia === mediaKey && !media ? (
+                  <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white/80">
+                    This video link isn&apos;t valid. Please let the course
+                    instructor know.
+                  </div>
+                ) : playingMedia === mediaKey && media ? (
                   <div className="relative h-full w-full">
                     <iframe
                       ref={playerRef}
                       className="h-full w-full"
-                      src={`${mediaUrl}?autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&playsinline=1&enablejsapi=1`}
+                      src={media.src}
                       title={`${title} lesson media`}
                       allow="autoplay; encrypted-media; picture-in-picture"
                       allowFullScreen

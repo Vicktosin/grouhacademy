@@ -1,6 +1,7 @@
 import { RoleName } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getUserRBAC } from "@/lib/rbac";
+import type { LearnerTrack } from "@/lib/learner-tracks";
 
 export type SupabaseAuthUser = {
   id: string;
@@ -46,30 +47,46 @@ export function getInitialStudentRoute(
     : "/internship/onboarding";
 }
 
+/**
+ * Where a signed-in user belongs. Staff go to their workspace. Learners go
+ * to the side they signed in through (`track`); without one, interns go to
+ * the internship and course-only students to their courses.
+ */
 export async function getAuthorizedHomeRouteForUserId(
   userId: string,
+  track?: LearnerTrack | null,
 ): Promise<string> {
   const { roles } = await getUserRBAC(userId);
   const baseRoute = getAuthorizedHomeRouteForRoles(roles);
+  if (baseRoute !== "/student" && baseRoute !== "/internship/dashboard")
+    return baseRoute;
 
-  // Privileged roles take precedence even when an administrator also retains
-  // their original Student or Intern role. Only learner-only accounts need
-  // the application-aware internship destination.
-  if (baseRoute === "/student" || baseRoute === "/internship/dashboard") {
-    const prisma = getPrisma();
-    const existingApplication = await prisma.internshipApplication.findFirst({
+  const toCourses =
+    track === "courses" ||
+    (!track &&
+      roles.includes(RoleName.STUDENT) &&
+      !roles.includes(RoleName.INTERN));
+  if (toCourses) return "/student";
+
+  const existingApplication = await getPrisma().internshipApplication.findFirst(
+    {
       where: { studentId: userId },
       orderBy: { createdAt: "desc" },
-    });
-
-    return getInitialStudentRoute(Boolean(existingApplication));
-  }
-
-  return baseRoute;
+      select: { id: true },
+    },
+  );
+  return getInitialStudentRoute(Boolean(existingApplication));
 }
 
+/**
+ * Finds or creates the app user for a Supabase login. New users (and users
+ * without any role) get `defaultRole`: interns by default, since the
+ * existing sign-up pages are the internship's; the courses pages pass
+ * STUDENT.
+ */
 export async function ensurePrismaUserForSupabaseAuth(
   authUser: SupabaseAuthUser,
+  defaultRole: RoleName = RoleName.INTERN,
 ): Promise<string> {
   if (!authUser.id) {
     throw new Error("Supabase auth user is missing an id.");
@@ -84,22 +101,22 @@ export async function ensurePrismaUserForSupabaseAuth(
 
   if (existingUser) {
     if (existingUser.roles.length === 0) {
-      const studentRole = await prisma.role.findUnique({
-        where: { name: RoleName.STUDENT },
+      const defaultRoleRecord = await prisma.role.findUnique({
+        where: { name: defaultRole },
       });
 
-      if (studentRole) {
+      if (defaultRoleRecord) {
         await prisma.userRole.upsert({
           where: {
             userId_roleId: {
               userId: existingUser.id,
-              roleId: studentRole.id,
+              roleId: defaultRoleRecord.id,
             },
           },
           update: {},
           create: {
             userId: existingUser.id,
-            roleId: studentRole.id,
+            roleId: defaultRoleRecord.id,
           },
         });
       }
@@ -108,12 +125,14 @@ export async function ensurePrismaUserForSupabaseAuth(
     return existingUser.id;
   }
 
-  const studentRole = await prisma.role.findUnique({
-    where: { name: RoleName.STUDENT },
+  const defaultRoleRecord = await prisma.role.findUnique({
+    where: { name: defaultRole },
   });
 
-  if (!studentRole) {
-    throw new Error("The STUDENT role was not found in the Prisma RBAC data.");
+  if (!defaultRoleRecord) {
+    throw new Error(
+      `The ${defaultRole} role was not found in the Prisma RBAC data.`,
+    );
   }
 
   const createdUser = await prisma.user.create({
@@ -133,7 +152,7 @@ export async function ensurePrismaUserForSupabaseAuth(
   await prisma.userRole.create({
     data: {
       userId: createdUser.id,
-      roleId: studentRole.id,
+      roleId: defaultRoleRecord.id,
     },
   });
 

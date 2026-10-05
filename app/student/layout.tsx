@@ -1,9 +1,7 @@
 import React from "react";
-import { redirect } from "next/navigation";
 import { RoleName } from "@/generated/prisma/client";
 import StudentShell from "../../components/StudentShell";
 import { requireRouteAccess } from "@/lib/route-guards";
-import { getInternshipAccessStatus } from "@/lib/internship-access";
 
 export const metadata = {
   title: "Student Dashboard",
@@ -14,18 +12,13 @@ export default async function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const userId = await requireRouteAccess({
+  // The courses side is separate from the internship: any student can use
+  // it. Others (e.g. interns) are sent to the courses login, where the same
+  // account can join the courses.
+  await requireRouteAccess({
     requiredRoles: [RoleName.STUDENT],
+    redirectTo: "/courses/login",
   });
-
-  const access = await getInternshipAccessStatus(userId);
-  if (!access.hasApplication) {
-    redirect("/internship/onboarding");
-  }
-
-  if (access.hasApplication && !access.acceptanceFeePaid) {
-    redirect("/internship/dashboard");
-  }
 
   return <StudentShell>{children}</StudentShell>;
 }

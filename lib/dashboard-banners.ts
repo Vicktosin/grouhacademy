@@ -36,7 +36,7 @@ export async function removeBannerImages(urls: (string | null | undefined)[]) {
   if (error) console.error("Failed to remove banner images:", error);
 }
 
-/** Button links may be site paths ("/student") or full https URLs. */
+/** Button links may be site paths ("/internship/dashboard/tasks") or full https URLs. */
 export function isValidBannerLink(value: string) {
   if (value.startsWith("/") && !value.startsWith("//")) return true;
   try {

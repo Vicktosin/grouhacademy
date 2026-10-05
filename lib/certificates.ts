@@ -9,6 +9,8 @@ export type StudentCertificate = {
   courseSlug: string;
   studentName: string;
   issuedAt: string;
+  revokedAt: string | null;
+  revokedReason: string | null;
 };
 
 async function nextCertificateNumber(db: CourseDb): Promise<string> {

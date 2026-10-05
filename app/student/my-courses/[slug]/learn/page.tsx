@@ -16,7 +16,7 @@ export default async function CourseLearnPage({
   const userId = await getCurrentUserId();
 
   if (!userId) {
-    redirect("/login");
+    redirect("/courses/login");
   }
 
   const course = await getCourseBySlug(slug);

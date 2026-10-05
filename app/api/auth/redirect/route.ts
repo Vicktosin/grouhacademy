@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
+import { parseTrack } from "@/lib/learner-tracks";
 import {
   ensurePrismaUserForSupabaseAuth,
   getAuthorizedHomeRouteForUserId,
@@ -10,22 +12,35 @@ import {
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function GET() {
+/**
+ * Called right after sign-in. `?track=internship|courses` names the side
+ * whose login or sign-up page was used: the user is added to that side and
+ * sent to it. Without a track, they go to their usual workspace.
+ */
+export async function GET(request: Request) {
+  const track = parseTrack(new URL(request.url).searchParams.get("track"));
+  const loginPath = track === "courses" ? "/courses/login" : "/login";
   try {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
 
     if (error || !data.user) {
-      return NextResponse.json({ redirectTo: "/login" }, { status: 401 });
+      return NextResponse.json({ redirectTo: loginPath }, { status: 401 });
     }
+
+    // Joining a side only needs a verified login, so it happens before the
+    // second factor; the destination below still waits for it.
+    const userId = await ensurePrismaUserForSupabaseAuth(
+      data.user,
+      track ? TRACK_ROLE[track] : undefined,
+    );
+    if (track) await grantTrackRole(userId, track);
 
     if (await isMfaVerificationPending(supabase, data.user)) {
       return NextResponse.json({ redirectTo: MFA_CHALLENGE_PATH });
     }
 
-    const userId = await ensurePrismaUserForSupabaseAuth(data.user);
-    const redirectTo = await getAuthorizedHomeRouteForUserId(userId);
-
+    const redirectTo = await getAuthorizedHomeRouteForUserId(userId, track);
     return NextResponse.json({ redirectTo });
   } catch (error) {
     console.error(
@@ -33,6 +48,6 @@ export async function GET() {
       error,
     );
 
-    return NextResponse.json({ redirectTo: "/login" }, { status: 500 });
+    return NextResponse.json({ redirectTo: loginPath }, { status: 500 });
   }
 }

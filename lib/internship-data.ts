@@ -1,22 +1,39 @@
 export type TaskStatusLabel =
-  | "Not Started"
-  | "In Progress"
+  | "Not open yet"
+  | "Not submitted"
+  | "Missed"
   | "Submitted"
-  | "Under Review"
-  | "Graded"
-  | "Rejected"
-  | "Defaulted";
+  | "Under review"
+  | "Passed"
+  | "Changes requested"
+  | "Not included";
 
 export type TaskTone = "yellow" | "slate" | "green" | "red";
+
+export type TaskWindow = "UPCOMING" | "OPEN" | "CLOSED";
+
+export type InternshipTaskGroupInfo = {
+  isLeader: boolean;
+  leaderId: string | null;
+  leaderName: string | null;
+  members: { userId: string; name: string }[];
+  /** Members credited on the group's submission, if there is one. */
+  participantIds: string[];
+  submittedByName: string | null;
+  /** Whether this intern is credited on the group submission (null: none yet). */
+  included: boolean | null;
+};
 
 export type InternshipTaskItem = {
   id: string;
   title: string;
+  description: string | null;
   kind: "INDIVIDUAL" | "GROUP";
-  moduleTitle: string;
   weekLabel: string;
   weekNumber: number;
-  dueDateLabel: string | null;
+  window: TaskWindow;
+  opensLabel: string;
+  dueDateLabel: string;
   timeLeftLabel: string;
   status: TaskStatusLabel;
   tone: TaskTone;
@@ -24,6 +41,11 @@ export type InternshipTaskItem = {
   score: number | null;
   maxScore: number;
   submittedAt: string | null;
+  submission: { content: string | null; feedback: string | null } | null;
+  canSubmit: boolean;
+  blockedReason: string | null;
+  /** Present for group tasks when the intern is in a group. */
+  group: InternshipTaskGroupInfo | null;
 };
 
 export type InternshipAlert = {
@@ -35,6 +57,8 @@ export type InternshipAlert = {
 
 export type InternshipTaskListResponse = {
   hasProgram: boolean;
+  /** False when the intern has not been placed in a cohort yet. */
+  hasCohort: boolean;
   tasks: InternshipTaskItem[];
   stats: {
     pending: number;

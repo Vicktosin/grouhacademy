@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { computeInternProgress } from "@/lib/internship-progress";
 
 export type MentorIntern = {
   internId: string;
@@ -35,14 +36,10 @@ export async function getMentorInterns(
           email: true,
           avatarUrl: true,
           internshipApplications: {
-            select: { programId: true, cohort: { select: { name: true } } },
-          },
-          internshipProgress: {
             select: {
               programId: true,
-              progressPercent: true,
-              completedTasks: true,
-              totalTasks: true,
+              cohortId: true,
+              cohort: { select: { name: true } },
             },
           },
         },
@@ -50,26 +47,30 @@ export async function getMentorInterns(
     },
   });
 
-  return assignments.map(({ internId, programId, program, intern }) => {
-    const application = intern.internshipApplications.find(
-      (item) => item.programId === programId,
-    );
-    const progress = intern.internshipProgress.find(
-      (item) => item.programId === programId,
-    );
-    return {
-      internId,
-      name: intern.name?.trim() || intern.email,
-      email: intern.email,
-      avatarUrl: intern.avatarUrl,
-      programId,
-      programName: program.name,
-      cohortName: application?.cohort?.name ?? null,
-      progressPercent: progress?.progressPercent ?? 0,
-      completedTasks: progress?.completedTasks ?? 0,
-      totalTasks: progress?.totalTasks ?? 0,
-    };
-  });
+  return Promise.all(
+    assignments.map(async ({ internId, programId, program, intern }) => {
+      const application = intern.internshipApplications.find(
+        (item) => item.programId === programId,
+      );
+      // Live, so it always reflects the cohort's current task list.
+      const progress = await computeInternProgress(
+        internId,
+        application?.cohortId ?? null,
+      );
+      return {
+        internId,
+        name: intern.name?.trim() || intern.email,
+        email: intern.email,
+        avatarUrl: intern.avatarUrl,
+        programId,
+        programName: program.name,
+        cohortName: application?.cohort?.name ?? null,
+        progressPercent: progress.progressPercent,
+        completedTasks: progress.completedTasks,
+        totalTasks: progress.totalTasks,
+      };
+    }),
+  );
 }
 
 /**
@@ -78,10 +79,15 @@ export async function getMentorInterns(
  */
 export function submissionsForInterns(interns: MentorIntern[]) {
   if (interns.length === 0) return { id: { in: [] as string[] } };
+  // A group submission is listed when any of the mentor's interns submitted
+  // it or took part in it.
   return {
     OR: interns.map((intern) => ({
-      userId: intern.internId,
       task: { module: { programId: intern.programId } },
+      OR: [
+        { userId: intern.internId },
+        { participants: { some: { userId: intern.internId } } },
+      ],
     })),
   };
 }
@@ -92,32 +98,6 @@ export async function isAssignedIntern(mentorId: string, internId: string) {
     where: { mentorId, internId, status: "ACTIVE" },
   });
   return count > 0;
-}
-
-/**
- * Recomputes an intern's programme progress from their accepted task
- * submissions. Called whenever a submission is reviewed.
- */
-export async function recomputeInternProgress(
-  userId: string,
-  programId: string,
-) {
-  const prisma = getPrisma();
-  const [totalTasks, completedTasks] = await Promise.all([
-    prisma.internshipTask.count({ where: { module: { programId } } }),
-    prisma.taskSubmission.count({
-      where: { userId, status: "ACCEPTED", task: { module: { programId } } },
-    }),
-  ]);
-  const progressPercent = totalTasks
-    ? Math.min(100, Math.round((completedTasks / totalTasks) * 100))
-    : 0;
-
-  await prisma.internshipProgress.upsert({
-    where: { userId_programId: { userId, programId } },
-    create: { userId, programId, totalTasks, completedTasks, progressPercent },
-    update: { totalTasks, completedTasks, progressPercent },
-  });
 }
 
 /** Submission statuses in mentor-facing language. */

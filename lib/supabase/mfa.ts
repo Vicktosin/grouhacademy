@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { isSafeInternalPath } from "@/lib/safe-redirect";
 
 export const MFA_CHALLENGE_PATH = "/auth/mfa";
 
@@ -7,7 +8,14 @@ export const MFA_CHALLENGE_PATH = "/auth/mfa";
  * sign-in. Anything else falls back to the user's role-based home route.
  */
 export function isAllowedPostAuthPath(path: string | null): path is string {
-  return path === "/reset-password" || Boolean(path?.startsWith("/internship/"));
+  if (!isSafeInternalPath(path)) return false;
+  const { pathname } = new URL(path, "http://placeholder.invalid");
+  return (
+    pathname === "/reset-password" ||
+    pathname.startsWith("/internship/") ||
+    pathname === "/student" ||
+    pathname.startsWith("/student/")
+  );
 }
 
 /**

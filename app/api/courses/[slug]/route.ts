@@ -167,6 +167,27 @@ export async function DELETE(
   const course = await getCourseBySlug(slug);
   if (!course)
     return NextResponse.json({ error: "Course not found." }, { status: 404 });
-  await getPrisma().course.delete({ where: { id: course.id } });
+  const prisma = getPrisma();
+  // Issued certificates are protected (Certificate.course is onDelete:
+  // Restrict), so deleting would fail; explain why instead.
+  const certificates = await prisma.certificate.count({
+    where: { courseId: course.id },
+  });
+  if (certificates > 0)
+    return NextResponse.json(
+      {
+        error: `${certificates} student${certificates === 1 ? " has" : "s have"} earned a certificate for “${course.title}”, so it can't be deleted without removing their certificate${certificates === 1 ? "" : "s"}. Reject the course instead to take it out of the catalogue.`,
+      },
+      { status: 409 },
+    );
+  try {
+    await prisma.course.delete({ where: { id: course.id } });
+  } catch (error) {
+    console.error("Failed to delete course:", error);
+    return NextResponse.json(
+      { error: "The course couldn't be deleted. Please try again." },
+      { status: 500 },
+    );
+  }
   return new NextResponse(null, { status: 204 });
 }

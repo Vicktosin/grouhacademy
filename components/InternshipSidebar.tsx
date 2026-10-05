@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   Award,
-  BookOpen,
   CheckSquare,
   Crown,
   FileText,
@@ -41,7 +40,6 @@ const navItems = [
   },
   { label: "Settings", href: "/internship/dashboard/settings", icon: Settings },
   { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
-  { label: "Explore courses", href: "/student/", icon: BookOpen },
 ];
 
 type InternshipProfile = {

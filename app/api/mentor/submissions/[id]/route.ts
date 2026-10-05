@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireMentorApi } from "@/lib/api-guards";
-import { recomputeInternProgress } from "@/lib/mentor-data";
+import { recomputeInternProgress } from "@/lib/internship-progress";
 import { getPrisma } from "@/lib/prisma";
 
 type Context = { params: Promise<{ id: string }> };
@@ -37,7 +37,9 @@ export async function POST(request: Request, { params }: Context) {
   }
   if (feedback.length > MAX_FEEDBACK_LENGTH) {
     return NextResponse.json(
-      { error: `Feedback is too long (max ${MAX_FEEDBACK_LENGTH} characters).` },
+      {
+        error: `Feedback is too long (max ${MAX_FEEDBACK_LENGTH} characters).`,
+      },
       { status: 400 },
     );
   }
@@ -49,18 +51,26 @@ export async function POST(request: Request, { params }: Context) {
       where: { id },
       select: {
         userId: true,
+        groupId: true,
         status: true,
+        participants: { select: { userId: true } },
         task: {
           select: { maxScore: true, module: { select: { programId: true } } },
         },
       },
     });
+    // Group work is credited to its participants; individual work to its author.
+    const creditedIds = submission
+      ? submission.groupId
+        ? submission.participants.map((p) => p.userId)
+        : [submission.userId]
+      : [];
     if (
       !submission ||
       !(await prisma.mentorAssignment.count({
         where: {
           mentorId,
-          internId: submission.userId,
+          internId: { in: [submission.userId, ...creditedIds] },
           programId: submission.task.module.programId,
           status: "ACTIVE",
         },
@@ -107,10 +117,8 @@ export async function POST(request: Request, { params }: Context) {
       );
     }
 
-    await recomputeInternProgress(
-      submission.userId,
-      submission.task.module.programId,
-    );
+    for (const internId of creditedIds)
+      await recomputeInternProgress(internId, submission.task.module.programId);
 
     return NextResponse.json({
       success: true,

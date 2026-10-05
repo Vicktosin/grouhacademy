@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { CalendarDays, Send, Upload, X } from "lucide-react";
+import { CalendarDays, ClipboardList, Send, X } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
 
 type Member = {
@@ -21,13 +22,6 @@ type Meeting = {
   title: string;
   scheduledLabel: string;
   createdByName: string | null;
-};
-type CurrentTask = {
-  id: string;
-  title: string;
-  moduleTitle: string;
-  changesRequested?: boolean;
-  feedback?: string | null;
 };
 type MemberProfile = {
   visible: boolean;
@@ -55,7 +49,6 @@ export default function DiscussionPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [currentTask, setCurrentTask] = useState<CurrentTask | null>(null);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -70,11 +63,6 @@ export default function DiscussionPage() {
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [meetingDateTime, setMeetingDateTime] = useState("");
   const [schedulingMeeting, setSchedulingMeeting] = useState(false);
-
-  const [showSubmitForm, setShowSubmitForm] = useState(false);
-  const [submissionText, setSubmissionText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState("");
 
   const lastFetchedAt = useRef<string | null>(null);
   const isPolling = useRef(false);
@@ -102,7 +90,6 @@ export default function DiscussionPage() {
         setIsLeader(body.isLeader);
         setMembers(body.members);
         setMeeting(body.meeting);
-        setCurrentTask(body.currentTask);
         setMessages(body.messages);
       } else if (body.messages.length > 0) {
         setMessages((current) => mergeMessages(current, body.messages));
@@ -220,37 +207,6 @@ export default function DiscussionPage() {
     }
   }
 
-  async function submitTask(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!currentTask || !submissionText.trim()) return;
-    setSubmitting(true);
-    setSubmitMessage("");
-    try {
-      const response = await fetch("/api/internship/group/submit-task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskId: currentTask.id,
-          content: submissionText.trim(),
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok)
-        throw new Error(body?.error ?? "Unable to submit assignment.");
-      setSubmitMessage("Assignment submitted.");
-      setSubmissionText("");
-      setShowSubmitForm(false);
-    } catch (submitError) {
-      setSubmitMessage(
-        submitError instanceof Error
-          ? submitError.message
-          : "Unable to submit assignment.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (loading) {
     return (
       <InternshipShell>
@@ -328,18 +284,13 @@ export default function DiscussionPage() {
                   {meeting ? "Reschedule Meeting" : "Schedule Meeting"}
                 </button>
               )}
-              {currentTask && (
-                <button
-                  type="button"
-                  onClick={() => setShowSubmitForm(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2 text-xs font-semibold text-white hover:bg-[#4aaa3e]"
-                >
-                  <Upload className="h-4 w-4" />
-                  {currentTask.changesRequested
-                    ? "Resubmit Assignment"
-                    : "Submit Assignment"}
-                </button>
-              )}
+              <Link
+                href="/internship/dashboard/tasks"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2 text-xs font-semibold text-white hover:bg-[#4aaa3e]"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Group tasks
+              </Link>
             </div>
           </header>
 
@@ -493,60 +444,6 @@ export default function DiscussionPage() {
               </p>
             )}
           </div>
-        </div>
-      )}
-
-      {showSubmitForm && currentTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1C1D52]/50 p-4">
-          <form
-            onSubmit={submitTask}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-[#1C1D52]">
-                Submit: {currentTask.title}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowSubmitForm(false)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4 text-slate-400" />
-              </button>
-            </div>
-            <p className="mt-1 text-[10px] text-slate-400">
-              {currentTask.moduleTitle}
-            </p>
-            {currentTask.changesRequested && (
-              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                <p className="font-semibold">Your mentor requested changes</p>
-                {currentTask.feedback && (
-                  <p className="mt-1 whitespace-pre-wrap">
-                    {currentTask.feedback}
-                  </p>
-                )}
-              </div>
-            )}
-            <textarea
-              value={submissionText}
-              onChange={(e) => setSubmissionText(e.target.value)}
-              rows={5}
-              placeholder="Paste your submission notes or a link to your work..."
-              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={submitting || !submissionText.trim()}
-              className="mt-4 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60"
-            >
-              {submitting ? "Submitting…" : "Submit Assignment"}
-            </button>
-            {submitMessage && (
-              <p className="mt-3 text-xs font-semibold text-[#397d3a]">
-                {submitMessage}
-              </p>
-            )}
-          </form>
         </div>
       )}
     </InternshipShell>

@@ -73,7 +73,7 @@ export default function StudentHeader() {
     <div className="relative">
       <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
         <Link
-          href="/student"
+          href={isInternshipWorkspace ? "/internship/dashboard" : "/student"}
           className="inline-flex flex-shrink-0 items-center"
         >
           <Image
@@ -132,32 +132,42 @@ export default function StudentHeader() {
             )}
           </div>
 
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]"
-          >
-            <span className="sr-only">Search</span>
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
-              <Search className="h-4 w-4" />
-            </span>
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-full rounded-full bg-[#EEF1F6] py-2.5 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#5FBB46]/30"
-              placeholder="Search course"
-            />
-          </form>
+          {/* Course search belongs to the courses side; the internship
+              workspace has no course links at all. */}
+          {!isInternshipWorkspace && (
+            <>
+              <form
+                onSubmit={handleSearchSubmit}
+                className="relative hidden w-full max-w-[240px] md:block lg:max-w-[280px]"
+              >
+                <span className="sr-only">Search</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                  <Search className="h-4 w-4" />
+                </span>
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full rounded-full bg-[#EEF1F6] py-2.5 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#5FBB46]/30"
+                  placeholder="Search course"
+                />
+              </form>
 
-          <button
-            onClick={() => setShowSearch((s) => !s)}
-            className="hidden items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 min-[421px]:inline-flex md:hidden"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5" />
-          </button>
+              <button
+                onClick={() => setShowSearch((s) => !s)}
+                className="hidden items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 min-[421px]:inline-flex md:hidden"
+                aria-label="Search"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            </>
+          )}
 
           <Link
-            href="/student/notifications"
+            href={
+              isInternshipWorkspace
+                ? "/internship/dashboard/notifications"
+                : "/student/notifications"
+            }
             className="relative rounded-full p-1.5 text-gray-800 hover:bg-gray-100"
             aria-label={
               unreadCount > 0
@@ -181,7 +191,7 @@ export default function StudentHeader() {
         </div>
       </div>
 
-      {showSearch && (
+      {showSearch && !isInternshipWorkspace && (
         <div className="absolute left-1/2 top-full z-50 mt-2 w-[92%] -translate-x-1/2 transform rounded-2xl bg-white p-3 shadow-lg md:hidden">
           <form onSubmit={handleSearchSubmit} className="relative block">
             <span className="sr-only">Search</span>

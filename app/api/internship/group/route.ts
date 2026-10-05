@@ -24,27 +24,6 @@ function notInCohortResponse() {
   );
 }
 
-async function getCurrentTask(programId: string, userId: string) {
-  const prisma = getPrisma();
-  // The next task still to do: never submitted, or sent back for changes.
-  const task = await prisma.internshipTask.findFirst({
-    where: {
-      module: { programId },
-      submissions: { none: { userId, status: { not: "REJECTED" } } },
-    },
-    orderBy: { dueDate: "asc" },
-    include: {
-      module: true,
-      submissions: {
-        where: { userId, status: "REJECTED" },
-        select: { feedback: true },
-        take: 1,
-      },
-    },
-  });
-  return task;
-}
-
 export async function GET(request: Request) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -112,7 +91,7 @@ export async function GET(request: Request) {
     const group = await ensureGroupMembership(application);
     if (!group) return notInCohortResponse();
 
-    const [members, messages, meeting, currentTask] = await Promise.all([
+    const [members, messages, meeting] = await Promise.all([
       prisma.internshipGroupMember.findMany({
         where: { groupId: group.id },
         include: { user: true },
@@ -130,7 +109,6 @@ export async function GET(request: Request) {
         orderBy: { scheduledAt: "asc" },
         include: { createdBy: { select: { name: true } } },
       }),
-      getCurrentTask(application.programId, userId),
     ]);
 
     return NextResponse.json({
@@ -154,16 +132,6 @@ export async function GET(request: Request) {
             title: meeting.title,
             scheduledLabel: formatDateTime(meeting.scheduledAt),
             createdByName: meeting.createdBy.name,
-          }
-        : null,
-      currentTask: currentTask
-        ? {
-            id: currentTask.id,
-            title: currentTask.title,
-            moduleTitle: currentTask.module.title,
-            // Present when a mentor sent the previous submission back.
-            changesRequested: currentTask.submissions.length > 0,
-            feedback: currentTask.submissions[0]?.feedback ?? null,
           }
         : null,
     });

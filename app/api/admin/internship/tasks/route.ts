@@ -2,131 +2,144 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { recomputeCohortProgress } from "@/lib/internship-progress";
+import {
+  isValidSchedulePoint,
+  scheduleToDate,
+  taskWindowState,
+  type SchedulePoint,
+} from "@/lib/task-schedule";
 
-type TaskKind = "INDIVIDUAL" | "GROUP";
+const MAX_TITLE_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 10_000;
 
-type TaskPayload = {
-  id: string;
-  title: string;
-  kind: TaskKind;
-  track: string;
-  trackId: string;
-  weekLabel: string;
-  duration: string;
-  attemptsAllowed: number;
-  attemptedBy: number;
-  completedCount: number;
-  status: string;
-  dueDate: string | null;
-  description: string;
-};
-
-function parseWeekLabel(title: string | null): string {
-  if (!title) return "Week 1";
-  const match = /week\s*(\d+)/i.exec(title);
-  return match ? `Week ${match[1]}` : title;
+function point(body: Record<string, unknown>, prefix: "opens" | "due") {
+  return {
+    week: Number(body[`${prefix}Week`]),
+    day: Number(body[`${prefix}Day`]),
+    time: String(body[`${prefix}Time`] ?? ""),
+  } satisfies SchedulePoint;
 }
 
-function parseMetadata(description: string | null) {
-  const summary = description ?? "";
-  const durationMatch = /Duration:\s*([^|]+)/i.exec(summary);
-  const attemptsMatch = /Attempts:\s*(\d+)/i.exec(summary);
-  const startWeekMatch = /Start Week:\s*(\d+)/i.exec(summary);
-  const endWeekMatch = /End Week:\s*(\d+)/i.exec(summary);
+/** Validates a task payload against its cohort; returns an error message or the data. */
+async function parseTask(body: Record<string, unknown>) {
+  const title = String(body.title ?? "").trim();
+  const cohortId = String(body.cohortId ?? "").trim();
+  const description = String(body.description ?? "").trim();
+  const kind = body.kind === "GROUP" ? "GROUP" : "INDIVIDUAL";
+  const opens = point(body, "opens");
+  const due = point(body, "due");
+
+  if (!title || title.length > MAX_TITLE_LENGTH)
+    return `Give the task a name (up to ${MAX_TITLE_LENGTH} characters).`;
+  if (description.length > MAX_DESCRIPTION_LENGTH)
+    return "The task brief is too long.";
+  if (!cohortId) return "Choose the cohort this task is for.";
+  if (!isValidSchedulePoint(opens) || !isValidSchedulePoint(due))
+    return "Set a valid week, day (1–7) and time for when the task opens and when it is due.";
+
+  const cohort = await getPrisma().internshipCohort.findUnique({
+    where: { id: cohortId },
+    select: { id: true, programId: true, startDate: true },
+  });
+  if (!cohort) return "The selected cohort was not found.";
+
+  const opensAt = scheduleToDate(cohort.startDate, opens);
+  const dueDate = scheduleToDate(cohort.startDate, due);
+  if (dueDate <= opensAt) return "The due time must be after the opening time.";
 
   return {
-    duration: durationMatch?.[1]?.trim() || "1 week",
-    attemptsAllowed: attemptsMatch ? Number(attemptsMatch[1]) : 1,
-    startWeek: startWeekMatch ? Number(startWeekMatch[1]) : null,
-    endWeek: endWeekMatch ? Number(endWeekMatch[1]) : null,
+    cohort,
+    data: {
+      title,
+      description: description || null,
+      kind,
+      cohortId,
+      opensWeek: opens.week,
+      opensDay: opens.day,
+      opensTime: opens.time,
+      dueWeek: due.week,
+      dueDay: due.day,
+      dueTime: due.time,
+      opensAt,
+      dueDate,
+    } as const,
   };
 }
 
-export async function GET(request: Request) {
+/** Tasks are filed under a "Week N" module of the cohort's track. */
+async function weekModuleId(programId: string, week: number) {
+  const prisma = getPrisma();
+  const title = `Week ${week}`;
+  const existing = await prisma.internshipModule.findFirst({
+    where: { programId, title },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+  const created = await prisma.internshipModule.create({
+    data: { programId, title, order: week },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+export async function GET() {
   const adminId = await requireAdminApi();
   if (adminId instanceof NextResponse) return adminId;
 
-  const { searchParams } = new URL(request.url);
-  const selectedTrack = searchParams.get("track");
-  const selectedKind = searchParams.get("kind");
-
   const prisma = getPrisma();
-  const [programs, tasks] = await Promise.all([
-    prisma.internshipProgram.findMany({
-      select: { id: true, name: true, duration: true },
-      orderBy: { name: "asc" },
+  const [cohorts, tasks] = await Promise.all([
+    prisma.internshipCohort.findMany({
+      orderBy: { startDate: "desc" },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+        program: { select: { id: true, name: true } },
+      },
     }),
     prisma.internshipTask.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ opensAt: "asc" }, { createdAt: "asc" }],
       include: {
-        module: {
-          include: {
-            program: { select: { id: true, name: true, duration: true } },
-          },
+        cohort: {
+          select: { id: true, name: true, program: { select: { name: true } } },
         },
-        submissions: { select: { id: true, status: true, userId: true } },
+        submissions: { select: { status: true } },
       },
     }),
   ]);
 
-  const filteredTasks = tasks.filter((task) => {
-    const programName = task.module.program.name;
-    const matchesTrack =
-      !selectedTrack ||
-      selectedTrack === "all" ||
-      selectedTrack === task.module.program.id;
-    const matchesKind =
-      !selectedKind || selectedKind === "all" || selectedKind === task.kind;
-    return matchesTrack && matchesKind && programName;
-  });
-
-  const payload: TaskPayload[] = filteredTasks.map((task) => {
-    const metadata = parseMetadata(task.description);
-    const attemptedBy = new Set(
-      task.submissions.map((submission) => submission.userId),
-    ).size;
-    const completedCount = task.submissions.filter(
-      (submission) =>
-        submission.status === "ACCEPTED" || submission.status === "SUBMITTED",
-    ).length;
-    const dueDate = task.dueDate ? task.dueDate.toISOString() : null;
-
-    let status = "Upcoming";
-    if (
-      task.dueDate &&
-      new Date(task.dueDate).getTime() < Date.now() &&
-      completedCount === 0
-    ) {
-      status = "Overdue";
-    } else if (completedCount > 0) {
-      status = "Active";
-    }
-
-    return {
+  const now = new Date();
+  return NextResponse.json({
+    cohorts: cohorts.map((cohort) => ({
+      id: cohort.id,
+      name: cohort.name,
+      programName: cohort.program.name,
+      startDate: cohort.startDate.toISOString(),
+      endDate: cohort.endDate.toISOString(),
+    })),
+    tasks: tasks.map((task) => ({
       id: task.id,
       title: task.title,
-      kind: task.kind as TaskKind,
-      track: task.module.program.name,
-      trackId: task.module.program.id,
-      weekLabel: parseWeekLabel(task.module.title),
-      duration: metadata.duration,
-      attemptsAllowed: metadata.attemptsAllowed,
-      attemptedBy,
-      completedCount,
-      status,
-      dueDate,
       description: task.description ?? "",
-    };
-  });
-
-  return NextResponse.json({
-    tracks: programs,
-    tasks: payload,
-    summary: {
-      total: payload.length,
-      individual: payload.filter((task) => task.kind === "INDIVIDUAL").length,
-      group: payload.filter((task) => task.kind === "GROUP").length,
-    },
+      kind: task.kind,
+      cohortId: task.cohortId,
+      cohortName: task.cohort.name,
+      programName: task.cohort.program.name,
+      opensWeek: task.opensWeek,
+      opensDay: task.opensDay,
+      opensTime: task.opensTime,
+      dueWeek: task.dueWeek,
+      dueDay: task.dueDay,
+      dueTime: task.dueTime,
+      opensAt: task.opensAt.toISOString(),
+      dueDate: task.dueDate.toISOString(),
+      window: taskWindowState(task.opensAt, task.dueDate, now),
+      submissionCount: task.submissions.length,
+      acceptedCount: task.submissions.filter((s) => s.status === "ACCEPTED")
+        .length,
+    })),
   });
 }
 
@@ -134,87 +147,93 @@ export async function POST(request: Request) {
   const adminId = await requireAdminApi();
   if (adminId instanceof NextResponse) return adminId;
 
-  const prisma = getPrisma();
   const body = await request.json().catch(() => null);
-
-  if (!body) {
+  if (!body || typeof body !== "object")
     return NextResponse.json(
-      { error: "Task payload is required." },
+      { error: "Task details are required." },
       { status: 400 },
     );
-  }
+  const parsed = await parseTask(body as Record<string, unknown>);
+  if (typeof parsed === "string")
+    return NextResponse.json({ error: parsed }, { status: 400 });
 
-  const title = String(body.title ?? "").trim();
-  const programId = String(body.programId ?? "").trim();
-  const kind = body.kind === "GROUP" ? "GROUP" : "INDIVIDUAL";
-  const rawWeek = Number(body.week ?? body.startWeek ?? 1);
-  const weekNumber = Number.isFinite(rawWeek) && rawWeek > 0 ? rawWeek : 1;
-  const endWeek = Number(body.endWeek ?? rawWeek);
-  const duration = String(
-    body.duration ??
-      `${Math.max(1, endWeek - weekNumber + 1)} week${endWeek - weekNumber + 1 === 1 ? "" : "s"}`,
-  ).trim();
-  const attemptsAllowed = Number(
-    body.allowedAttempts ?? body.attemptsAllowed ?? 1,
-  );
-  const dueDate = body.dueDate ? new Date(body.dueDate) : null;
-  const description = String(body.description ?? "").trim();
-
-  if (!title || !programId) {
-    return NextResponse.json(
-      { error: "Task title and track are required." },
-      { status: 400 },
-    );
-  }
-
-  const program = await prisma.internshipProgram.findUnique({
-    where: { id: programId },
-  });
-  if (!program) {
-    return NextResponse.json(
-      { error: "Selected internship track was not found." },
-      { status: 400 },
-    );
-  }
-
-  const moduleTitle = `Week ${weekNumber}`;
-  let taskModule = await prisma.internshipModule.findFirst({
-    where: { programId, title: moduleTitle },
-  });
-
-  if (!taskModule) {
-    taskModule = await prisma.internshipModule.create({
-      data: {
-        programId,
-        title: moduleTitle,
-        description: `Week ${weekNumber} tasks for ${program.name}`,
-        order: weekNumber,
-      },
-    });
-  }
-
-  const metadataText = [
-    description ? `Summary: ${description}` : "",
-    `Duration: ${duration}`,
-    `Start Week: ${weekNumber}`,
-    `End Week: ${Math.max(weekNumber, endWeek)}`,
-    `Attempts: ${Math.max(1, attemptsAllowed)}`,
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  const task = await prisma.internshipTask.create({
+  const task = await getPrisma().internshipTask.create({
     data: {
-      moduleId: taskModule.id,
-      title,
-      description: metadataText,
-      kind,
-      dueDate: dueDate ?? null,
-      maxScore: 100,
+      ...parsed.data,
+      moduleId: await weekModuleId(
+        parsed.cohort.programId,
+        parsed.data.opensWeek,
+      ),
     },
   });
+  await recomputeCohortProgress(parsed.cohort.id);
+  return NextResponse.json({ success: true, taskId: task.id }, { status: 201 });
+}
 
-  return NextResponse.json({ success: true, taskId: task.id });
+export async function PUT(request: Request) {
+  const adminId = await requireAdminApi();
+  if (adminId instanceof NextResponse) return adminId;
+
+  const body = await request.json().catch(() => null);
+  const id = String(body?.id ?? "").trim();
+  if (!body || typeof body !== "object" || !id)
+    return NextResponse.json(
+      { error: "A task id and details are required." },
+      { status: 400 },
+    );
+
+  const prisma = getPrisma();
+  const existing = await prisma.internshipTask.findUnique({
+    where: { id },
+    select: {
+      cohortId: true,
+      kind: true,
+      _count: { select: { submissions: true } },
+    },
+  });
+  if (!existing)
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
+
+  const parsed = await parseTask(body as Record<string, unknown>);
+  if (typeof parsed === "string")
+    return NextResponse.json({ error: parsed }, { status: 400 });
+
+  // Submissions are tied to the cohort's interns and to how the task is
+  // submitted, so neither can change once work has come in.
+  if (existing._count.submissions > 0) {
+    if (parsed.data.cohortId !== existing.cohortId)
+      return NextResponse.json(
+        {
+          error:
+            "Interns have already submitted this task, so its cohort can't be changed.",
+        },
+        { status: 409 },
+      );
+    if (parsed.data.kind !== existing.kind)
+      return NextResponse.json(
+        {
+          error:
+            "Interns have already submitted this task, so it can't be switched between individual and group.",
+        },
+        { status: 409 },
+      );
+  }
+
+  await prisma.internshipTask.update({
+    where: { id },
+    data: {
+      ...parsed.data,
+      moduleId: await weekModuleId(
+        parsed.cohort.programId,
+        parsed.data.opensWeek,
+      ),
+    },
+  });
+  if (parsed.data.cohortId !== existing.cohortId) {
+    await recomputeCohortProgress(existing.cohortId);
+    await recomputeCohortProgress(parsed.data.cohortId);
+  }
+  return NextResponse.json({ success: true, taskId: id });
 }
 
 export async function DELETE(request: Request) {
@@ -223,22 +242,21 @@ export async function DELETE(request: Request) {
 
   const body = await request.json().catch(() => null);
   const taskId = typeof body?.taskId === "string" ? body.taskId : null;
-
-  if (!taskId) {
+  if (!taskId)
     return NextResponse.json(
       { error: "Task id is required." },
       { status: 400 },
     );
-  }
 
   const prisma = getPrisma();
   const task = await prisma.internshipTask.findUnique({
     where: { id: taskId },
+    select: { cohortId: true },
   });
-  if (!task) {
+  if (!task)
     return NextResponse.json({ error: "Task not found." }, { status: 404 });
-  }
 
   await prisma.internshipTask.delete({ where: { id: taskId } });
+  await recomputeCohortProgress(task.cohortId);
   return NextResponse.json({ success: true });
 }
