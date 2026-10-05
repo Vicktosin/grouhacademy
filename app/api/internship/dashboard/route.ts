@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { computeInternProgress } from "@/lib/internship-progress";
 import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
 import { cohortTimeline } from "@/lib/task-schedule";
+import { audienceWhere } from "@/lib/learner-audience";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
@@ -150,16 +151,21 @@ export async function GET() {
 
     const announcements = await prisma.announcement.findMany({
       where: {
-        OR: [
-          { scope: "GLOBAL" },
-          ...(activeMentorIds.length
-            ? [
-                {
-                  scope: "MENTOR_MENTEES" as const,
-                  authorId: { in: activeMentorIds },
-                },
-              ]
-            : []),
+        ...audienceWhere("internship"),
+        AND: [
+          {
+            OR: [
+              { scope: "GLOBAL" },
+              ...(activeMentorIds.length
+                ? [
+                    {
+                      scope: "MENTOR_MENTEES" as const,
+                      authorId: { in: activeMentorIds },
+                    },
+                  ]
+                : []),
+            ],
+          },
         ],
       },
       orderBy: { createdAt: "desc" },

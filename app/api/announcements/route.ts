@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { userHasRole } from "@/lib/rbac";
-import { RoleName, AnnouncementScope } from "@/generated/prisma/client";
+import {
+  RoleName,
+  AnnouncementScope,
+  LearnerAudience,
+} from "@/generated/prisma/client";
+import { audienceWhere, workspaceFromRequest } from "@/lib/learner-audience";
 
 function timeAgoLabel(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -17,7 +22,8 @@ function timeAgoLabel(date: Date): string {
 // GET: announcement feed visible to the current student —
 // all GLOBAL announcements, plus MENTOR_MENTEES announcements from any
 // mentor currently assigned to them.
-export async function GET() {
+// `?workspace=courses|internship` limits the feed to that side.
+export async function GET(request: Request) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json(
@@ -38,16 +44,21 @@ export async function GET() {
 
     const announcements = await prisma.announcement.findMany({
       where: {
-        OR: [
-          { scope: AnnouncementScope.GLOBAL },
-          ...(activeMentorIds.length
-            ? [
-                {
-                  scope: AnnouncementScope.MENTOR_MENTEES,
-                  authorId: { in: activeMentorIds },
-                },
-              ]
-            : []),
+        ...audienceWhere(workspaceFromRequest(request)),
+        AND: [
+          {
+            OR: [
+              { scope: AnnouncementScope.GLOBAL },
+              ...(activeMentorIds.length
+                ? [
+                    {
+                      scope: AnnouncementScope.MENTOR_MENTEES,
+                      authorId: { in: activeMentorIds },
+                    },
+                  ]
+                : []),
+            ],
+          },
         ],
       },
       orderBy: { createdAt: "desc" },
@@ -124,7 +135,18 @@ export async function POST(request: Request) {
 
   try {
     const announcement = await prisma.announcement.create({
-      data: { authorId: userId, scope, programId, title, message },
+      data: {
+        authorId: userId,
+        scope,
+        programId,
+        title,
+        message,
+        // Mentors only have interns; global announcements reach both sides.
+        audience:
+          scope === AnnouncementScope.MENTOR_MENTEES
+            ? LearnerAudience.INTERNSHIP
+            : null,
+      },
     });
 
     return NextResponse.json({ id: announcement.id, success: true });

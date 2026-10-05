@@ -4,6 +4,7 @@ import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
 import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
+import { audienceWhere } from "@/lib/learner-audience";
 import type {
   InternshipAlert,
   InternshipTaskListResponse,
@@ -87,7 +88,7 @@ export async function GET() {
   };
 
   const notifications = await getPrisma().notification.findMany({
-    where: { userId },
+    where: { userId, ...audienceWhere("internship") },
     orderBy: { createdAt: "desc" },
     take: 5,
   });
