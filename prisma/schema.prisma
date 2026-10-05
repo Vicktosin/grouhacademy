@@ -274,10 +274,11 @@ model User {
   auditLogs         AuditLog[]     @relation("AuditActor")
   targetAuditLogs   AuditLog[]     @relation("AuditTargetUser")
 
-  ledGroups            InternshipGroup[]       @relation("GroupLeader")
-  groupMemberships     InternshipGroupMember[] @relation("GroupMembership")
-  sentGroupMessages    GroupMessage[]          @relation("GroupMessageSender")
-  createdGroupMeetings GroupMeeting[]          @relation("GroupMeetingCreator")
+  ledGroups            InternshipGroup[]           @relation("GroupLeader")
+  groupMemberships     InternshipGroupMember[]     @relation("GroupMembership")
+  taskParticipations   TaskSubmissionParticipant[] @relation("TaskSubmissionParticipation")
+  sentGroupMessages    GroupMessage[]              @relation("GroupMessageSender")
+  createdGroupMeetings GroupMeeting[]              @relation("GroupMeetingCreator")
 
   meetingReminders        Boolean            @default(false)
   updatedPlatformSettings PlatformSettings[] @relation("PlatformSettingsUpdatedBy")
@@ -395,20 +396,24 @@ model InternshipOnboardingQuestion {
 }
 
 model InternshipCohort {
-  id          String       @id @default(cuid())
-  programId   String
-  name        String
-  slug        String       @unique
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  status      CohortStatus @default(UPCOMING)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  programId           String
+  name                String
+  slug                String       @unique
+  description         String?
+  startDate           DateTime
+  endDate             DateTime
+  status              CohortStatus @default(UPCOMING)
+  // Percentage of the cohort's tasks an intern must pass (have accepted) to
+  // earn the certificate when the cohort ends.
+  certificatePassMark Int          @default(70)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   program      InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   applications InternshipApplication[]
   groups       InternshipGroup[]
+  tasks        InternshipTask[]
 
   @@index([programId])
   @@index([startDate])
@@ -848,14 +853,18 @@ model CourseReview {
 }
 
 model Certificate {
-  id                String   @id @default(cuid())
-  userId            String   @db.Uuid
+  id                String    @id @default(cuid())
+  userId            String    @db.Uuid
   courseId          String
   enrollmentId      String?
-  certificateNumber String   @unique
-  issuedAt          DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  certificateNumber String    @unique
+  issuedAt          DateTime  @default(now())
+  // Set when an admin revokes the certificate. The record is kept so the
+  // student sees it marked revoked and it is never re-issued automatically.
+  revokedAt         DateTime?
+  revokedReason     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   course     Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
@@ -868,15 +877,18 @@ model Certificate {
 }
 
 model InternshipCertificate {
-  id                String   @id @default(cuid())
-  userId            String   @db.Uuid
+  id                String    @id @default(cuid())
+  userId            String    @db.Uuid
   programId         String
   applicationId     String?
   title             String
-  certificateNumber String   @unique
-  issuedAt          DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  certificateNumber String    @unique
+  issuedAt          DateTime  @default(now())
+  // Set when an admin revokes the certificate; see Certificate.revokedAt.
+  revokedAt         DateTime?
+  revokedReason     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user        User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
   program     InternshipProgram      @relation(fields: [programId], references: [id], onDelete: Restrict)
@@ -1078,27 +1090,45 @@ model InternshipModule {
   @@index([programId])
 }
 
+// A task belongs to one cohort. Its submission window is set relative to the
+// cohort start (week 1, day 1 = the cohort's start date, times in WAT);
+// opensAt/dueDate are the resulting real times, recomputed whenever the
+// schedule or the cohort start date changes.
 model InternshipTask {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   moduleId    String
+  cohortId    String
   title       String
   description String?
-  kind        TaskKind  @default(INDIVIDUAL)
-  dueDate     DateTime?
-  maxScore    Int       @default(100)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  kind        TaskKind @default(INDIVIDUAL)
+  opensWeek   Int
+  opensDay    Int
+  opensTime   String
+  dueWeek     Int
+  dueDay      Int
+  dueTime     String
+  opensAt     DateTime
+  dueDate     DateTime
+  maxScore    Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   module      InternshipModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  cohort      InternshipCohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   submissions TaskSubmission[]
 
   @@index([moduleId])
+  @@index([cohortId, dueDate])
 }
 
+// Individual tasks: one row per intern (groupId null). Group tasks: one row
+// per group, submitted by the group leader (userId), with the members who
+// took part listed in participants.
 model TaskSubmission {
   id          String           @id @default(cuid())
   taskId      String
   userId      String           @db.Uuid
+  groupId     String?
   content     String?
   fileUrl     String?
   score       Int?
@@ -1109,11 +1139,26 @@ model TaskSubmission {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  task InternshipTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task         InternshipTask              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group        InternshipGroup?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  participants TaskSubmissionParticipant[]
 
   @@unique([taskId, userId])
+  @@unique([taskId, groupId])
   @@index([taskId])
+  @@index([userId])
+}
+
+model TaskSubmissionParticipant {
+  id           String @id @default(cuid())
+  submissionId String
+  userId       String @db.Uuid
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user       User           @relation("TaskSubmissionParticipation", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, userId])
   @@index([userId])
 }
 
@@ -1274,12 +1319,13 @@ model InternshipGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  program  InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort   InternshipCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
-  leader   User?                   @relation("GroupLeader", fields: [leaderId], references: [id], onDelete: SetNull)
-  members  InternshipGroupMember[]
-  messages GroupMessage[]
-  meetings GroupMeeting[]
+  program         InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort          InternshipCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  leader          User?                   @relation("GroupLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  members         InternshipGroupMember[]
+  messages        GroupMessage[]
+  meetings        GroupMeeting[]
+  taskSubmissions TaskSubmission[]
 
   @@unique([cohortId, number])
   @@index([programId])

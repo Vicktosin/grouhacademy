@@ -1,16 +1,16 @@
 "use client";
 
-import {
-  ArrowLeft,
-  Award,
-  Download,
-  FileText,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, Award, Download, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { ScaledCertificate } from "@/components/certificate/Certificate";
+import { courseCertificateContent } from "@/components/certificate/content";
+import {
+  certificateFileName,
+  downloadCertificatePdf,
+} from "@/components/certificate/download-certificate";
 
 type Certificate = {
   id: string;
@@ -21,6 +21,8 @@ type Certificate = {
   course: string;
   instructor: string;
   verificationId: string;
+  revokedAt: string | null;
+  revokedReason: string | null;
 };
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "long" });
 
@@ -41,16 +43,33 @@ export default function CertificateDetailPage() {
       .then(setCertificate)
       .catch((reason) => setError(reason.message));
   }, [slug]);
-  const download = () => {
-    if (!certificate) return;
-    const html = `<!doctype html><title>${certificate.certificateNumber}</title><body><h1>Certificate of Completion</h1><p>This certifies that <strong>${certificate.student}</strong> successfully completed <strong>${certificate.course}</strong>.</p><p>Certificate number: ${certificate.certificateNumber}</p><p>Verification: ${certificate.verificationId}</p></body>`;
-    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${certificate.certificateNumber}.html`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  const faceRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const content = certificate
+    ? courseCertificateContent({
+        studentName: certificate.student,
+        courseTitle: certificate.course,
+        issuedAt: certificate.issuedAt,
+        certificateNumber: certificate.certificateNumber,
+        verificationId: certificate.verificationId,
+        revokedAt: certificate.revokedAt,
+      })
+    : null;
+  async function download() {
+    if (!certificate || !faceRef.current) return;
+    setDownloading(true);
+    try {
+      await downloadCertificatePdf(
+        faceRef.current,
+        certificateFileName(certificate.student, certificate.course),
+      );
+    } catch (failure) {
+      console.error("Certificate download failed:", failure);
+      setError("The PDF couldn't be created. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
   return (
     <AdminShell workspace="student">
       <div className="mx-auto max-w-[1100px] space-y-5">
@@ -89,35 +108,23 @@ export default function CertificateDetailPage() {
               </div>
               <button
                 type="button"
-                onClick={download}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"
+                onClick={() => void download()}
+                disabled={downloading}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2 text-[10px] font-semibold text-[#1C1D52] disabled:opacity-60"
               >
-                <Download className="h-3.5 w-3.5" />
-                Download
+                {downloading ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                {downloading ? "Preparing PDF…" : "Download PDF"}
               </button>
             </div>
             <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#f5fbf2,_#ffffff_55%)] p-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Grouh Academy
-                </p>
-                <h2 className="mt-3 text-3xl font-bold text-[#1C1D52]">
-                  Certificate of Completion
-                </h2>
-                <p className="mt-8 text-sm text-slate-500">
-                  This certifies that
-                </p>
-                <p className="mt-3 text-2xl font-semibold text-[#1C1D52]">
-                  {certificate.student}
-                </p>
-                <div className="mt-4 h-px bg-slate-200" />
-                <p className="mt-4 text-sm leading-6 text-slate-600">
-                  has successfully completed the {certificate.course} course.
-                </p>
-                <div className="mt-6 flex items-center gap-2 border-t border-slate-200 pt-5 text-[10px] text-slate-500">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#5FBB46]" />
-                  Verification code: {certificate.verificationId}
-                </div>
+              <div>
+                {content && (
+                  <ScaledCertificate content={content} faceRef={faceRef} />
+                )}
               </div>
               <aside className="rounded-2xl bg-[#f8fbff] p-4">
                 <h3 className="text-sm font-bold text-[#1C1D52]">
@@ -136,6 +143,20 @@ export default function CertificateDetailPage() {
                     label="Certificate number"
                     value={certificate.certificateNumber}
                   />
+                  <Detail
+                    label="Status"
+                    value={
+                      certificate.revokedAt
+                        ? `Revoked ${dateFormat.format(new Date(certificate.revokedAt))}`
+                        : "Valid"
+                    }
+                  />
+                  {certificate.revokedReason && (
+                    <Detail
+                      label="Revoke reason"
+                      value={certificate.revokedReason}
+                    />
+                  )}
                 </dl>
               </aside>
             </div>

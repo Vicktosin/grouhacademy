@@ -2,9 +2,14 @@ import { cookies } from "next/headers";
 
 import { RoleName } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { ensureDevelopmentInternship } from "@/lib/dev-internship";
 import { getAuthorizedHomeRouteForRoles } from "@/lib/supabase/auth";
+import {
+  DEV_AUTH_COOKIE_NAME,
+  isDevelopmentBypassEnabled,
+} from "@/lib/dev-auth-cookie";
 
-export const DEV_AUTH_COOKIE_NAME = "grouh_dev_auth_role";
+export { DEV_AUTH_COOKIE_NAME, isDevelopmentBypassEnabled };
 
 export const DEVELOPMENT_TEST_ROLES = [
   RoleName.ADMIN,
@@ -36,13 +41,6 @@ const developmentAuthCache =
   };
 
 globalForDevelopmentAuth.__grouhDevelopmentAuthCache = developmentAuthCache;
-
-export function isDevelopmentBypassEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === "development" &&
-    process.env.DEV_AUTH_BYPASS === "true"
-  );
-}
 
 export function getValidatedDevelopmentRole(
   value: unknown,
@@ -174,6 +172,16 @@ export async function ensureDevelopmentUser(
 }
 
 async function initializeDevelopmentUser(
+  role: DevelopmentRole,
+): Promise<string> {
+  const userId = await findOrCreateDevelopmentUser(role);
+  // Test interns and students skip onboarding, the exam and payment.
+  if (role === RoleName.INTERN || role === RoleName.STUDENT)
+    await ensureDevelopmentInternship(userId, developmentUserEmail(role));
+  return userId;
+}
+
+async function findOrCreateDevelopmentUser(
   role: DevelopmentRole,
 ): Promise<string> {
   const prisma = getPrisma();

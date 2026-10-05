@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { BookOpen, Sparkles, Users } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import CourseCatalog from "@/components/CourseCatalog";
@@ -29,6 +30,21 @@ export default function CoursesPage() {
               Learn from working professionals, practise with real projects, and
               build the confidence to make your next move.
             </p>
+            {/* The courses side has its own sign-up and login. */}
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/courses/register"
+                className="inline-flex items-center justify-center rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#4aaa3e]"
+              >
+                Create a free student account
+              </Link>
+              <Link
+                href="/courses/login"
+                className="inline-flex items-center justify-center rounded-xl border border-white/30 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
+              >
+                Log in to my courses
+              </Link>
+            </div>
           </div>
           <div className="mt-10 grid max-w-4xl gap-4 border-t border-white/15 pt-6 sm:grid-cols-3">
             <div className="flex items-center gap-3">

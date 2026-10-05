@@ -50,6 +50,8 @@ export async function GET() {
       courseSlug: certificate.course.slug,
       studentName: fullName || certificate.user.name || "Student",
       issuedAt: certificate.issuedAt.toISOString(),
+      revokedAt: certificate.revokedAt?.toISOString() ?? null,
+      revokedReason: certificate.revokedReason,
     };
   });
 

@@ -9,10 +9,16 @@ import {
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
+import { parseTrack, trackForPath } from "@/lib/learner-tracks";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const next = request.nextUrl.searchParams.get("next");
+  // The side whose sign-up/login page started this (Google sign-in,
+  // email confirmation): named explicitly, or implied by the destination.
+  const track =
+    parseTrack(request.nextUrl.searchParams.get("track")) ?? trackForPath(next);
 
   if (code) {
     const supabase = await createSupabaseServerClient();
@@ -21,6 +27,14 @@ export async function GET(request: NextRequest) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      const userId = user
+        ? await ensurePrismaUserForSupabaseAuth(
+            user,
+            track ? TRACK_ROLE[track] : undefined,
+          )
+        : null;
+      if (userId && track) await grantTrackRole(userId, track);
 
       // Users with MFA enrolled must complete the second factor before being
       // sent anywhere, including the registration and recovery destinations.
@@ -37,15 +51,20 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(next, request.url));
       }
 
-      if (user) {
-        const userId = await ensurePrismaUserForSupabaseAuth(user);
-        const destination = await getAuthorizedHomeRouteForUserId(userId);
+      if (userId) {
+        const destination = await getAuthorizedHomeRouteForUserId(
+          userId,
+          track,
+        );
         return NextResponse.redirect(new URL(destination, request.url));
       }
     }
   }
 
   return NextResponse.redirect(
-    new URL("/login?error=auth_callback_failed", request.url),
+    new URL(
+      `${track === "courses" ? "/courses/login" : "/login"}?error=auth_callback_failed`,
+      request.url,
+    ),
   );
 }

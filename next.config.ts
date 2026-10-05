@@ -75,6 +75,22 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
+  // Friendly aliases for the courses login and sign-up. These run before
+  // the proxy, so they work for logged-out visitors too.
+  async redirects() {
+    return [
+      {
+        source: "/student/login",
+        destination: "/courses/login",
+        permanent: false,
+      },
+      {
+        source: "/student/register",
+        destination: "/courses/register",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
@@ -82,7 +98,10 @@ const nextConfig: NextConfig = {
         // Always revalidate the service worker so updates reach users.
         source: "/sw.js",
         headers: [
-          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
         ],
       },
     ];

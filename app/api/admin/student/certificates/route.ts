@@ -28,6 +28,8 @@ export async function GET() {
         id: true,
         certificateNumber: true,
         issuedAt: true,
+        revokedAt: true,
+        revokedReason: true,
         user: {
           select: {
             name: true,
@@ -59,6 +61,9 @@ export async function GET() {
       student: studentName(certificate.user),
       course: certificate.course.title,
       issuedAt: certificate.issuedAt.toISOString(),
+      revokedAt: certificate.revokedAt?.toISOString() ?? null,
+      revokedReason: certificate.revokedReason,
+      verificationId: `VR-${certificate.id.slice(-8).toUpperCase()}`,
     })),
     students: students.map((student) => ({
       id: student.id,

@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function LogoutPage() {
-  return <LogoutConfirmation />;
+  return <LogoutConfirmation logoutHref="/courses/login" />;
 }

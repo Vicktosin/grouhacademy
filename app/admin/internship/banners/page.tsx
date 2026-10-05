@@ -474,7 +474,7 @@ export default function InternshipBannersPage() {
                     onChange={(event) =>
                       setDraft({ ...draft, buttonUrl: event.target.value })
                     }
-                    placeholder="/student or https://…"
+                    placeholder="/internship/dashboard/tasks or https://…"
                     className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-normal outline-none focus:border-[#5FBB46]"
                   />
                 </label>

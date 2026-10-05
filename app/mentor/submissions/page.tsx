@@ -49,8 +49,17 @@ export default async function MentorSubmissionsPage({
       score: true,
       feedback: true,
       submittedAt: true,
+      user: { select: { name: true, email: true } },
+      group: { select: { number: true } },
+      participants: {
+        select: { user: { select: { name: true, email: true } } },
+      },
       task: {
-        select: { title: true, maxScore: true, module: { select: { title: true } } },
+        select: {
+          title: true,
+          maxScore: true,
+          module: { select: { title: true } },
+        },
       },
     },
   });
@@ -81,7 +90,10 @@ export default async function MentorSubmissionsPage({
         <MentorSubmissionsList
           submissions={submissions.map((submission) => ({
             id: submission.id,
-            internName: internNames.get(submission.userId) ?? "Intern",
+            // Group work shows the group, who submitted it, and who took part.
+            internName: submission.group
+              ? `Group ${submission.group.number} · submitted by ${submission.user.name?.trim() || submission.user.email} · participants: ${submission.participants.map((p) => p.user.name?.trim() || p.user.email).join(", ")}`
+              : (internNames.get(submission.userId) ?? "Intern"),
             taskTitle: submission.task.title,
             moduleTitle: submission.task.module.title,
             content: submission.content,

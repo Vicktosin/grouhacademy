@@ -27,6 +27,15 @@ type CohortRecord = {
   startDateLabel: string;
   endDateLabel: string;
   monthLabel: string;
+  certificatePassMark: number;
+  taskCount: number;
+  timeline: {
+    dayNumber: number;
+    totalDays: number;
+    percent: number;
+    started: boolean;
+    ended: boolean;
+  };
 };
 
 type CohortFormState = {
@@ -36,6 +45,7 @@ type CohortFormState = {
   startDate: string;
   endDate: string;
   description: string;
+  certificatePassMark: number;
 };
 
 const initialForm: CohortFormState = {
@@ -45,6 +55,7 @@ const initialForm: CohortFormState = {
   startDate: "",
   endDate: "",
   description: "",
+  certificatePassMark: 70,
 };
 
 const statusStyles: Record<CohortRecord["status"], string> = {
@@ -194,6 +205,7 @@ export default function InternshipCohortsPage() {
       startDate: cohort.startDate.slice(0, 10),
       endDate: cohort.endDate.slice(0, 10),
       description: cohort.description ?? "",
+      certificatePassMark: cohort.certificatePassMark,
     });
     setError(null);
     setSuccess(null);
@@ -409,6 +421,29 @@ export default function InternshipCohortsPage() {
                       </div>
                     </div>
 
+                    <div className="mt-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
+                        <span className="font-semibold text-[#1C1D52]">
+                          {cohort.timeline.ended
+                            ? "Cohort ended"
+                            : cohort.timeline.started
+                              ? `Day ${cohort.timeline.dayNumber} of ${cohort.timeline.totalDays}`
+                              : `Starts ${cohort.startDateLabel} · ${cohort.timeline.totalDays} days`}
+                        </span>
+                        <span>
+                          {cohort.taskCount} task
+                          {cohort.taskCount === 1 ? "" : "s"} · Certificate pass
+                          mark {cohort.certificatePassMark}%
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-[#E7EEF8]">
+                        <div
+                          className="h-full rounded-full bg-[#5FBB46]"
+                          style={{ width: `${cohort.timeline.percent}%` }}
+                        />
+                      </div>
+                    </div>
+
                     {cohort.description && (
                       <p className="mt-3 text-[10px] leading-5 text-slate-600">
                         {cohort.description}
@@ -496,6 +531,29 @@ export default function InternshipCohortsPage() {
                   />
                 </label>
               </div>
+
+              <label className="block text-[10px] font-semibold text-slate-500">
+                Certificate pass mark (%)
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  required
+                  value={form.certificatePassMark}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      certificatePassMark: Number(event.target.value),
+                    }))
+                  }
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-[#1C1D52] outline-none"
+                />
+                <span className="mt-1 block font-normal text-slate-400">
+                  Share of this cohort&apos;s tasks an intern must pass to get
+                  their certificate when the cohort ends.
+                </span>
+              </label>
 
               <label className="block text-[10px] font-semibold text-slate-500">
                 Description

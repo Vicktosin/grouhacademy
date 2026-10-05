@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { cohortTimeline, scheduleToDate } from "@/lib/task-schedule";
+
+const DEFAULT_PASS_MARK = 70;
+
+/** A whole-number percentage from 1 to 100, or null if invalid. */
+function parsePassMark(value: unknown) {
+  if (value === undefined || value === null || value === "")
+    return DEFAULT_PASS_MARK;
+  const mark = Number(value);
+  return Number.isInteger(mark) && mark >= 1 && mark <= 100 ? mark : null;
+}
 
 function calculateStatus(startDate: Date, endDate: Date) {
   const now = new Date();
@@ -45,7 +56,10 @@ export async function GET() {
     }),
     prisma.internshipCohort.findMany({
       orderBy: { startDate: "asc" },
-      include: { program: { select: { id: true, name: true } } },
+      include: {
+        program: { select: { id: true, name: true } },
+        _count: { select: { tasks: true } },
+      },
     }),
   ]);
 
@@ -65,6 +79,9 @@ export async function GET() {
       startDateLabel: formatDate(cohort.startDate),
       endDateLabel: formatDate(cohort.endDate),
       monthLabel: monthName(cohort.startDate),
+      certificatePassMark: cohort.certificatePassMark,
+      taskCount: cohort._count.tasks,
+      timeline: cohortTimeline(cohort.startDate, cohort.endDate),
     })),
   });
 }
@@ -84,6 +101,17 @@ export async function POST(request: Request) {
   const name = String(body.name ?? "").trim();
   const programId = String(body.programId ?? "").trim();
   const description = String(body.description ?? "").trim();
+  const certificatePassMark = parsePassMark(body.certificatePassMark);
+
+  if (certificatePassMark === null) {
+    return NextResponse.json(
+      {
+        error:
+          "The certificate pass mark must be a whole number from 1 to 100.",
+      },
+      { status: 400 },
+    );
+  }
 
   if (!name || !programId) {
     return NextResponse.json(
@@ -128,6 +156,7 @@ export async function POST(request: Request) {
       description: description || null,
       startDate,
       endDate,
+      certificatePassMark,
       status: calculateStatus(startDate, endDate),
     },
   });
@@ -156,6 +185,17 @@ export async function PUT(request: Request) {
   const description = String(body.description ?? "").trim();
   const startDate = new Date(body.startDate);
   const endDate = new Date(body.endDate);
+  const certificatePassMark = parsePassMark(body.certificatePassMark);
+
+  if (certificatePassMark === null) {
+    return NextResponse.json(
+      {
+        error:
+          "The certificate pass mark must be a whole number from 1 to 100.",
+      },
+      { status: 400 },
+    );
+  }
 
   if (
     !id ||
@@ -209,10 +249,37 @@ export async function PUT(request: Request) {
       description: description || null,
       startDate,
       endDate,
+      certificatePassMark,
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       status: calculateStatus(startDate, endDate),
     },
   });
+
+  // Task windows are relative to the start date, so moving it moves them.
+  if (startDate.getTime() !== cohort.startDate.getTime()) {
+    const tasks = await prisma.internshipTask.findMany({
+      where: { cohortId: id },
+    });
+    await prisma.$transaction(
+      tasks.map((task) =>
+        prisma.internshipTask.update({
+          where: { id: task.id },
+          data: {
+            opensAt: scheduleToDate(startDate, {
+              week: task.opensWeek,
+              day: task.opensDay,
+              time: task.opensTime,
+            }),
+            dueDate: scheduleToDate(startDate, {
+              week: task.dueWeek,
+              day: task.dueDay,
+              time: task.dueTime,
+            }),
+          },
+        }),
+      ),
+    );
+  }
 
   return NextResponse.json({
     success: true,
@@ -238,6 +305,20 @@ export async function DELETE(request: Request) {
   const cohort = await prisma.internshipCohort.findUnique({ where: { id } });
   if (!cohort) {
     return NextResponse.json({ error: "Cohort not found." }, { status: 404 });
+  }
+
+  // Deleting a cohort deletes its tasks, so keep interns' submitted work safe.
+  const submissions = await prisma.taskSubmission.count({
+    where: { task: { cohortId: id } },
+  });
+  if (submissions > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Interns have already submitted tasks in this cohort, so it can't be deleted.",
+      },
+      { status: 409 },
+    );
   }
 
   await prisma.internshipCohort.delete({ where: { id } });

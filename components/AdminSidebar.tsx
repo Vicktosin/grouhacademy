@@ -67,6 +67,11 @@ const internshipItems = [
   { label: "Mentors", href: "/admin/internship/mentors", icon: Users },
   { label: "Payments", href: "/admin/internship/payments", icon: WalletCards },
   {
+    label: "Certificates",
+    href: "/admin/internship/certificates",
+    icon: Award,
+  },
+  {
     label: "Notifications",
     href: "/admin/internship/notifications",
     icon: Bell,

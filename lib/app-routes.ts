@@ -15,6 +15,8 @@ const APP_ROUTE_SECTIONS = [
   "/dev",
   "/login",
   "/register",
+  "/courses/login",
+  "/courses/register",
   "/welcome",
   "/forgot-password",
   "/otp",

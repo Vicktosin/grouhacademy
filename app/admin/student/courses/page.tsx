@@ -76,7 +76,8 @@ export default function AdminCoursesPage() {
       method: "DELETE",
     });
     if (!response.ok) {
-      setMessage("Unable to delete course.");
+      const payload = await response.json().catch(() => null);
+      setMessage(payload?.error ?? "Unable to delete course.");
       return;
     }
     setCourses((items) => items.filter((item) => item.id !== course.id));

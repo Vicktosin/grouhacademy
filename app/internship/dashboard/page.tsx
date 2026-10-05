@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Activity,
-  Bell,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Trophy,
-} from "lucide-react";
-import Image from "next/image";
+import { Activity, Bell, CheckCircle2, Clock3, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
@@ -29,8 +21,16 @@ type DashboardData = {
   startDateLabel?: string;
   completionDateLabel?: string;
   progressPercent?: number;
+  cohortProgress?: {
+    dayNumber: number;
+    totalDays: number;
+    percent: number;
+    started: boolean;
+    ended: boolean;
+  } | null;
   stats?: {
     completedTasks: number;
+    totalTasks: number;
     averageGradePercent: number | null;
     pendingTasks: number;
   };
@@ -47,11 +47,6 @@ type DashboardData = {
     timeAgoLabel: string;
   } | null;
   announcements?: { title: string; postedLabel: string }[];
-  recommendedCourses: {
-    slug: string;
-    title: string;
-    thumbnail: string | null;
-  }[];
 };
 
 const assessmentLabels: Record<string, string> = {
@@ -234,21 +229,27 @@ export default function InternshipDashboardPage() {
                     Expected Completion: {data.completionDateLabel}
                   </p>
                 </div>
-                <span className="text-xs font-bold text-[#5FBB46]">
-                  {data.progressPercent}%
-                </span>
               </div>
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs font-bold text-[#1C1D52]">
-                  <span>Progress</span>
-                </div>
-                <div className="mt-2 h-1.5 rounded-full bg-[#E7EEF8]">
-                  <div
-                    className="h-full rounded-full bg-[#5FBB46]"
-                    style={{ width: `${data.progressPercent ?? 0}%` }}
-                  />
-                </div>
-              </div>
+              {data.cohortProgress && (
+                <ProgressBar
+                  label="Cohort progress"
+                  detail={
+                    data.cohortProgress.ended
+                      ? "Cohort ended"
+                      : data.cohortProgress.started
+                        ? `Day ${data.cohortProgress.dayNumber} of ${data.cohortProgress.totalDays}`
+                        : "Not started yet"
+                  }
+                  percent={data.cohortProgress.percent}
+                  barClass="bg-[#1C1D52]"
+                />
+              )}
+              <ProgressBar
+                label="My progress"
+                detail={`${data.stats?.completedTasks ?? 0} of ${data.stats?.totalTasks ?? 0} tasks passed`}
+                percent={data.progressPercent ?? 0}
+                barClass="bg-[#5FBB46]"
+              />
             </section>
 
             <section className="grid gap-4 sm:grid-cols-3">
@@ -396,49 +397,43 @@ export default function InternshipDashboardPage() {
             )}
           </>
         )}
-
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#1C1D52]">
-              Recommended Courses
-            </h2>
-            <a href="/courses" className="text-xs font-semibold text-[#5FBB46]">
-              See More <ChevronRight className="inline h-3 w-3" />
-            </a>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {data.recommendedCourses.map((course) => (
-              <article
-                key={course.slug}
-                className="overflow-hidden rounded-2xl bg-white p-2 shadow-[0_8px_24px_rgba(28,29,82,0.09)]"
-              >
-                {course.thumbnail ? (
-                  <Image
-                    src={course.thumbnail}
-                    alt=""
-                    width={700}
-                    height={380}
-                    className="h-28 w-full rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="h-28 w-full rounded-xl bg-[linear-gradient(135deg,#1c1d52,#5fbb46)]" />
-                )}
-                <div className="p-2">
-                  <h3 className="mt-3 text-xs font-bold text-[#1C1D52]">
-                    {course.title}
-                  </h3>
-                  <Link
-                    href={`/student/my-courses/${course.slug}/preview`}
-                    className="mt-4 block w-full rounded-lg bg-[#5FBB46] py-2 text-center text-xs font-semibold text-white"
-                  >
-                    View course
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
       </div>
     </InternshipShell>
+  );
+}
+
+function ProgressBar({
+  label,
+  detail,
+  percent,
+  barClass,
+}: {
+  label: string;
+  detail: string;
+  percent: number;
+  barClass: string;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between gap-3 text-xs font-bold text-[#1C1D52]">
+        <span>{label}</span>
+        <span className="font-semibold text-slate-500">
+          {detail} · {percent}%
+        </span>
+      </div>
+      <div
+        className="mt-2 h-2 rounded-full bg-[#E7EEF8]"
+        role="progressbar"
+        aria-label={label}
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className={`h-full rounded-full ${barClass}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 }

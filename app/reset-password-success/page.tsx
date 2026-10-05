@@ -1,8 +1,14 @@
 import React from "react";
 import Image from "next/image";
 import Container from "@/components/Container";
+import { LEARNER_TRACKS, parseTrack } from "@/lib/learner-tracks";
 
-export default function ResetPasswordSuccessPage() {
+export default async function ResetPasswordSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ track?: string }>;
+}) {
+  const track = parseTrack((await searchParams).track) ?? "internship";
   return (
     <main className="min-h-screen bg-slate-100 text-[#17251c]">
       <section className="relative isolate flex min-h-screen items-center overflow-hidden py-10 sm:py-16">
@@ -44,7 +50,7 @@ export default function ResetPasswordSuccessPage() {
 
                 <div className="mt-8">
                   <a
-                    href="/login"
+                    href={LEARNER_TRACKS[track].loginPath}
                     className="inline-flex w-full items-center justify-center rounded-xl bg-[#1c1d52] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#1c1d52]/20 transition hover:bg-[#292a68] focus:outline-none focus:ring-4 focus:ring-[#1c1d52]/20"
                   >
                     Back to login
@@ -88,9 +94,10 @@ export default function ResetPasswordSuccessPage() {
                 <Image
                   src="/thunderbolt.png"
                   alt="Thunderbolt icon"
+                  width={32}
+                  height={32}
                   className="w-8 h-8"
                 />
-                 
               </div>
             </div>
           </div>
