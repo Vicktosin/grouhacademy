@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { AssessmentAttemptStatus, CohortStatus, InternshipApplicationStatus, InternshipPaymentStatus, NotificationType, Prisma } from "@/generated/prisma/client";
+import {
+  AssessmentAttemptStatus,
+  CohortStatus,
+  InternshipApplicationStatus,
+  InternshipPaymentStatus,
+  NotificationType,
+  Prisma,
+  LearnerAudience,
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 
@@ -288,6 +296,7 @@ export async function POST(request: Request) {
       title,
       message,
       type: notificationType,
+      audience: LearnerAudience.INTERNSHIP,
     }));
 
     await prisma.notification.createMany({ data: rows });

@@ -34,6 +34,8 @@ export default function NotificationsCenter({
   variant: "courses" | "internship";
 }) {
   const courses = variant === "courses";
+  // Each workspace shows only its own side's notifications.
+  const workspaceQuery = `?workspace=${variant}`;
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -42,10 +44,10 @@ export default function NotificationsCenter({
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/student/notifications").then((r) =>
+      fetch(`/api/student/notifications${workspaceQuery}`).then((r) =>
         r.ok ? r.json() : Promise.reject(),
       ),
-      fetch("/api/announcements").then((r) =>
+      fetch(`/api/announcements${workspaceQuery}`).then((r) =>
         r.ok ? r.json() : Promise.reject(),
       ),
       courses
@@ -61,12 +63,12 @@ export default function NotificationsCenter({
       })
       .catch(() => setError("Unable to load notifications."))
       .finally(() => setLoading(false));
-  }, [courses]);
+  }, [courses, workspaceQuery]);
 
   async function markAllRead() {
     setNotifications((current) => current.map((n) => ({ ...n, read: true })));
     try {
-      await fetch("/api/student/notifications", {
+      await fetch(`/api/student/notifications${workspaceQuery}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ all: true }),
@@ -82,7 +84,7 @@ export default function NotificationsCenter({
       current.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
     try {
-      await fetch("/api/student/notifications", {
+      await fetch(`/api/student/notifications${workspaceQuery}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),

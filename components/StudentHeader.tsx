@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, ChevronDown, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import Image from "next/image";
 import logo from "../public/logo.png";
 import Link from "next/link";
@@ -11,7 +11,6 @@ type HeaderProfile = { name: string | null; avatarUrl: string | null };
 
 export default function StudentHeader() {
   const [showSearch, setShowSearch] = useState(false);
-  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [profile, setProfile] = useState<HeaderProfile>({
     name: null,
     avatarUrl: null,
@@ -20,13 +19,15 @@ export default function StudentHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname() || "/";
   const router = useRouter();
-  const isMentorWorkspace = pathname.startsWith("/mentor");
+  // The internship and courses workspaces are separate, so there is no
+  // switcher between them.
   const isInternshipWorkspace = pathname.startsWith("/internship");
-  const workspaceName = isMentorWorkspace
-    ? "Mentor Workspace"
-    : isInternshipWorkspace
-      ? "Internship Workspace"
-      : "Student Workspace";
+  // The bell counts only this workspace's notifications.
+  const bellWorkspace = isInternshipWorkspace
+    ? "internship"
+    : pathname.startsWith("/student")
+      ? "courses"
+      : null;
 
   useEffect(() => {
     fetch("/api/student/profile", { cache: "no-store" })
@@ -41,7 +42,10 @@ export default function StudentHeader() {
       .catch((error) => console.error("Failed to load header profile:", error));
 
     const loadUnreadCount = () => {
-      fetch("/api/student/notifications/unread-count", { cache: "no-store" })
+      fetch(
+        `/api/student/notifications/unread-count${bellWorkspace ? `?workspace=${bellWorkspace}` : ""}`,
+        { cache: "no-store" },
+      )
         .then((response) => (response.ok ? response.json() : null))
         .then((data) => {
           if (data) setUnreadCount(data.count ?? 0);
@@ -53,7 +57,7 @@ export default function StudentHeader() {
     loadUnreadCount();
     window.addEventListener("focus", loadUnreadCount);
     return () => window.removeEventListener("focus", loadUnreadCount);
-  }, []);
+  }, [bellWorkspace]);
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,52 +90,6 @@ export default function StudentHeader() {
         </Link>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-6">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowWorkspaceMenu((current) => !current)}
-              aria-expanded={showWorkspaceMenu}
-              aria-haspopup="menu"
-              className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-[0_4px_14px_rgba(28,29,82,0.08)] transition hover:shadow-md sm:gap-2 sm:px-4"
-            >
-              <span className="hidden sm:inline">{workspaceName}</span>
-              <span className="sm:hidden">
-                {isMentorWorkspace
-                  ? "Mentor"
-                  : isInternshipWorkspace
-                    ? "Internship"
-                    : "Student"}
-              </span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${showWorkspaceMenu ? "rotate-180" : ""}`}
-              />
-            </button>
-            {showWorkspaceMenu && (
-              <div
-                role="menu"
-                className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl bg-white p-1.5 shadow-[0_10px_28px_rgba(28,29,82,0.16)]"
-              >
-                <Link
-                  href="/student"
-                  role="menuitem"
-                  onClick={() => setShowWorkspaceMenu(false)}
-                  className={`block rounded-lg px-3 py-2 text-xs font-semibold ${!isInternshipWorkspace && !isMentorWorkspace ? "bg-[#e8f7eb] text-[#397d3a]" : "text-[#1C1D52] hover:bg-slate-50"}`}
-                >
-                  Student Workspace
-                </Link>
-                <Link
-                  href="/internship/dashboard"
-                  role="menuitem"
-                  onClick={() => setShowWorkspaceMenu(false)}
-                  className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isInternshipWorkspace ? "bg-[#e8f7eb] text-[#397d3a]" : "text-[#1C1D52] hover:bg-slate-50"}`}
-                >
-                  Internship Workspace
-                </Link>
-                {/*<Link href="/mentor" role="menuitem" onClick={() => setShowWorkspaceMenu(false)} className={`mt-1 block rounded-lg px-3 py-2 text-xs font-semibold ${isMentorWorkspace ? 'bg-[#e8f7eb] text-[#397d3a]' : 'text-[#1C1D52] hover:bg-slate-50'}`}>Mentor Workspace</Link>*/}
-              </div>
-            )}
-          </div>
-
           {/* Course search belongs to the courses side; the internship
               workspace has no course links at all. */}
           {!isInternshipWorkspace && (

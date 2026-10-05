@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import { audienceWhere, workspaceFromRequest } from "@/lib/learner-audience";
 
 function timeAgoLabel(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -11,7 +12,8 @@ function timeAgoLabel(date: Date): string {
   return `${days}d`;
 }
 
-export async function GET() {
+// `?workspace=courses|internship` limits the list to that side.
+export async function GET(request: Request) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json(
@@ -24,7 +26,7 @@ export async function GET() {
 
   try {
     const notifications = await prisma.notification.findMany({
-      where: { userId },
+      where: { userId, ...audienceWhere(workspaceFromRequest(request)) },
       orderBy: { createdAt: "desc" },
       take: 30,
     });
@@ -64,7 +66,11 @@ export async function PATCH(request: Request) {
   try {
     if (body?.all) {
       await prisma.notification.updateMany({
-        where: { userId, read: false },
+        where: {
+          userId,
+          read: false,
+          ...audienceWhere(workspaceFromRequest(request)),
+        },
         data: { read: true },
       });
       return NextResponse.json({ success: true });

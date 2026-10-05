@@ -8,7 +8,6 @@ import {
   Download,
   Eye,
   Ban,
-  MoreHorizontal,
   RotateCcw,
   Search,
   Trash2,
@@ -36,7 +35,6 @@ export default function AdminCertificatesPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [menuId, setMenuId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 8;
   const pdf = useCertificatePdf();
@@ -83,7 +81,6 @@ export default function AdminCertificatesPage() {
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const rows = visible.slice((page - 1) * pageSize, page * pageSize);
   async function setRevoked(certificate: Certificate, revoked: boolean) {
-    setMenuId(null);
     let reason: string | null = null;
     if (revoked) {
       // null means the admin cancelled; an empty string means no reason.
@@ -127,7 +124,6 @@ export default function AdminCertificatesPage() {
     );
   }
   async function deleteCertificate(certificate: Certificate) {
-    setMenuId(null);
     if (
       !window.confirm(
         `Permanently delete ${certificate.certificateNumber} for ${certificate.student}?\n\nIt disappears from the student's account and cannot be recovered. If they complete the course again, a new certificate will be issued; revoke it instead to keep it from coming back.`,
@@ -266,7 +262,7 @@ export default function AdminCertificatesPage() {
                         </span>
                       )}
                     </td>
-                    <td className="relative p-3">
+                    <td className="p-3">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
@@ -284,49 +280,36 @@ export default function AdminCertificatesPage() {
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Link>
+                        {/* Shown inline: a dropdown here would be clipped
+                            by the table's scroll container. */}
+                        {certificate.revokedAt ? (
+                          <button
+                            type="button"
+                            onClick={() => void setRevoked(certificate, false)}
+                            className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Reinstate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void setRevoked(certificate, true)}
+                            className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700 hover:bg-amber-100"
+                          >
+                            <Ban className="h-3 w-3" />
+                            Revoke
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() =>
-                            setMenuId(
-                              menuId === certificate.id ? null : certificate.id,
-                            )
-                          }
-                          className="rounded p-1.5 hover:bg-slate-100"
-                          aria-label={`Actions for ${certificate.certificateNumber}`}
+                          onClick={() => void deleteCertificate(certificate)}
+                          className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-100"
+                          aria-label={`Delete ${certificate.certificateNumber} permanently`}
                         >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3 w-3" />
+                          Delete
                         </button>
-                        {menuId === certificate.id && (
-                          <div className="absolute right-3 top-10 z-10 w-44 rounded-lg bg-white p-1 shadow-lg ring-1 ring-slate-100">
-                            {certificate.revokedAt ? (
-                              <button
-                                type="button"
-                                onClick={() => setRevoked(certificate, false)}
-                                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-[10px] text-emerald-700 hover:bg-emerald-50"
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                                Reinstate
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setRevoked(certificate, true)}
-                                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-[10px] text-amber-700 hover:bg-amber-50"
-                              >
-                                <Ban className="h-3.5 w-3.5" />
-                                Revoke
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => deleteCertificate(certificate)}
-                              className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-[10px] text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete permanently
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </td>
                   </tr>

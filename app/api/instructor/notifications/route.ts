@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { NotificationType } from "@/generated/prisma/client";
+import { NotificationType, LearnerAudience } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/route-guards";
 
@@ -230,6 +230,7 @@ export async function POST(request: Request) {
         title,
         message,
         type: NotificationType.INFO,
+        audience: LearnerAudience.COURSES,
       })),
     });
 

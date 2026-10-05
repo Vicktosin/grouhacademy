@@ -129,6 +129,13 @@ enum AuditActionType {
   PAYMENT_UPDATED
 }
 
+// Which learner side a notification or announcement belongs to. Null means
+// both (site-wide); each workspace shows its own side plus site-wide ones.
+enum LearnerAudience {
+  COURSES
+  INTERNSHIP
+}
+
 enum AnnouncementScope {
   GLOBAL
   MENTOR_MENTEES
@@ -928,6 +935,7 @@ model Notification {
   title     String
   message   String
   type      NotificationType @default(INFO)
+  audience  LearnerAudience?
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
@@ -935,6 +943,7 @@ model Notification {
   user User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+  @@index([userId, audience, read])
 }
 
 model AuditLog {
@@ -1296,6 +1305,7 @@ model Announcement {
   programId String?
   title     String
   message   String
+  audience  LearnerAudience?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 

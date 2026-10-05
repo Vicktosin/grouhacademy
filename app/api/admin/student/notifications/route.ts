@@ -6,7 +6,9 @@ import {
   InternshipPaymentStatus,
   NotificationType,
   RoleName,
+  LearnerAudience,
 } from "@/generated/prisma/client";
+import { audienceWhere } from "@/lib/learner-audience";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 
@@ -99,7 +101,11 @@ export async function GET() {
           },
         }),
         prisma.announcement.findMany({
-          where: { scope: AnnouncementScope.GLOBAL },
+          // Course announcements and site-wide ones (not internship).
+          where: {
+            scope: AnnouncementScope.GLOBAL,
+            ...audienceWhere("courses"),
+          },
           orderBy: { createdAt: "desc" },
           take: 15,
           select: {
@@ -202,6 +208,7 @@ export async function POST(request: Request) {
         data: {
           authorId: adminId,
           scope: AnnouncementScope.GLOBAL,
+          audience: LearnerAudience.COURSES,
           title,
           message,
         },
@@ -213,6 +220,7 @@ export async function POST(request: Request) {
               title,
               message,
               type: NotificationType.INFO,
+              audience: LearnerAudience.COURSES,
             })),
           })
         : { count: 0 };

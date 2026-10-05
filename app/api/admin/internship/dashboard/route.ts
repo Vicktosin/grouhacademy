@@ -8,6 +8,7 @@ import {
   MentorAssignmentStatus,
   RoleName,
 } from "@/generated/prisma/client";
+import { audienceWhere } from "@/lib/learner-audience";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 
@@ -139,7 +140,11 @@ export async function GET() {
         take: 4,
       }),
       prisma.announcement.findMany({
-        where: { scope: AnnouncementScope.GLOBAL },
+        // Internship and site-wide announcements (not course ones).
+        where: {
+          scope: AnnouncementScope.GLOBAL,
+          ...audienceWhere("internship"),
+        },
         include: { author: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
         take: 3,
