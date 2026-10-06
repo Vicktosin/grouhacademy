@@ -5,6 +5,8 @@
 export type LessonMedia =
   /** YouTube embed; supports the player's custom controls (JS API). */
   | { kind: "youtube"; src: string }
+  /** Google Drive preview player; the file can also be downloaded. */
+  | { kind: "drive"; src: string; downloadUrl: string }
   /** Another embeddable player (e.g. Vimeo). */
   | { kind: "embed"; src: string }
   /** A video file the browser plays itself (MP4, WebM, …). */
@@ -48,6 +50,21 @@ function youtubeId(url: URL) {
   return id && YOUTUBE_ID.test(id) ? id : null;
 }
 
+const DRIVE_ID = /^[A-Za-z0-9_-]{20,}$/;
+
+function driveId(url: URL) {
+  const host = url.hostname.replace(/^www\./, "");
+  if (host !== "drive.google.com" && host !== "docs.google.com") return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  // ".../file/d/<id>/view" share links, or "open?id=" / "uc?id=" links.
+  const fileIndex = parts.indexOf("file");
+  const id =
+    fileIndex !== -1 && parts[fileIndex + 1] === "d"
+      ? parts[fileIndex + 2]
+      : url.searchParams.get("id");
+  return id && DRIVE_ID.test(id) ? id : null;
+}
+
 export function resolveLessonMedia(
   raw: string | null | undefined,
   origin?: string,
@@ -77,6 +94,22 @@ export function resolveLessonMedia(
     return {
       kind: "youtube",
       src: `https://www.youtube.com/embed/${id}?${params}`,
+    };
+  }
+
+  // Drive's "/view" page refuses to load inside other sites; "/preview"
+  // is its embeddable player.
+  const fileId = driveId(url);
+  if (fileId) {
+    // Older link-shared files only open with their resource key.
+    const resourceKey = url.searchParams.get("resourcekey");
+    const keyParam = resourceKey
+      ? `resourcekey=${encodeURIComponent(resourceKey)}`
+      : "";
+    return {
+      kind: "drive",
+      src: `https://drive.google.com/file/d/${fileId}/preview${keyParam ? `?${keyParam}` : ""}`,
+      downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}${keyParam ? `&${keyParam}` : ""}`,
     };
   }
 

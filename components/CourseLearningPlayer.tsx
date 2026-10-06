@@ -59,16 +59,26 @@ type ProgressResponse = {
   error?: string;
 };
 
+// Also the internship Resource player: interns pass itemLabel="Resource",
+// their own back link and their own progress endpoint.
 export default function CourseLearningPlayer({
   course,
   initialCompletedLessons,
   initialTotalLessons,
   initialProgressPercent,
+  itemLabel = "Course",
+  backHref = "/student/my-courses",
+  lessonsApiPath = `/api/courses/${course.slug}/lessons`,
 }: {
   course: LearnCourseData;
   initialCompletedLessons: number;
   initialTotalLessons: number;
   initialProgressPercent: number;
+  /** What learners call the thing they are studying ("Course", "Resource"). */
+  itemLabel?: string;
+  backHref?: string;
+  /** Lesson progress is POSTed to `${lessonsApiPath}/${lessonId}/progress`. */
+  lessonsApiPath?: string;
 }) {
   const [selectedModule, setSelectedModule] = useState(0);
   const [selectedLesson, setSelectedLesson] = useState(0);
@@ -170,6 +180,46 @@ export default function CourseLearningPlayer({
     };
   }, [mediaKey, playingMedia]);
 
+  // Drive downloads open in their own tab so the course stays put. Small
+  // files download straight away and the browser drops the empty tab;
+  // large ones stop on Google's "can't scan for viruses" page, so that tab
+  // is closed for the student once they come back to the course. A
+  // download already started keeps going after its tab closes.
+  const downloadTabRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    let leftForDownload = false;
+    const handleVisibility = () => {
+      const tab = downloadTabRef.current;
+      if (!tab) return;
+      if (document.visibilityState === "hidden") {
+        leftForDownload = true;
+      } else if (leftForDownload) {
+        leftForDownload = false;
+        downloadTabRef.current = null;
+        if (!tab.closed) tab.close();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const downloadInNewTab = (url: string) => {
+    const tab = window.open("", "_blank");
+    if (!tab) {
+      // Pop-ups blocked: Drive sends small files as attachments, so this
+      // usually downloads without leaving the page.
+      window.location.assign(url);
+      return;
+    }
+    // Keep the handle so the tab can be closed later, but don't give
+    // Google's page access back to this one.
+    tab.opener = null;
+    tab.location.href = url;
+    downloadTabRef.current = tab;
+  };
+
   const selectModule = (moduleIndex: number) => {
     setSelectedModule(moduleIndex);
     setSelectedLesson(0);
@@ -223,14 +273,11 @@ export default function CourseLearningPlayer({
     setSavingCompletion(true);
 
     try {
-      const response = await fetch(
-        `/api/courses/${course.slug}/lessons/${lesson.id}/progress`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ completed: nextCompleted }),
-        },
-      );
+      const response = await fetch(`${lessonsApiPath}/${lesson.id}/progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: nextCompleted }),
+      });
 
       const data = (await response.json()) as ProgressResponse;
 
@@ -263,7 +310,7 @@ export default function CourseLearningPlayer({
       <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Link
-            href="/student/my-courses"
+            href={backHref}
             className="shrink-0 text-[#1C1D52] hover:text-blue-600"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -273,7 +320,7 @@ export default function CourseLearningPlayer({
               {course.title}
             </p>
             <p className="text-[10px] text-slate-500">
-              Course player · Module {selectedModule + 1} of {modules.length}
+              {itemLabel} player · Module {selectedModule + 1} of {modules.length}
             </p>
           </div>
         </div>
@@ -285,7 +332,7 @@ export default function CourseLearningPlayer({
             type="button"
             onClick={() => setSidebarOpen((value) => !value)}
             className="rounded-lg border border-slate-200 p-2 text-[#1C1D52] lg:hidden"
-            aria-label="Toggle course outline"
+            aria-label={`Toggle ${itemLabel.toLowerCase()} outline`}
           >
             {sidebarOpen ? (
               <X className="h-4 w-4" />
@@ -302,7 +349,7 @@ export default function CourseLearningPlayer({
         >
           <div className="border-b border-slate-200 p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5FBB46]">
-              Course outline
+              {itemLabel} outline
             </p>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
               <div
@@ -392,7 +439,7 @@ export default function CourseLearningPlayer({
                     No lessons in this module yet
                   </p>
                   <p className="mt-1 text-[10px] text-slate-500">
-                    Check back once the instructor adds content here.
+                    Check back once content is added here.
                   </p>
                 </div>
               </div>
@@ -409,7 +456,8 @@ export default function CourseLearningPlayer({
                     playsInline
                     className="h-full w-full bg-black"
                   />
-                ) : playingMedia === mediaKey && media?.kind === "embed" ? (
+                ) : playingMedia === mediaKey &&
+                  (media?.kind === "embed" || media?.kind === "drive") ? (
                   <iframe
                     className="h-full w-full"
                     src={media.src}
@@ -419,8 +467,8 @@ export default function CourseLearningPlayer({
                   />
                 ) : playingMedia === mediaKey && !media ? (
                   <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white/80">
-                    This video link isn&apos;t valid. Please let the course
-                    instructor know.
+                    This video link isn&apos;t valid. Please let the{" "}
+                    {itemLabel.toLowerCase()} team know.
                   </div>
                 ) : playingMedia === mediaKey && media ? (
                   <div className="relative h-full w-full">
@@ -512,7 +560,7 @@ export default function CourseLearningPlayer({
                       </span>
                     </div>
                     <span className="absolute bottom-4 left-4 z-10 rounded-md bg-black/25 px-2.5 py-1.5 text-[10px] text-white/75">
-                      Course content
+                      {itemLabel} content
                     </span>
                   </button>
                 )}
@@ -528,6 +576,19 @@ export default function CourseLearningPlayer({
                     Continue with the lesson material below.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {media?.kind === "drive" && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => downloadInNewTab(media.downloadUrl)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-xs font-semibold text-[#1C1D52] hover:border-[#5FBB46] hover:text-[#5FBB46]"
+                >
+                  <Download className="h-4 w-4" />
+                  Download video
+                </button>
               </div>
             )}
 
