@@ -295,6 +295,10 @@ model User {
 
   mfaRecoveryCodes MfaRecoveryCode[]
 
+  internshipFollowUpsContacted InternshipFollowUp[]         @relation("FollowUpLastContactedBy")
+  internshipFollowUpLogs       InternshipFollowUpLog[]      @relation("FollowUpLogAdmin")
+  internshipFollowUpTemplates  InternshipFollowUpTemplate[] @relation("FollowUpTemplateEditor")
+
   @@index([status])
 }
 
@@ -463,6 +467,8 @@ model InternshipApplication {
   premiumActivatedAt DateTime?
 
   certificates InternshipCertificate[]
+  followUp     InternshipFollowUp?
+  followUpLogs InternshipFollowUpLog[]
 
   // One application per track per level: moving up a level adds a new one.
   @@unique([studentId, programId, levelId])
@@ -1607,4 +1613,70 @@ model InternResourceRecommendation {
   @@id([programId, levelId, resourceId])
   @@index([programId, levelId, order])
   @@index([resourceId])
+}
+
+// Admin follow-up of applicants who sat the entrance exam but haven't paid:
+// those who passed (to pay the acceptance fee) and those who failed (to
+// retake, or apply at a lower level). Mostly by WhatsApp and phone.
+
+enum FollowUpStatus {
+  NOT_CONTACTED
+  CONTACTED
+  NO_ANSWER
+  INTERESTED
+  NOT_INTERESTED
+}
+
+enum FollowUpStage {
+  PASSED_UNPAID
+  FAILED
+}
+
+enum FollowUpChannel {
+  WHATSAPP
+  CALL
+}
+
+model InternshipFollowUp {
+  applicationId     String         @id
+  status            FollowUpStatus @default(NOT_CONTACTED)
+  note              String?
+  nextFollowUpAt    DateTime?
+  lastContactedAt   DateTime?
+  lastContactedById String?        @db.Uuid
+  contactCount      Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  application     InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  lastContactedBy User?                 @relation("FollowUpLastContactedBy", fields: [lastContactedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([nextFollowUpAt])
+}
+
+// Each WhatsApp message or call started from the follow-up page.
+model InternshipFollowUpLog {
+  id            String          @id @default(cuid())
+  applicationId String
+  adminId       String?         @db.Uuid
+  channel       FollowUpChannel
+  stage         FollowUpStage
+  createdAt     DateTime        @default(now())
+
+  application InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  admin       User?                 @relation("FollowUpLogAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+}
+
+// The editable WhatsApp message for each stage, with {placeholders} such as
+// {firstName}, {track} and {fee}. Missing rows fall back to built-in text.
+model InternshipFollowUpTemplate {
+  stage       FollowUpStage @id
+  body        String
+  updatedById String?       @db.Uuid
+  updatedAt   DateTime      @updatedAt
+
+  updatedBy User? @relation("FollowUpTemplateEditor", fields: [updatedById], references: [id], onDelete: SetNull)
 }
