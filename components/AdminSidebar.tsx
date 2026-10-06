@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Layers,
   LogOut,
+  PhoneCall,
   Settings,
   ShieldCheck,
   UserCircle2,
@@ -58,6 +59,11 @@ const internshipItems = [
     icon: ClipboardCheck,
   },
   { label: "Enrollees", href: "/admin/internship/enrollees", icon: UserRound },
+  {
+    label: "Follow-ups",
+    href: "/admin/internship/follow-ups",
+    icon: PhoneCall,
+  },
   { label: "Cohorts", href: "/admin/internship/cohorts", icon: CalendarRange },
   { label: "Groups", href: "/admin/internship/groups", icon: UsersRound },
   {
