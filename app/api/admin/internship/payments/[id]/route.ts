@@ -7,6 +7,7 @@ import {
   type CohortDb,
 } from "@/lib/internship-cohort";
 import { requireAdminApi } from "@/lib/api-guards";
+import { activatePromotion } from "@/lib/internship-progression";
 
 const VALID_STATUSES = new Set<InternshipPaymentStatus>([
   InternshipPaymentStatus.PENDING,
@@ -51,7 +52,9 @@ export async function PATCH(
   const payment = await prisma.internshipPayment.findUnique({
     where: { id },
     include: {
-      application: { select: { id: true, programId: true, cohortId: true } },
+      application: {
+        select: { id: true, programId: true, levelId: true, cohortId: true },
+      },
     },
   });
   if (!payment) {
@@ -74,6 +77,8 @@ export async function PATCH(
       prisma as unknown as CohortDb,
       payment.application,
     );
+    // A paid move up to the next level becomes the intern's current level.
+    await activatePromotion(payment.application.id);
   }
 
   return NextResponse.json({

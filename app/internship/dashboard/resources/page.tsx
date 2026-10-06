@@ -57,7 +57,10 @@ export default async function InternResourcesPage() {
                 </div>
                 <div className="flex flex-1 flex-col px-2 pb-2 pt-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5FBB46]">
-                    {resource.trackNames.join(" · ")}
+                    {[
+                      ...resource.trackNames,
+                      `${resource.levelName} level`,
+                    ].join(" · ")}
                   </p>
                   <h2 className="mt-1 text-sm font-bold text-[#1C1D52]">
                     {resource.title}

@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { internshipAchievement } from "@/lib/internship-certificates";
 
 // Public certificate lookup. Returns only what an employer needs to confirm a
 // certificate (holder, achievement, dates, status), never contact details or
@@ -107,7 +108,10 @@ export async function verifyCertificate(
         user: userSelect,
         program: { select: { name: true } },
         application: {
-          select: { cohort: { select: { startDate: true, endDate: true } } },
+          select: {
+            cohort: { select: { startDate: true, endDate: true } },
+            level: { select: { name: true, rank: true } },
+          },
         },
       },
     }),
@@ -131,7 +135,10 @@ export async function verifyCertificate(
       return {
         kind: "internship" as const,
         holderName: holderName(certificate.user),
-        achievement: certificate.program.name,
+        achievement: internshipAchievement(
+          certificate.program.name,
+          certificate.application?.level,
+        ),
         periodLabel: cohort
           ? `${formatDate(cohort.startDate)} – ${formatDate(cohort.endDate)}`
           : null,

@@ -20,6 +20,7 @@ test("marks internship payment as paid when Paystack charge.success arrives for 
         application: {
           id: "app-1",
           programId: "program-1",
+          levelId: "level-entry",
           cohortId: null,
         },
       }),

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { AssessmentAttemptStatus, InternshipPaymentStatus } from "@/generated/prisma/client";
+import {
+  AssessmentAttemptStatus,
+  InternshipPaymentStatus,
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import {
   assignApplicationCohort,
@@ -49,13 +52,14 @@ export async function GET() {
 
   const prisma = getPrisma();
 
-  const applications = await prisma.internshipApplication.findMany({
+  const paidApplications = await prisma.internshipApplication.findMany({
     where: {
       payment: { status: InternshipPaymentStatus.PAID },
       attempts: { some: { status: AssessmentAttemptStatus.PASSED } },
     },
     orderBy: { createdAt: "desc" },
     include: {
+      level: { select: { name: true } },
       student: {
         select: {
           id: true,
@@ -105,6 +109,16 @@ export async function GET() {
     },
   });
 
+  // An intern has one application per level they've joined; list each
+  // intern once per track, at their current (newest) level.
+  const seen = new Set<string>();
+  const applications = paidApplications.filter((application) => {
+    const key = `${application.studentId}:${application.programId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   const progressRecords = await prisma.internshipProgress.findMany({
     where: {
       userId: { in: applications.map((application) => application.studentId) },
@@ -136,6 +150,7 @@ export async function GET() {
       assignApplicationCohort(prisma as unknown as CohortDb, {
         id: application.id,
         programId: application.programId,
+        levelId: application.levelId,
         cohortId: application.cohortId,
       }),
     ),
@@ -186,7 +201,7 @@ export async function GET() {
         student.profile?.institution ||
         student.profile?.program ||
         "No profile details added yet",
-      track: application.program.name,
+      track: `${application.program.name} · ${application.level.name}`,
       progress: Math.max(0, Math.min(100, progress?.progressPercent ?? 0)),
       lastActive: formatRelativeDate(lastActive),
       enrollmentDate: formatDate(

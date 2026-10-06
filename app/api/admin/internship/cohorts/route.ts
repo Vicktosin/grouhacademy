@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import { cohortTimeline, scheduleToDate } from "@/lib/task-schedule";
+import { listLevels, resolveLevelId } from "@/lib/internship-levels";
 
 const DEFAULT_PASS_MARK = 70;
 
@@ -49,15 +50,17 @@ export async function GET() {
   if (userId instanceof NextResponse) return userId;
 
   const prisma = getPrisma();
-  const [programs, cohorts] = await Promise.all([
+  const [programs, levels, cohorts] = await Promise.all([
     prisma.internshipProgram.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    listLevels(),
     prisma.internshipCohort.findMany({
       orderBy: { startDate: "asc" },
       include: {
         program: { select: { id: true, name: true } },
+        level: { select: { id: true, name: true } },
         _count: { select: { tasks: true } },
       },
     }),
@@ -65,6 +68,7 @@ export async function GET() {
 
   return NextResponse.json({
     programs,
+    levels,
     cohorts: cohorts.map((cohort) => ({
       id: cohort.id,
       name: cohort.name,
@@ -73,6 +77,8 @@ export async function GET() {
       programId: cohort.programId,
       programName: cohort.program.name,
       trackName: cohort.program.name,
+      levelId: cohort.levelId,
+      levelName: cohort.level.name,
       startDate: cohort.startDate.toISOString(),
       endDate: cohort.endDate.toISOString(),
       status: calculateStatus(cohort.startDate, cohort.endDate),
@@ -148,9 +154,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const levelId = await resolveLevelId(body.levelId);
+  if (!levelId) {
+    return NextResponse.json(
+      { error: "Selected internship level was not found." },
+      { status: 400 },
+    );
+  }
+
   const cohort = await prisma.internshipCohort.create({
     data: {
       programId,
+      levelId,
       name,
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       description: description || null,
@@ -226,16 +241,28 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Cohort not found." }, { status: 404 });
   }
 
-  // Interns and groups in a cohort belong to its track, so moving the cohort
-  // to another track would leave them attached to the wrong programme.
+  // Leaving the level out of an update keeps the current one.
+  const levelId =
+    body.levelId === undefined
+      ? cohort.levelId
+      : await resolveLevelId(body.levelId);
+  if (!levelId) {
+    return NextResponse.json(
+      { error: "Selected internship level was not found." },
+      { status: 400 },
+    );
+  }
+
+  // Interns and groups in a cohort belong to its track and level, so moving
+  // the cohort would leave them attached to the wrong programme.
   if (
-    programId !== cohort.programId &&
+    (programId !== cohort.programId || levelId !== cohort.levelId) &&
     (cohort._count.applications > 0 || cohort._count.groups > 0)
   ) {
     return NextResponse.json(
       {
         error:
-          "This cohort already has interns or groups, so its track can't be changed. Create a new cohort for the other track instead.",
+          "This cohort already has interns or groups, so its track and level can't be changed. Create a new cohort instead.",
       },
       { status: 409 },
     );
@@ -246,6 +273,7 @@ export async function PUT(request: Request) {
     data: {
       name,
       programId,
+      levelId,
       description: description || null,
       startDate,
       endDate,

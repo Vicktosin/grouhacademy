@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { InternshipPaymentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { loadAcceptanceFees } from "@/lib/internship-levels";
 
 function formatTier(value: string | null | undefined) {
   if (!value || value === "NONE") return "Free Tier";
@@ -123,9 +124,13 @@ export async function GET() {
     },
   });
 
+  const feeFor = await loadAcceptanceFees();
+
   return NextResponse.json({
     payments: payments.map((payment) => {
       const application = payment.application;
+      // Each level of a track has its own acceptance fee.
+      const acceptanceFee = feeFor(application.program, application.levelId);
       const studentName =
         application.student.name ||
         [
@@ -154,7 +159,7 @@ export async function GET() {
         amount: payment.amount,
         amountLabel: formatMoney(payment.amount),
         paymentType:
-          payment.amount === application.program.acceptanceFee
+          payment.amount === acceptanceFee
             ? "Acceptance Fee"
             : "Internship Payment",
         paymentStatus: payment.status,
@@ -164,7 +169,7 @@ export async function GET() {
         paymentDateLabel: formatDate(payment.paidAt ?? payment.createdAt),
         cohort: application.cohort?.name ?? "Unassigned",
         cohortStatus: application.cohort?.status ?? null,
-        courseFee: application.program.acceptanceFee,
+        courseFee: acceptanceFee ?? payment.amount,
         accessFeeNote:
           application.premiumTier === "NONE"
             ? "Free Tier access fee recorded at ₦1,000"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
+import { resolveLevelId } from "@/lib/internship-levels";
 import {
   getResourceById,
   internResourceInclude,
@@ -50,40 +51,53 @@ export async function PATCH(request: Request, { params }: Params) {
       { status: 400 },
     );
 
-  const resource = await prisma.$transaction(async (tx) => {
-    const db = tx as ReturnType<typeof getPrisma>;
-    await db.internResource.update({
-      where: { id: existing.id },
-      data: {
-        title: input.title,
-        description: input.description,
-        thumbnail: input.thumbnail,
-        status: input.status,
-      },
-    });
+  if (input.levelId && !(await resolveLevelId(input.levelId)))
+    return NextResponse.json(
+      { error: "The selected level no longer exists." },
+      { status: 400 },
+    );
 
-    if (input.trackIds) {
-      await db.internResourceTrack.deleteMany({
-        where: { resourceId: existing.id, programId: { notIn: input.trackIds } },
+  const resource = await prisma.$transaction(
+    async (tx) => {
+      const db = tx as ReturnType<typeof getPrisma>;
+      await db.internResource.update({
+        where: { id: existing.id },
+        data: {
+          title: input.title,
+          description: input.description,
+          thumbnail: input.thumbnail,
+          status: input.status,
+          levelId: input.levelId,
+        },
       });
-      await db.internResourceTrack.createMany({
-        data: input.trackIds.map((programId) => ({
-          resourceId: existing.id,
-          programId,
-        })),
-        skipDuplicates: true,
+
+      if (input.trackIds) {
+        await db.internResourceTrack.deleteMany({
+          where: {
+            resourceId: existing.id,
+            programId: { notIn: input.trackIds },
+          },
+        });
+        await db.internResourceTrack.createMany({
+          data: input.trackIds.map((programId) => ({
+            resourceId: existing.id,
+            programId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      if (input.modules)
+        await syncResourceCurriculum(db, existing, input.modules);
+
+      return db.internResource.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: internResourceInclude,
       });
-    }
-
-    if (input.modules)
-      await syncResourceCurriculum(db, existing, input.modules);
-
-    return db.internResource.findUniqueOrThrow({
-      where: { id: existing.id },
-      include: internResourceInclude,
-    });
-    // A long curriculum is synced row by row; allow more than the 5s default.
-  }, { timeout: 30_000 });
+      // A long curriculum is synced row by row; allow more than the 5s default.
+    },
+    { timeout: 30_000 },
+  );
 
   return NextResponse.json(serializeAdminResource(resource));
 }

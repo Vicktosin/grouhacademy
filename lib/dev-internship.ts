@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { getEntryLevel } from "@/lib/internship-levels";
 
 // Gives /dev/auth test interns and students a complete internship (onboarded,
 // exam passed, ₦0 acceptance fee paid) so every internship page can be tested
@@ -24,6 +25,7 @@ export async function ensureDevelopmentInternship(
     },
   });
   if (!program) return;
+  const levelId = (await getEntryLevel()).id;
 
   const slug = `${DEV_COHORT_SLUG_PREFIX}-${program.slug}`;
   const today = new Date();
@@ -33,6 +35,7 @@ export async function ensureDevelopmentInternship(
     (await prisma.internshipCohort.create({
       data: {
         programId: program.id,
+        levelId,
         slug,
         name: "Dev Test Cohort",
         description:
@@ -45,7 +48,11 @@ export async function ensureDevelopmentInternship(
 
   const existing = await prisma.internshipApplication.findUnique({
     where: {
-      studentId_programId: { studentId: userId, programId: program.id },
+      studentId_programId_levelId: {
+        studentId: userId,
+        programId: program.id,
+        levelId,
+      },
     },
     select: { id: true, cohortId: true, onboardingAnswers: true },
   });
@@ -65,6 +72,7 @@ export async function ensureDevelopmentInternship(
         data: {
           studentId: userId,
           programId: program.id,
+          levelId,
           cohortId: cohort.id,
           onboardingAnswers: { source: "dev-auth" },
         },

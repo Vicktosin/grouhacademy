@@ -119,14 +119,16 @@ function hydrateModules(course: SavedCourse): CurriculumModule[] {
 }
 
 function courseModulesPayload(modules: CurriculumModule[]) {
-  return curriculumPayload(modules).map(({ materials, lessons, ...module }) => ({
-    ...module,
-    resources: materials,
-    lessons: lessons.map(({ materials: lessonMaterials, ...lesson }) => ({
-      ...lesson,
-      resources: lessonMaterials,
-    })),
-  }));
+  return curriculumPayload(modules).map(
+    ({ materials, lessons, ...module }) => ({
+      ...module,
+      resources: materials,
+      lessons: lessons.map(({ materials: lessonMaterials, ...lesson }) => ({
+        ...lesson,
+        resources: lessonMaterials,
+      })),
+    }),
+  );
 }
 
 export default function InstructorCourseBuilder({
@@ -191,7 +193,6 @@ export default function InstructorCourseBuilder({
       [name]: value,
     }));
   };
-
 
   const addQuestion = () => {
     setQuestions((items) => [
@@ -472,6 +473,7 @@ export default function InstructorCourseBuilder({
               title="Course curriculum"
               description="Organize the course into modules and lessons."
               materialsLabel="Course materials"
+              uploadFolder="courses"
             />
           )}
 
@@ -551,7 +553,6 @@ export default function InstructorCourseBuilder({
     </div>
   );
 }
-
 
 function CategorySelect({
   value,
@@ -691,7 +692,6 @@ function BuilderBasics({
     </>
   );
 }
-
 
 function BuilderMedia({
   course,
@@ -930,4 +930,3 @@ function BuilderReview({
     </>
   );
 }
-

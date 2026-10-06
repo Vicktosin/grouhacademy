@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import { getAcceptanceFee, getEntryLevel } from "@/lib/internship-levels";
 
 function callbackUrl(request: Request) {
   return new URL(
@@ -43,7 +44,16 @@ export async function POST(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    if (programSlug) {
+    // A specific application of the user's own, e.g. a queued move up to the
+    // next level, which isn't their current application until it's paid.
+    const applicationId =
+      typeof body?.applicationId === "string" ? body.applicationId : null;
+    if (applicationId) {
+      application = await prisma.internshipApplication.findFirst({
+        where: { id: applicationId, studentId: userId },
+        include: { program: true, payment: true },
+      });
+    } else if (programSlug) {
       const program = await prisma.internshipProgram.findUnique({
         where: { slug: programSlug },
         select: { id: true, status: true },
@@ -56,18 +66,15 @@ export async function POST(request: Request) {
         );
       }
 
-      await prisma.internshipApplication.upsert({
-        where: {
-          studentId_programId: { studentId: userId, programId: program.id },
-        },
-        create: { studentId: userId, programId: program.id },
+      const key = {
+        studentId: userId,
+        programId: program.id,
+        levelId: (await getEntryLevel()).id,
+      };
+      application = await prisma.internshipApplication.upsert({
+        where: { studentId_programId_levelId: key },
+        create: key,
         update: {},
-      });
-
-      application = await prisma.internshipApplication.findUnique({
-        where: {
-          studentId_programId: { studentId: userId, programId: program.id },
-        },
         include: { program: true, payment: true },
       });
     }
@@ -100,8 +107,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Each level of a track has its own fee.
+    const acceptanceFee = await getAcceptanceFee(
+      application.programId,
+      application.levelId,
+    );
+    if (acceptanceFee === null) {
+      return NextResponse.json(
+        { message: "The fee for this level hasn't been set yet." },
+        { status: 409 },
+      );
+    }
+
     const reference = `acceptance_${application.id}_${Date.now()}`;
-    const amountKobo = application.program.acceptanceFee * 100;
+    const amountKobo = acceptanceFee * 100;
 
     // Persist the pending record before sending the user to Paystack. This
     // gives verification an account-owned reference to settle and preserves
@@ -112,13 +131,13 @@ export async function POST(request: Request) {
       create: {
         applicationId: application.id,
         reference,
-        amount: application.program.acceptanceFee,
+        amount: acceptanceFee,
         currency: "NGN",
         status: "PENDING",
       },
       update: {
         reference,
-        amount: application.program.acceptanceFee,
+        amount: acceptanceFee,
         currency: "NGN",
         status: "PENDING",
         paidAt: null,

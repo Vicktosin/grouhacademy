@@ -4,6 +4,8 @@ import { Activity, Bell, CheckCircle2, Clock3, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
+import LevelCompleteModal from "@/components/LevelCompleteModal";
+import RecommendedResources from "@/components/RecommendedResources";
 
 type DashboardData = {
   program: { name: string; slug: string } | null;
@@ -116,6 +118,7 @@ export default function InternshipDashboardPage() {
 
   return (
     <InternshipShell>
+      <LevelCompleteModal />
       <div className="space-y-5">
         {data.program ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
@@ -180,6 +183,8 @@ export default function InternshipDashboardPage() {
             </Link>
           </section>
         )}
+
+        {data.program && <RecommendedResources />}
 
         {data.program && (
           <>

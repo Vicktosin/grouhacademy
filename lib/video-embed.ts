@@ -9,8 +9,34 @@ export type LessonMedia =
   | { kind: "drive"; src: string; downloadUrl: string }
   /** Another embeddable player (e.g. Vimeo). */
   | { kind: "embed"; src: string }
-  /** A video file the browser plays itself (MP4, WebM, …). */
-  | { kind: "file"; src: string };
+  /**
+   * A video file the browser plays itself (MP4, WebM, …). Uploaded videos
+   * also have a download link that starts the download in place.
+   */
+  | { kind: "file"; src: string; downloadUrl?: string };
+
+const UPLOADED_PREFIX = "r2:";
+const VIDEO_API = "/api/video?";
+
+/**
+ * The player-facing link for a lesson's or module's saved videoUrl. Uploaded
+ * videos (stored as "r2:<key>") are served through /api/video, which checks
+ * access; pasted links are returned unchanged.
+ */
+export function lessonVideoSrc(
+  videoUrl: string | null,
+  source: "course" | "resource",
+  type: "lesson" | "module",
+  id: string,
+) {
+  if (!videoUrl?.startsWith(UPLOADED_PREFIX)) return videoUrl;
+  return `${VIDEO_API}${new URLSearchParams({ source, type, id })}`;
+}
+
+/** True for a videoUrl that refers to an uploaded file. */
+export function isUploadedVideo(videoUrl: string) {
+  return videoUrl.startsWith(UPLOADED_PREFIX);
+}
 
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const VIDEO_FILE = /\.(mp4|webm|ogg|ogv|mov|m4v)$/i;
@@ -70,6 +96,8 @@ export function resolveLessonMedia(
   origin?: string,
 ): LessonMedia | null {
   if (!raw) return null;
+  if (raw.startsWith(VIDEO_API))
+    return { kind: "file", src: raw, downloadUrl: `${raw}&download=1` };
   const url = parseUrl(raw);
   if (!url || !/^https?:$/.test(url.protocol)) return null;
 

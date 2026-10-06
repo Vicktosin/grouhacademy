@@ -28,15 +28,14 @@ export type PaystackSettlementPrisma = {
       application: {
         id: string;
         programId: string;
+        levelId: string;
         cohortId: string | null;
       } | null;
     } | null>;
     update(args: Record<string, unknown>): Promise<unknown>;
   };
   payment: {
-    findUnique(
-      args: Record<string, unknown>,
-    ): Promise<{
+    findUnique(args: Record<string, unknown>): Promise<{
       id: string;
       status: string;
       amount: number;

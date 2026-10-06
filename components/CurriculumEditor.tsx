@@ -1,8 +1,9 @@
 "use client";
 
-import { BookOpen, Layers3, Plus, Trash2, Upload } from "lucide-react";
+import { BookOpen, Layers3, Plus, Trash2, Upload, Video } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { isUploadedVideo } from "@/lib/video-embed";
 
 // The module → lesson editor and form fields shared by the student-side
 // Course Builder and the internship Resource Builder. It only edits local
@@ -202,7 +203,8 @@ export function useCurriculum(initial: CurriculumModule[] = []) {
       lessonId: string,
       key: "title" | "videoUrl" | "content",
       value: string,
-    ) => editLesson(moduleId, lessonId, (lesson) => ({ ...lesson, [key]: value })),
+    ) =>
+      editLesson(moduleId, lessonId, (lesson) => ({ ...lesson, [key]: value })),
     addModuleMaterial: (moduleId: string) =>
       editModule(moduleId, (module) => ({
         ...module,
@@ -260,12 +262,15 @@ export function CurriculumEditor({
   title,
   description,
   materialsLabel,
+  uploadFolder,
 }: {
   curriculum: Curriculum;
   title: string;
   description: string;
   /** Heading over each module's / lesson's list of links. */
   materialsLabel: string;
+  /** Where uploaded videos are stored in R2. */
+  uploadFolder: VideoUploadFolder;
 }) {
   const {
     modules,
@@ -365,13 +370,12 @@ export function CurriculumEditor({
 
             {!module.hasLessons && (
               <div className="mt-4 space-y-3 rounded-lg bg-[#f8fbff] p-4">
-                <Input
-                  label="Video URL"
+                <VideoField
                   value={module.videoUrl}
                   onChange={(value) =>
                     updateModule(module.id, "videoUrl", value)
                   }
-                  placeholder="YouTube or Google Drive link"
+                  uploadFolder={uploadFolder}
                 />
 
                 <Textarea
@@ -442,13 +446,12 @@ export function CurriculumEditor({
                     </div>
 
                     <div className="mt-3">
-                      <Input
-                        label="Video URL"
+                      <VideoField
                         value={lesson.videoUrl}
                         onChange={(value) =>
                           updateLesson(module.id, lesson.id, "videoUrl", value)
                         }
-                        placeholder="YouTube or Google Drive link"
+                        uploadFolder={uploadFolder}
                       />
                     </div>
 
@@ -498,6 +501,178 @@ export function CurriculumEditor({
         Add Module
       </button>
     </>
+  );
+}
+
+type VideoUploadFolder = "courses" | "resources";
+
+/**
+ * Video uploads to Cloudflare R2 are switched off until R2 is set up: set
+ * NEXT_PUBLIC_VIDEO_UPLOADS_ENABLED=true (and the R2_* settings) to turn
+ * them on. Pasted YouTube/Drive links work either way.
+ */
+const VIDEO_UPLOADS_ENABLED =
+  process.env.NEXT_PUBLIC_VIDEO_UPLOADS_ENABLED === "true";
+
+/** Uploads a file straight to R2 through a signed URL from our API. */
+async function uploadVideo(
+  file: File,
+  folder: VideoUploadFolder,
+  onProgress: (percent: number) => void,
+) {
+  const response = await fetch("/api/uploads/video", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+      folder,
+    }),
+  });
+  const data = (await response.json().catch(() => ({}))) as {
+    uploadUrl?: string;
+    videoUrl?: string;
+    error?: string;
+  };
+  if (!response.ok || !data.uploadUrl || !data.videoUrl)
+    throw new Error(data.error ?? "Unable to start the upload.");
+
+  // fetch() can't report upload progress, so use XMLHttpRequest.
+  await new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("PUT", data.uploadUrl!);
+    request.setRequestHeader("Content-Type", file.type);
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable)
+        onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    request.onload = () =>
+      request.status >= 200 && request.status < 300
+        ? resolve()
+        : reject(new Error("The upload was rejected by video storage."));
+    request.onerror = () =>
+      reject(
+        new Error(
+          "The upload failed. Check your connection and the storage CORS settings.",
+        ),
+      );
+    request.send(file);
+  });
+  return data.videoUrl;
+}
+
+/** A pasted YouTube/Drive link, or a video file uploaded to R2. */
+function VideoField({
+  value,
+  onChange,
+  uploadFolder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  uploadFolder: VideoUploadFolder;
+}) {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const uploaded = isUploadedVideo(value);
+
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError(null);
+    setProgress(0);
+    try {
+      onChange(await uploadVideo(file, uploadFolder, setProgress));
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Unable to upload the video.",
+      );
+    } finally {
+      setProgress(null);
+    }
+  };
+
+  const uploadButton = (label: string) => (
+    <label
+      className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52] hover:bg-slate-50 ${
+        progress !== null ? "pointer-events-none opacity-60" : ""
+      }`}
+    >
+      <Upload className="h-4 w-4" />
+      <span>{label}</span>
+      <input
+        type="file"
+        accept="video/*"
+        onChange={(event) => void handleFile(event)}
+        className="hidden"
+        disabled={progress !== null}
+      />
+    </label>
+  );
+
+  return (
+    <div className="block">
+      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+        Video
+      </span>
+
+      {uploaded ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <p className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#5FBB46] bg-[#f1faee] px-3 py-2.5 text-xs text-[#1C1D52]">
+            <Video className="h-4 w-4 shrink-0 text-[#5FBB46]" />
+            <span className="truncate">Uploaded: {value.split("/").pop()}</span>
+          </p>
+          {VIDEO_UPLOADS_ENABLED && uploadButton("Replace")}
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            disabled={progress !== null}
+            className="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" />
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="YouTube or Google Drive link"
+            disabled={progress !== null}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
+          />
+          {VIDEO_UPLOADS_ENABLED && uploadButton("Upload video")}
+        </div>
+      )}
+
+      {progress !== null && (
+        <div className="mt-2" role="status">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-[#5FBB46] transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="mt-1 text-[10px] text-slate-500">
+            Uploading… {progress}%. Keep this page open.
+          </p>
+        </div>
+      )}
+      {error && (
+        <p className="mt-2 text-[10px] font-semibold text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+      {uploaded && progress === null && (
+        <p className="mt-2 text-[10px] text-slate-500">
+          Learners can stream and download this video. Save to keep changes.
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -33,6 +33,7 @@ test("does not settle a payment when amount or reference ownership does not matc
               application: {
                 id: "app-1",
                 programId: "program-1",
+                levelId: "level-entry",
                 cohortId: null,
               },
             }
@@ -79,7 +80,12 @@ test("treats repeated success delivery as an idempotent no-op", async () => {
         status,
         amount: 250000,
         currency: "NGN",
-        application: { id: "app-1", programId: "program-1", cohortId: null },
+        application: {
+          id: "app-1",
+          programId: "program-1",
+          levelId: "level-entry",
+          cohortId: null,
+        },
       }),
       update: async ({ data }: { data: { status: string } }) => {
         updateCount += 1;

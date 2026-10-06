@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, LoaderCircle, Lock } from "lucide-react";
+import { ArrowRight, Download, LoaderCircle, Lock } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
 import { ScaledCertificate } from "@/components/certificate/Certificate";
@@ -13,8 +14,23 @@ import {
   downloadCertificatePdf,
 } from "@/components/certificate/download-certificate";
 
+type EarnedCertificate = {
+  id: string;
+  studentName: string;
+  programName: string;
+  periodLabel: string | null;
+  certificateNumber: string;
+  verificationId: string;
+  issuedAt: string;
+  revokedAt: string | null;
+  revokedReason: string | null;
+};
+
 type CertificateData = {
   eligible: boolean;
+  id?: string;
+  /** Every certificate earned, across levels and tracks, newest first. */
+  certificates?: EarnedCertificate[];
   reason?: string;
   progressPercent?: number;
   passMark?: number;
@@ -37,17 +53,27 @@ export default function InternshipCertificatePage() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const faceRef = useRef<HTMLDivElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [nextLevelName, setNextLevelName] = useState<string | null>(null);
+
+  const earned = data?.certificates ?? [];
+  // The certificate on show: one picked from the list, else the current
+  // level's (when issued), else the most recent one earned.
+  const shown: EarnedCertificate | null =
+    earned.find((item) => item.id === selectedId) ??
+    earned.find((item) => item.id === data?.id) ??
+    (data?.eligible ? null : (earned[0] ?? null));
 
   async function download() {
-    if (!faceRef.current || !data || data.revokedAt) return;
+    if (!faceRef.current || !shown || shown.revokedAt) return;
     setDownloading(true);
     setDownloadError(null);
     try {
       await downloadCertificatePdf(
         faceRef.current,
         certificateFileName(
-          data.studentName ?? "Intern",
-          `${data.programName ?? "Internship"} Internship`,
+          shown.studentName,
+          `${shown.programName} Internship`,
         ),
       );
     } catch (downloadFailure) {
@@ -67,6 +93,25 @@ export default function InternshipCertificatePage() {
         return response.json() as Promise<CertificateData>;
       })
       .then(setData)
+      .then(() => fetch("/api/internship/progression", { cache: "no-store" }))
+      .then((response) => (response.ok ? response.json() : null))
+      .then(
+        (
+          progression: {
+            certificateId: string | null;
+            nextLevel: { name: string; acceptanceFee: number | null } | null;
+            queuedApplicationId: string | null;
+          } | null,
+        ) => {
+          // Offer the next level once this level's certificate is earned.
+          if (
+            progression?.certificateId &&
+            progression.nextLevel?.acceptanceFee != null &&
+            !progression.queuedApplicationId
+          )
+            setNextLevelName(progression.nextLevel.name);
+        },
+      )
       .catch((requestError: unknown) =>
         setError(
           requestError instanceof Error
@@ -97,7 +142,7 @@ export default function InternshipCertificatePage() {
     );
   }
 
-  if (!data?.eligible) {
+  if (!shown) {
     return (
       <InternshipShell>
         <div className="rounded-2xl bg-white p-10 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
@@ -143,13 +188,24 @@ export default function InternshipCertificatePage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        {!data?.eligible && data?.reason && (
+          <p className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <span>
+              <strong className="text-[#1C1D52]">
+                Your current level&apos;s certificate:
+              </strong>{" "}
+              {data.reason}
+            </span>
+          </p>
+        )}
         <section className="flex flex-col gap-4 rounded-2xl bg-[#5FBB46] px-6 py-6 text-[#14204f] shadow-[0_12px_28px_rgba(95,187,70,0.18)] sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Your internship certificate
             </h1>
             <p className="mt-2 text-xs text-[#14204f]/75">
-              {data.revokedAt
+              {shown.revokedAt
                 ? "This certificate has been revoked."
                 : "Congratulations! Download it as a PDF to share or print."}
             </p>
@@ -157,7 +213,7 @@ export default function InternshipCertificatePage() {
           <button
             type="button"
             onClick={download}
-            disabled={downloading || Boolean(data.revokedAt)}
+            disabled={downloading || Boolean(shown.revokedAt)}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1C1D52] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#14154a] disabled:opacity-60 sm:w-auto"
           >
             {downloading ? (
@@ -168,17 +224,29 @@ export default function InternshipCertificatePage() {
             {downloading ? "Preparing PDF…" : "Download PDF"}
           </button>
         </section>
-        {data.revokedAt && (
+        {nextLevelName && (
+          <Link
+            href="/internship/dashboard/next-level"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-[#5FBB46] bg-white px-5 py-4 text-sm font-semibold text-[#1C1D52] shadow-[0_8px_24px_rgba(28,29,82,0.06)] hover:bg-[#f4faf2]"
+          >
+            <span>
+              Ready for more? Move up to {nextLevelName} level — no entrance
+              exam needed.
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-[#5FBB46]" />
+          </Link>
+        )}
+        {shown.revokedAt && (
           <div
             role="status"
             className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800"
           >
             <p className="font-bold">
               This certificate was revoked by Grouh Academy on{" "}
-              {formatCertificateDate(data.revokedAt)}.
+              {formatCertificateDate(shown.revokedAt)}.
             </p>
-            {data.revokedReason && (
-              <p className="mt-1">Reason: {data.revokedReason}</p>
+            {shown.revokedReason && (
+              <p className="mt-1">Reason: {shown.revokedReason}</p>
             )}
             <p className="mt-1">
               It is no longer valid and can&apos;t be downloaded. Contact
@@ -197,15 +265,44 @@ export default function InternshipCertificatePage() {
         <ScaledCertificate
           faceRef={faceRef}
           content={internshipCertificateContent({
-            studentName: data.studentName ?? "Intern",
-            programName: data.programName ?? "",
-            periodLabel: data.periodLabel ?? null,
-            issuedAt: data.issuedAt ?? new Date().toISOString(),
-            certificateNumber: data.certificateNumber ?? "",
-            verificationId: data.verificationId ?? "",
-            revokedAt: data.revokedAt,
+            studentName: shown.studentName,
+            programName: shown.programName,
+            periodLabel: shown.periodLabel,
+            issuedAt: shown.issuedAt,
+            certificateNumber: shown.certificateNumber,
+            verificationId: shown.verificationId,
+            revokedAt: shown.revokedAt,
           })}
         />
+        {earned.length > 1 && (
+          <section className="rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+            <h2 className="text-sm font-bold text-[#1C1D52]">
+              Your certificates
+            </h2>
+            <ul className="mt-3 space-y-2">
+              {earned.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(item.id)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-xs ${
+                      item.id === shown.id
+                        ? "border-[#5FBB46] bg-[#f4faf2] font-semibold text-[#1C1D52]"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>{item.programName}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {item.revokedAt
+                        ? "Revoked"
+                        : formatCertificateDate(item.issuedAt)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </InternshipShell>
   );

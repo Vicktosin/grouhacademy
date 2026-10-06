@@ -41,6 +41,7 @@ export async function POST() {
     const assessment = await prisma.internshipAssessment.findFirst({
       where: {
         programId: application.programId,
+        levelId: application.levelId,
         questions: { some: {} },
       },
       orderBy: { createdAt: "desc" },
@@ -50,7 +51,7 @@ export async function POST() {
       return NextResponse.json(
         {
           error:
-            "No assessment has been set up for this program yet. Please check back soon.",
+            "No assessment has been set up for this track and level yet. Please check back soon.",
         },
         { status: 404 },
       );

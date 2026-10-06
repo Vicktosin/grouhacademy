@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { EyeOff, Pencil, Plus, Search, Send, Trash2 } from "lucide-react";
+import { EyeOff, Pencil, Plus, Search, Send, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 
@@ -10,6 +10,7 @@ type ResourceRow = {
   slug: string;
   title: string;
   status: "DRAFT" | "PUBLISHED";
+  level: { id: string; name: string; rank: number };
   updatedAt: string;
   tracks: Array<{ id: string; name: string }>;
   moduleCount: number;
@@ -21,6 +22,7 @@ export default function AdminResourcesPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [track, setTrack] = useState("All");
+  const [level, setLevel] = useState("All");
   const [status, setStatus] = useState("All");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -43,15 +45,26 @@ export default function AdminResourcesPage() {
     [resources],
   );
 
+  const levelOptions = useMemo(
+    () =>
+      [
+        ...new Map(
+          resources.map((item) => [item.level.id, item.level]),
+        ).values(),
+      ].sort((a, b) => a.rank - b.rank),
+    [resources],
+  );
+
   const visible = useMemo(
     () =>
       resources.filter(
         (resource) =>
           (status === "All" || resource.status === status) &&
           (track === "All" || resource.tracks.some((t) => t.name === track)) &&
+          (level === "All" || resource.level.id === level) &&
           resource.title.toLowerCase().includes(query.toLowerCase()),
       ),
-    [resources, query, status, track],
+    [resources, query, status, track, level],
   );
 
   async function setPublished(resource: ResourceRow, publish: boolean) {
@@ -114,13 +127,22 @@ export default function AdminResourcesPage() {
               interns on the tracks it is assigned to.
             </p>
           </div>
-          <Link
-            href="/admin/internship/resources/new"
-            className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-semibold text-[#14204f]"
-          >
-            <Plus className="h-4 w-4" />
-            Add New Resource
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/internship/resources/recommended"
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52]"
+            >
+              <Star className="h-4 w-4 text-[#5FBB46]" />
+              Recommended
+            </Link>
+            <Link
+              href="/admin/internship/resources/new"
+              className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-semibold text-[#14204f]"
+            >
+              <Plus className="h-4 w-4" />
+              Add New Resource
+            </Link>
+          </div>
         </header>
 
         {message && (
@@ -155,6 +177,19 @@ export default function AdminResourcesPage() {
               ))}
             </select>
             <select
+              value={level}
+              onChange={(event) => setLevel(event.target.value)}
+              aria-label="Filter by level"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[10px] font-medium text-[#1C1D52]"
+            >
+              <option value="All">All levels</option>
+              {levelOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+            <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
               aria-label="Filter by status"
@@ -172,6 +207,7 @@ export default function AdminResourcesPage() {
                 <tr>
                   <th className="px-3 py-3">Resource</th>
                   <th className="px-3 py-3">Tracks</th>
+                  <th className="px-3 py-3">Level</th>
                   <th className="px-3 py-3">Content</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3 text-right">Actions</th>
@@ -200,6 +236,9 @@ export default function AdminResourcesPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3.5 text-slate-500">
+                      {resource.level.name}
+                    </td>
+                    <td className="px-3 py-3.5 text-slate-500">
                       {resource.moduleCount} module
                       {resource.moduleCount === 1 ? "" : "s"} ·{" "}
                       {resource.lessonCount} lesson
@@ -213,7 +252,9 @@ export default function AdminResourcesPage() {
                             : "bg-slate-100 text-slate-600"
                         }`}
                       >
-                        {resource.status === "PUBLISHED" ? "Published" : "Draft"}
+                        {resource.status === "PUBLISHED"
+                          ? "Published"
+                          : "Draft"}
                       </span>
                     </td>
                     <td className="px-3 py-3.5">
