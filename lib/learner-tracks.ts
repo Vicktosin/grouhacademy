@@ -40,6 +40,20 @@ export function parseTrack(value: unknown): LearnerTrack | null {
 }
 
 /** The side a destination path belongs to, if any. */
+/**
+ * True for the staff workspaces (admin, instructor, mentor). Staff always go
+ * to their workspace after login, even from a learner login page or a link
+ * to a learner page.
+ */
+export function isStaffWorkspace(path: string | null | undefined) {
+  return Boolean(
+    path &&
+    ["/admin", "/instructor", "/mentor"].some(
+      (section) => path === section || path.startsWith(`${section}/`),
+    ),
+  );
+}
+
 export function trackForPath(path: string | null | undefined) {
   if (!path) return null;
   if (path === "/student" || path.startsWith("/student/")) return "courses";

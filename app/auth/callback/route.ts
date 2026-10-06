@@ -10,7 +10,11 @@ import {
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
-import { parseTrack, trackForPath } from "@/lib/learner-tracks";
+import {
+  isStaffWorkspace,
+  parseTrack,
+  trackForPath,
+} from "@/lib/learner-tracks";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -36,28 +40,31 @@ export async function GET(request: NextRequest) {
         : null;
       if (userId && track) await grantTrackRole(userId, track);
 
+      // Staff (admins, instructors, mentors) always land in their workspace:
+      // a learner destination from a learner login page doesn't apply.
+      const home = userId
+        ? await getAuthorizedHomeRouteForUserId(userId, track)
+        : null;
+      const destination =
+        home && isStaffWorkspace(home)
+          ? home
+          : isAllowedPostAuthPath(next)
+            ? next
+            : home;
+
       // Users with MFA enrolled must complete the second factor before being
       // sent anywhere, including the registration and recovery destinations.
       if (user && (await isMfaVerificationPending(supabase, user))) {
         const challengeUrl = new URL(MFA_CHALLENGE_PATH, request.url);
-        if (isAllowedPostAuthPath(next))
-          challengeUrl.searchParams.set("next", next);
+        if (destination && isAllowedPostAuthPath(destination))
+          challengeUrl.searchParams.set("next", destination);
         return NextResponse.redirect(challengeUrl);
       }
 
-      // Only allow internal destinations from the registration and recovery
-      // flows. External callback redirects must never be accepted.
-      if (isAllowedPostAuthPath(next)) {
-        return NextResponse.redirect(new URL(next, request.url));
-      }
-
-      if (userId) {
-        const destination = await getAuthorizedHomeRouteForUserId(
-          userId,
-          track,
-        );
+      // Only internal destinations (isAllowedPostAuthPath) are ever used;
+      // external callback redirects must never be accepted.
+      if (destination)
         return NextResponse.redirect(new URL(destination, request.url));
-      }
     }
   }
 

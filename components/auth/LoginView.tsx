@@ -7,6 +7,7 @@ import Image from "next/image";
 import Container from "@/components/Container";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
+  isStaffWorkspace,
   LEARNER_TRACKS,
   requestedPathForTrack,
   type LearnerTrack,
@@ -67,7 +68,13 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
       );
       return;
     }
-    router.replace(requested ?? data.redirectTo ?? config.home);
+    // Staff go to their workspace; a requested learner page is only for
+    // learners.
+    router.replace(
+      (isStaffWorkspace(data.redirectTo) ? data.redirectTo : requested) ??
+        data.redirectTo ??
+        config.home,
+    );
     router.refresh();
   }
 
@@ -124,12 +131,16 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
   const handleOAuth = async () => {
     setError(null);
     const supabase = createSupabaseBrowserClient();
-    const next = requestedPath() ?? config.home;
+    // Only pass a destination that was asked for: without one, the callback
+    // works out where this account belongs (e.g. admins to the admin
+    // workspace) once it knows who signed in.
+    const next = requestedPath();
+    const callback = new URL("/auth/callback", getSiteUrl());
+    if (next) callback.searchParams.set("next", next);
+    callback.searchParams.set("track", track);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}&track=${track}`,
-      },
+      options: { redirectTo: callback.toString() },
     });
     if (oauthError) setError(oauthError.message);
   };
