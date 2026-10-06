@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
+import { resolveLevelId } from "@/lib/internship-levels";
 import {
   internResourceInclude,
   moduleCreateData,
@@ -18,6 +19,7 @@ export async function GET() {
   const resources = await getPrisma().internResource.findMany({
     orderBy: { updatedAt: "desc" },
     include: {
+      level: { select: { id: true, name: true, rank: true } },
       tracks: {
         orderBy: { program: { name: "asc" } },
         include: { program: { select: { id: true, name: true } } },
@@ -32,6 +34,7 @@ export async function GET() {
       slug: resource.slug,
       title: resource.title,
       status: resource.status,
+      level: resource.level,
       updatedAt: resource.updatedAt,
       tracks: resource.tracks.map((track) => track.program),
       moduleCount: resource.modules.length,
@@ -63,8 +66,17 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
+  // Without a level, a new resource is for Entry.
+  const levelId = await resolveLevelId(input.levelId);
+  if (!levelId)
+    return NextResponse.json(
+      { error: "The selected level no longer exists." },
+      { status: 400 },
+    );
+
   const resource = await prisma.internResource.create({
     data: {
+      levelId,
       slug: await uniqueResourceSlug(prisma, input.title ?? ""),
       title: input.title ?? "",
       description: input.description ?? null,

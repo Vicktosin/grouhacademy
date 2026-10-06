@@ -55,8 +55,10 @@ export async function recomputeInternProgress(
   programId: string,
 ) {
   const prisma = getPrisma();
-  const application = await prisma.internshipApplication.findUnique({
-    where: { studentId_programId: { studentId: userId, programId } },
+  // The intern's current (most recent) level in this track.
+  const application = await prisma.internshipApplication.findFirst({
+    where: { studentId: userId, programId },
+    orderBy: { createdAt: "desc" },
     select: { cohortId: true },
   });
   const progress = await computeInternProgress(

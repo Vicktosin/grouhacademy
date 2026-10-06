@@ -12,12 +12,14 @@ type QuestionDraft = {
 };
 
 type ProgramOption = { id: string; name: string };
+type LevelOption = { id: string; name: string };
 
 type QuestionPayload = {
   id: string;
   assessmentId: string;
   assessmentTitle: string;
   track: string;
+  levelId: string;
   prompt: string;
   instructions: string;
   passingScore: number;
@@ -41,6 +43,8 @@ export default function NewAssessmentPage() {
     "Select the correct answer for each multiple-choice question. There are no open-ended questions in this entrance exam.",
   );
   const [programId, setProgramId] = useState("");
+  const [levels, setLevels] = useState<LevelOption[]>([]);
+  const [levelId, setLevelId] = useState("");
   const [passingScore, setPassingScore] = useState(70);
   const [questions, setQuestions] = useState<QuestionDraft[]>([
     emptyQuestion(),
@@ -61,6 +65,7 @@ export default function NewAssessmentPage() {
           );
         const payload = (await response.json()) as {
           programs?: ProgramOption[];
+          levels?: LevelOption[];
           questions?: QuestionPayload[];
         };
         if (!isMounted) return;
@@ -71,6 +76,10 @@ export default function NewAssessmentPage() {
         if (nextPrograms[0]) {
           setProgramId((current) => current || nextPrograms[0].id);
         }
+
+        const nextLevels = payload.levels ?? [];
+        setLevels(nextLevels);
+        if (nextLevels[0]) setLevelId((current) => current || nextLevels[0].id);
 
         if (editId) {
           const targetQuestion = payload.questions?.find(
@@ -84,6 +93,7 @@ export default function NewAssessmentPage() {
               (program) => program.name === targetQuestion.track,
             );
             setProgramId(matchedProgram?.id ?? nextPrograms[0]?.id ?? "");
+            setLevelId(targetQuestion.levelId);
             setQuestions([
               {
                 prompt: targetQuestion.prompt,
@@ -152,8 +162,8 @@ export default function NewAssessmentPage() {
     setError(null);
     setSuccess(null);
 
-    if (!programId) {
-      setError("Please choose the track for this entrance exam.");
+    if (!programId || !levelId) {
+      setError("Please choose the track and level for this entrance exam.");
       return;
     }
 
@@ -180,6 +190,7 @@ export default function NewAssessmentPage() {
           instructions,
           passingScore,
           programId,
+          levelId,
           questionId: editId,
           questions: validQuestions.map((question) => ({
             prompt: question.prompt.trim(),
@@ -287,6 +298,27 @@ export default function NewAssessmentPage() {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="block text-[10px] font-semibold text-slate-500">
+              Level
+              <select
+                value={levelId}
+                onChange={(event) => setLevelId(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-[#1C1D52] outline-none"
+              >
+                <option value="" disabled>
+                  Select a level
+                </option>
+                {levels.map((level) => (
+                  <option key={level.id} value={level.id}>
+                    {level.name}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block font-normal text-slate-400">
+                Applicants take the exam for the track and level they choose.
+              </span>
             </label>
 
             <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">

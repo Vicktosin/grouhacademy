@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { listLevels, resolveLevelId } from "@/lib/internship-levels";
 
 type QuestionInput = {
   prompt: string;
@@ -53,16 +54,18 @@ export async function GET() {
 
   const prisma = getPrisma();
 
-  const [programs, assessments] = await Promise.all([
+  const [programs, levels, assessments] = await Promise.all([
     prisma.internshipProgram.findMany({
       where: { status: "PUBLISHED" },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    listLevels(),
     prisma.internshipAssessment.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         program: { select: { id: true, name: true } },
+        level: { select: { id: true, name: true } },
         questions: {
           orderBy: { order: "asc" },
           include: {
@@ -87,6 +90,8 @@ export async function GET() {
         assessmentId: assessment.id,
         assessmentTitle: assessment.title,
         track: assessment.program.name,
+        levelId: assessment.levelId,
+        level: assessment.level.name,
         instructions: assessment.description ?? "",
         passingScore: assessment.passingScore,
         prompt: question.prompt,
@@ -102,10 +107,13 @@ export async function GET() {
 
   return NextResponse.json({
     programs,
+    levels,
     assessments: assessments.map((assessment) => ({
       id: assessment.id,
       title: assessment.title,
       track: assessment.program.name,
+      levelId: assessment.levelId,
+      level: assessment.level.name,
       questionCount: assessment.questions.length,
       passingScore: assessment.passingScore,
       instructions: assessment.description ?? "",
@@ -132,9 +140,21 @@ export async function POST(request: Request) {
     instructions,
     passingScore,
     programId,
+    levelId: requestedLevelId,
     questionId,
     questions,
   } = body;
+  // Each track has a separate entrance assessment per level.
+  const levelId =
+    requestedLevelId === undefined
+      ? undefined
+      : await resolveLevelId(requestedLevelId);
+  if (levelId === null) {
+    return NextResponse.json(
+      { error: "Please choose a valid internship level." },
+      { status: 400 },
+    );
+  }
   const normalizedQuestions = normalizeQuestions(questions);
 
   if (typeof questionId === "string" && questionId.trim()) {
@@ -174,6 +194,7 @@ export async function POST(request: Request) {
           passingScore:
             Number(passingScore) || question.assessment.passingScore,
           programId: programId || question.assessment.programId,
+          levelId: levelId ?? question.assessment.levelId,
         },
       });
 
@@ -207,6 +228,7 @@ export async function POST(request: Request) {
   const createdAssessment = await prisma.internshipAssessment.create({
     data: {
       programId,
+      levelId: levelId ?? (await resolveLevelId(undefined))!,
       title: String(title || "Entrance Exam"),
       description: typeof instructions === "string" ? instructions : "",
       passingScore: Number(passingScore) || 70,

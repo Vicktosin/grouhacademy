@@ -32,6 +32,7 @@ import type { AdminInternResource } from "@/lib/intern-resources";
 // than published to the student catalogue.
 
 type TrackOption = { id: string; name: string };
+type LevelOption = { id: string; name: string };
 type Status = AdminInternResource["status"];
 
 const steps = [
@@ -56,6 +57,8 @@ export default function ResourceBuilder({
   const [trackIds, setTrackIds] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("DRAFT");
   const [tracks, setTracks] = useState<TrackOption[]>([]);
+  const [levels, setLevels] = useState<LevelOption[]>([]);
+  const [levelId, setLevelId] = useState("");
   const curriculum = useCurriculum();
   const { modules, setModules } = curriculum;
 
@@ -71,12 +74,25 @@ export default function ResourceBuilder({
       .then(async (response) => {
         if (!response.ok) throw new Error();
         const data = (await response.json()) as { tracks?: TrackOption[] };
-        setTracks(
-          (data.tracks ?? []).map(({ id, name }) => ({ id, name })),
-        );
+        setTracks((data.tracks ?? []).map(({ id, name }) => ({ id, name })));
       })
       .catch(() =>
         setMessage({ text: "Unable to load internship tracks.", error: true }),
+      );
+    fetch("/api/admin/internship/levels", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        const data = (await response.json()) as { levels?: LevelOption[] };
+        const options = (data.levels ?? []).map(({ id, name }) => ({
+          id,
+          name,
+        }));
+        setLevels(options);
+        // New resources default to the first level (Entry).
+        setLevelId((current) => current || options[0]?.id || "");
+      })
+      .catch(() =>
+        setMessage({ text: "Unable to load internship levels.", error: true }),
       );
   }, []);
 
@@ -87,6 +103,7 @@ export default function ResourceBuilder({
       thumbnail: resource.thumbnail ?? "",
     });
     setTrackIds(resource.tracks.map((track) => track.id));
+    setLevelId(resource.levelId);
     setStatus(resource.status);
     setModules(hydrateCurriculum(resource.modules));
   };
@@ -154,6 +171,7 @@ export default function ResourceBuilder({
         description: details.description,
         thumbnail: details.thumbnail,
         trackIds,
+        levelId,
         modules: curriculumPayload(modules),
         // Plain saves keep the current status, so editing a published
         // resource doesn't hide it.
@@ -235,8 +253,8 @@ export default function ResourceBuilder({
                 {resourceId ? "Edit Resource" : "Create New Resource"}
               </h1>
               <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
-                Build learning material for interns. Only interns on the
-                tracks you assign can see it, and only once it is published.
+                Build learning material for interns. Only interns on the tracks
+                you assign can see it, and only once it is published.
               </p>
             </div>
 
@@ -346,6 +364,25 @@ export default function ResourceBuilder({
                     setDetails((current) => ({ ...current, thumbnail }))
                   }
                 />
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                    Level
+                  </span>
+                  <select
+                    value={levelId}
+                    onChange={(event) => setLevelId(event.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46] sm:w-64"
+                  >
+                    {levels.map((level) => (
+                      <option key={level.id} value={level.id}>
+                        {level.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-[10px] text-slate-500">
+                    Interns see resources at their own level and below.
+                  </span>
+                </label>
                 <fieldset>
                   <legend className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
                     Tracks
@@ -393,6 +430,7 @@ export default function ResourceBuilder({
               title="Resource content"
               description="Organize the resource into modules and lessons."
               materialsLabel="Materials"
+              uploadFolder="resources"
             />
           )}
 
@@ -405,6 +443,12 @@ export default function ResourceBuilder({
               />
               <div className="grid gap-4 md:grid-cols-2">
                 <ReviewItem label="Resource title" value={details.title} />
+                <ReviewItem
+                  label="Level"
+                  value={
+                    levels.find((level) => level.id === levelId)?.name ?? ""
+                  }
+                />
                 <ReviewItem
                   label="Tracks"
                   value={selectedTrackNames.join(", ")}

@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { getAcceptanceFee } from "@/lib/internship-levels";
 
 export type InternshipAccessStatus = {
   hasApplication: boolean;
@@ -42,7 +43,10 @@ export async function getInternshipAccessStatus(
         where: { applicationId: application.id, status: "PASSED" },
         select: { id: true },
       })) !== null,
-    acceptanceFeeAmount: application.program.acceptanceFee,
+    acceptanceFeeAmount: await getAcceptanceFee(
+      application.programId,
+      application.levelId,
+    ),
     currency: application.payment?.currency ?? "NGN",
     premiumTier: application.premiumTier,
   };

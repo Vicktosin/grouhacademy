@@ -3,6 +3,7 @@ import { EnrollmentStatus } from "@/generated/prisma/client";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { getCourseBySlug } from "@/lib/course-data";
+import { lessonVideoSrc } from "@/lib/video-embed";
 import CourseLearningPlayer, {
   type LearnCourseData,
 } from "@/components/CourseLearningPlayer";
@@ -63,7 +64,7 @@ export default async function CourseLearnPage({
       id: module.id,
       title: module.title,
       description: module.description,
-      videoUrl: module.videoUrl,
+      videoUrl: lessonVideoSrc(module.videoUrl, "course", "module", module.id),
       content: module.content,
       resources: module.resources.map((resource) => ({
         id: resource.id,
@@ -73,7 +74,12 @@ export default async function CourseLearnPage({
       lessons: module.lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.title,
-        videoUrl: lesson.videoUrl,
+        videoUrl: lessonVideoSrc(
+          lesson.videoUrl,
+          "course",
+          "lesson",
+          lesson.id,
+        ),
         content: lesson.content,
         resources: lesson.resources.map((resource) => ({
           id: resource.id,

@@ -4,12 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ClipboardList, Loader2 } from "lucide-react";
 
+type Level = {
+  id: string;
+  name: string;
+  description: string | null;
+  acceptanceFee: number;
+};
 type Program = {
   id: string;
   name: string;
   slug: string;
   duration: string;
   description: string | null;
+  /** Levels open to applicants on this track, lowest first. */
+  levels: Level[];
 };
 type Question = {
   id: string;
@@ -23,6 +31,7 @@ export default function InternshipOnboardingPage() {
   const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [programId, setProgramId] = useState("");
+  const [levelId, setLevelId] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -37,12 +46,20 @@ export default function InternshipOnboardingPage() {
         setPrograms(data.programs ?? []);
         setQuestions(data.questions ?? []);
         if (data.existingProgramId) setProgramId(data.existingProgramId);
+        if (data.existingLevelId) setLevelId(data.existingLevelId);
         if (data.existingAnswers) {
           setAnswers(data.existingAnswers);
         }
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const program = programs.find((item) => item.id === programId);
+  const levels = program?.levels ?? [];
+  // Keep a previous choice only if it's still open for the chosen track.
+  const selectedLevelId = levels.some((level) => level.id === levelId)
+    ? levelId
+    : (levels[0]?.id ?? "");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +71,7 @@ export default function InternshipOnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           programId,
+          levelId: selectedLevelId,
           answers,
         }),
       });
@@ -137,6 +155,55 @@ export default function InternshipOnboardingPage() {
             </div>
           </div>
 
+          {program && (
+            <div>
+              <label className="block text-xs font-bold text-[#1C1D52]">
+                Which level are you applying for?
+              </label>
+              <p className="mt-1 text-xs text-slate-500">
+                You&apos;ll take the entrance assessment for this level. New to
+                the field? Start at {levels[0]?.name ?? "the first"} level.
+              </p>
+              {levels.length === 0 ? (
+                <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                  Applications for {program.name} open soon. Please check back
+                  later or choose another stack.
+                </p>
+              ) : (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {levels.map((level) => (
+                    <label
+                      key={level.id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${selectedLevelId === level.id ? "border-[#5FBB46] bg-[#f4faf2]" : "border-slate-200"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="level"
+                        value={level.id}
+                        checked={selectedLevelId === level.id}
+                        onChange={() => setLevelId(level.id)}
+                        className="mt-1"
+                      />
+                      <span>
+                        <strong className="block text-sm text-[#1C1D52]">
+                          {level.name}
+                        </strong>
+                        {level.description && (
+                          <span className="mt-1 block text-xs text-slate-500">
+                            {level.description}
+                          </span>
+                        )}
+                        <span className="mt-1 block text-xs font-semibold text-[#1C1D52]">
+                          Acceptance fee ₦{level.acceptanceFee.toLocaleString()}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {questions.map((question) => (
             <label
               key={question.id}
@@ -201,7 +268,7 @@ export default function InternshipOnboardingPage() {
 
           <button
             type="submit"
-            disabled={submitting || !programId}
+            disabled={submitting || !programId || !selectedLevelId}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-4 py-3.5 text-sm font-bold text-[#14204f] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Saving…" : "Continue"}{" "}

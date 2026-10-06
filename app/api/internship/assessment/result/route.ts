@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import { getAcceptanceFee, getOpenLevels } from "@/lib/internship-levels";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -16,7 +17,7 @@ export async function GET() {
   try {
     const application = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
-      include: { program: true, payment: true },
+      include: { program: true, payment: true, level: true },
       orderBy: { createdAt: "desc" },
     });
     if (!application) {
@@ -26,15 +27,21 @@ export async function GET() {
       );
     }
 
+    // An application can move to another level before it's paid, so only
+    // attempts at its current level count.
+    const atThisLevel = {
+      applicationId: application.id,
+      assessment: { is: { levelId: application.levelId } },
+    };
     const passedAttempt = await prisma.assessmentAttempt.findFirst({
-      where: { applicationId: application.id, status: "PASSED" },
+      where: { ...atThisLevel, status: "PASSED" },
       orderBy: { createdAt: "desc" },
     });
 
     const attempt =
       passedAttempt ??
       (await prisma.assessmentAttempt.findFirst({
-        where: { applicationId: application.id, status: "FAILED" },
+        where: { ...atThisLevel, status: "FAILED" },
         orderBy: { createdAt: "desc" },
       }));
 
@@ -89,13 +96,28 @@ export async function GET() {
       };
     });
 
+    // After a fail, applicants may switch to a lower level that's open.
+    const lowerLevels = passedAttempt
+      ? []
+      : (
+          (await getOpenLevels([application.programId])).get(
+            application.programId,
+          ) ?? []
+        )
+          .filter((level) => level.rank < application.level.rank)
+          .map(({ id, name, acceptanceFee }) => ({ id, name, acceptanceFee }));
+
     return NextResponse.json({
       programName: application.program.name,
+      levelName: application.level.name,
+      lowerLevels,
       scorePercent: attempt.scorePercent,
       score: attempt.score,
       totalQuestions: attempt.totalQuestions,
       passed: Boolean(passedAttempt),
-      acceptanceFee: application.program.acceptanceFee,
+      acceptanceFee:
+        (await getAcceptanceFee(application.programId, application.levelId)) ??
+        0,
       acceptanceFeePaid: application.payment?.status === "PAID",
       answerReview,
     });

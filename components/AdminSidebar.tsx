@@ -13,6 +13,7 @@ import {
   GalleryHorizontalEnd,
   GraduationCap,
   LayoutDashboard,
+  Layers,
   LogOut,
   Settings,
   ShieldCheck,
@@ -50,6 +51,7 @@ const internshipItems = [
   { label: "Dashboard", href: "/admin/internship", icon: LayoutDashboard },
   { label: "Interns", href: "/admin/internship/interns", icon: Users },
   { label: "Tracks", href: "/admin/internship/tracks", icon: GraduationCap },
+  { label: "Levels", href: "/admin/internship/levels", icon: Layers },
   {
     label: "Onboarding Questions",
     href: "/admin/internship/onboarding-questions",

@@ -7,6 +7,19 @@ function formatDate(date: Date) {
   });
 }
 
+/**
+ * What a certificate says the intern achieved: the track, plus the level for
+ * anything above the first level (so Entry certificates read as before).
+ */
+export function internshipAchievement(
+  programName: string,
+  level: { name: string; rank: number } | null | undefined,
+) {
+  return level && level.rank > 1
+    ? `${programName} (${level.name} Level)`
+    : programName;
+}
+
 /** Prisma select for everything an internship certificate shows. */
 export const internshipCertificateSelect = {
   id: true,
@@ -25,6 +38,7 @@ export const internshipCertificateSelect = {
   application: {
     select: {
       cohort: { select: { name: true, startDate: true, endDate: true } },
+      level: { select: { name: true, rank: true } },
     },
   },
 } as const;
@@ -43,6 +57,7 @@ type InternshipCertificateRecord = {
   program: { name: string };
   application: {
     cohort: { name: string; startDate: Date; endDate: Date } | null;
+    level: { name: string; rank: number };
   } | null;
 };
 
@@ -62,7 +77,10 @@ export function serializeInternshipCertificate(
     id: certificate.id,
     studentName: fullName || certificate.user.name || "Intern",
     email: certificate.user.email,
-    programName: certificate.program.name,
+    programName: internshipAchievement(
+      certificate.program.name,
+      certificate.application?.level,
+    ),
     cohortName: cohort?.name ?? null,
     periodLabel: cohort
       ? `${formatDate(cohort.startDate)} – ${formatDate(cohort.endDate)}`

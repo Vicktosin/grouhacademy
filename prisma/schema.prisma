@@ -358,33 +358,35 @@ model UserRole {
 }
 
 model InternshipProgram {
-  id                     String                  @id @default(cuid())
-  slug                   String                  @unique
-  name                   String
-  duration               String
-  price                  Int
-  acceptanceFee          Int
-  description            String
-  features               Json
-  requirements           Json
-  certificateEligibility String
-  companyPlacement       Boolean                 @default(false)
-  mentorAvailability     Boolean                 @default(false)
-  communityAvailability  Boolean                 @default(false)
-  status                 InternshipProgramStatus @default(DRAFT)
-  applications           InternshipApplication[]
-  cohorts                InternshipCohort[]
-  tracks                 InternshipTrack[]
-  assessments            InternshipAssessment[]
-  modules                InternshipModule[]
-  projects               InternshipProject[]
-  resources              InternshipResource[]
-  internResources        InternResourceTrack[]
-  progress               InternshipProgress[]
-  mentorAssignments      MentorAssignment[]
-  payments               Payment[]
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+  id                      String                         @id @default(cuid())
+  slug                    String                         @unique
+  name                    String
+  duration                String
+  price                   Int
+  acceptanceFee           Int
+  description             String
+  features                Json
+  requirements            Json
+  certificateEligibility  String
+  companyPlacement        Boolean                        @default(false)
+  mentorAvailability      Boolean                        @default(false)
+  communityAvailability   Boolean                        @default(false)
+  status                  InternshipProgramStatus        @default(DRAFT)
+  applications            InternshipApplication[]
+  cohorts                 InternshipCohort[]
+  tracks                  InternshipTrack[]
+  assessments             InternshipAssessment[]
+  modules                 InternshipModule[]
+  projects                InternshipProject[]
+  resources               InternshipResource[]
+  internResources         InternResourceTrack[]
+  levelFees               InternshipLevelFee[]
+  resourceRecommendations InternResourceRecommendation[]
+  progress                InternshipProgress[]
+  mentorAssignments       MentorAssignment[]
+  payments                Payment[]
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
 
   conversations          Conversation[]
   announcements          Announcement[]
@@ -409,6 +411,7 @@ model InternshipOnboardingQuestion {
 model InternshipCohort {
   id                  String       @id @default(cuid())
   programId           String
+  levelId             String
   name                String
   slug                String       @unique
   description         String?
@@ -422,26 +425,36 @@ model InternshipCohort {
   updatedAt           DateTime     @updatedAt
 
   program      InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level        InternshipLevel         @relation(fields: [levelId], references: [id], onDelete: Restrict)
   applications InternshipApplication[]
   groups       InternshipGroup[]
   tasks        InternshipTask[]
 
   @@index([programId])
+  @@index([levelId])
   @@index([startDate])
 }
 
 model InternshipApplication {
-  id        String              @id @default(cuid())
-  studentId String              @db.Uuid
-  programId String
-  cohortId  String?
-  student   User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  program   InternshipProgram   @relation(fields: [programId], references: [id])
-  cohort    InternshipCohort?   @relation(fields: [cohortId], references: [id], onDelete: SetNull)
-  payment   InternshipPayment?
-  attempts  AssessmentAttempt[]
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  id             String                 @id @default(cuid())
+  studentId      String                 @db.Uuid
+  programId      String
+  cohortId       String?
+  levelId        String
+  // Set when the intern moved up from another level with that level's
+  // certificate (instead of an entrance exam). Until its fee is paid, such
+  // an application stays queued behind the one it came from.
+  promotedFromId String?                @unique
+  promotedFrom   InternshipApplication? @relation("LevelPromotion", fields: [promotedFromId], references: [id], onDelete: SetNull)
+  promotedTo     InternshipApplication? @relation("LevelPromotion")
+  level          InternshipLevel        @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  student        User                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  program        InternshipProgram      @relation(fields: [programId], references: [id])
+  cohort         InternshipCohort?      @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  payment        InternshipPayment?
+  attempts       AssessmentAttempt[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   status InternshipApplicationStatus @default(ACTIVE)
 
@@ -451,7 +464,9 @@ model InternshipApplication {
 
   certificates InternshipCertificate[]
 
-  @@unique([studentId, programId])
+  // One application per track per level: moving up a level adds a new one.
+  @@unique([studentId, programId, levelId])
+  @@index([levelId])
   @@index([studentId])
   @@index([cohortId])
 }
@@ -1044,6 +1059,7 @@ model InternshipTrack {
 model InternshipAssessment {
   id          String   @id @default(cuid())
   programId   String
+  levelId     String
   title       String
   description String?
   createdAt   DateTime @default(now())
@@ -1052,10 +1068,11 @@ model InternshipAssessment {
   passingScore Int @default(70)
 
   program   InternshipProgram    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level     InternshipLevel      @relation(fields: [levelId], references: [id], onDelete: Restrict)
   questions AssessmentQuestion[]
   attempts  AssessmentAttempt[]
 
-  @@index([programId])
+  @@index([programId, levelId])
 }
 
 model AssessmentQuestion {
@@ -1429,15 +1446,18 @@ model InternResource {
   description String?
   thumbnail   String?
   status      InternResourceStatus @default(DRAFT)
+  levelId     String
   createdById String?              @db.Uuid
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
 
-  creator User?                  @relation("InternResourceCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  tracks  InternResourceTrack[]
-  modules InternResourceModule[]
+  creator         User?                          @relation("InternResourceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  level           InternshipLevel                @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  tracks          InternResourceTrack[]
+  modules         InternResourceModule[]
+  recommendations InternResourceRecommendation[]
 
-  @@index([status])
+  @@index([status, levelId])
 }
 
 // Which tracks may see a resource. A resource can serve several tracks.
@@ -1530,4 +1550,61 @@ model InternResourceLessonProgress {
 
   @@unique([userId, lessonId])
   @@index([lessonId])
+}
+
+// Internship levels, in order of `rank` (1 = Entry). Every intern starts at
+// the lowest level; a certificate at one level lets them move to the next.
+// Applications, cohorts, entrance assessments and resources each belong to
+// one level. The starting list (Entry, Intermediate, Senior) is created by
+// the migration; admins can add more.
+model InternshipLevel {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  rank        Int      @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications    InternshipApplication[]
+  cohorts         InternshipCohort[]
+  assessments     InternshipAssessment[]
+  resources       InternResource[]
+  fees            InternshipLevelFee[]
+  recommendations InternResourceRecommendation[]
+}
+
+// A track's acceptance fee at a level above Entry. Entry keeps using
+// InternshipProgram.acceptanceFee, so existing tracks need no rows here.
+// A level with no fee for a track isn't open for that track yet.
+model InternshipLevelFee {
+  programId     String
+  levelId       String
+  acceptanceFee Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  program InternshipProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level   InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@id([programId, levelId])
+  @@index([levelId])
+}
+
+// Resources admins recommend to interns on a track at a level, in order,
+// shown on the intern dashboard. A recommended resource must be on that
+// track and at that level or below.
+model InternResourceRecommendation {
+  programId  String
+  levelId    String
+  resourceId String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  program  InternshipProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level    InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  resource InternResource    @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([programId, levelId, resourceId])
+  @@index([programId, levelId, order])
+  @@index([resourceId])
 }

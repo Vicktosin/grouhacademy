@@ -9,6 +9,7 @@ import { getPrisma } from "@/lib/prisma";
 type Db = ReturnType<typeof getPrisma>;
 
 export const internResourceInclude = {
+  level: { select: { id: true, name: true, rank: true } },
   tracks: {
     orderBy: { program: { name: "asc" as const } },
     include: { program: { select: { id: true, name: true } } },
@@ -40,39 +41,60 @@ function findResource(where: { id: string } | { slug: string }) {
 // Intern access
 // ---------------------------------------------------------------------------
 
+/** A track the intern belongs to, and the highest level they reached in it. */
+export type InternTrackAccess = { programId: string; rank: number };
+
 /**
- * The tracks an intern may see resources for: those of every application
- * that has unlocked the internship workspace (acceptance fee paid and
- * entrance assessment passed), matching hasInternshipWorkspaceAccess().
+ * The tracks an intern may see resources for, with their level in each:
+ * every application that has unlocked the internship workspace (acceptance
+ * fee paid and entrance assessment passed), matching
+ * hasInternshipWorkspaceAccess(). An intern has one application per level,
+ * so the highest such level per track wins.
  */
-export async function getInternTrackIds(userId: string): Promise<string[]> {
+export async function getInternTrackAccess(
+  userId: string,
+): Promise<InternTrackAccess[]> {
   const applications = await getPrisma().internshipApplication.findMany({
     where: {
       studentId: userId,
       payment: { is: { status: "PAID" } },
       attempts: { some: { status: "PASSED" } },
     },
-    select: { programId: true },
+    select: { programId: true, level: { select: { rank: true } } },
   });
-  return [...new Set(applications.map((item) => item.programId))];
+  const rankByTrack = new Map<string, number>();
+  for (const { programId, level } of applications)
+    rankByTrack.set(
+      programId,
+      Math.max(level.rank, rankByTrack.get(programId) ?? 0),
+    );
+  return [...rankByTrack].map(([programId, rank]) => ({ programId, rank }));
 }
 
-/** Published resources assigned to at least one of the given tracks. */
-export function internResourceWhere(trackIds: string[]) {
+/**
+ * Published resources on one of the intern's tracks, at their level in that
+ * track or below. (No access → matches nothing.)
+ */
+export function internResourceWhere(access: InternTrackAccess[]) {
   return {
     status: InternResourceStatus.PUBLISHED,
-    tracks: { some: { programId: { in: trackIds } } },
+    OR: access.map(({ programId, rank }) => ({
+      tracks: { some: { programId } },
+      level: { rank: { lte: rank } },
+    })),
   };
 }
 
 export async function listResourcesForIntern(userId: string) {
-  const trackIds = await getInternTrackIds(userId);
-  if (!trackIds.length) return [];
+  const access = await getInternTrackAccess(userId);
+  if (!access.length) return [];
+  const trackIds = access.map((item) => item.programId);
   const prisma = getPrisma();
   const resources = await prisma.internResource.findMany({
-    where: internResourceWhere(trackIds),
+    where: internResourceWhere(access),
     orderBy: { createdAt: "desc" },
     include: {
+      level: { select: { name: true } },
       tracks: {
         where: { programId: { in: trackIds } },
         include: { program: { select: { name: true } } },
@@ -98,11 +120,15 @@ export async function listResourcesForIntern(userId: string) {
     );
     const done = ids.filter((id) => completedIds.has(id)).length;
     return {
+      id: resource.id,
+      levelId: resource.levelId,
+      trackIds: resource.tracks.map((track) => track.programId),
       slug: resource.slug,
       title: resource.title,
       description: resource.description,
       thumbnail: resource.thumbnail,
       trackNames: resource.tracks.map((track) => track.program.name),
+      levelName: resource.level.name,
       moduleCount: resource.modules.length,
       totalLessons: ids.length,
       completedLessons: done,
@@ -115,12 +141,60 @@ export type InternResourceSummary = Awaited<
   ReturnType<typeof listResourcesForIntern>
 >[number];
 
-/** A resource the intern may open, or null if it isn't on their track. */
+const MAX_RECOMMENDED = 6;
+
+/**
+ * Resources recommended to the intern for their current track and level:
+ * the admins' picks in order, or, when none are set, the newest resources
+ * at their level. Only resources the intern can open are included.
+ */
+export async function listRecommendedForIntern(userId: string) {
+  const prisma = getPrisma();
+  const application = await prisma.internshipApplication.findFirst({
+    where: { studentId: userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      programId: true,
+      levelId: true,
+      program: { select: { name: true } },
+      level: { select: { name: true } },
+    },
+  });
+  if (!application) return null;
+
+  const visible = await listResourcesForIntern(userId);
+  const byId = new Map(visible.map((resource) => [resource.id, resource]));
+  const picks = await prisma.internResourceRecommendation.findMany({
+    where: { programId: application.programId, levelId: application.levelId },
+    orderBy: { order: "asc" },
+    select: { resourceId: true },
+  });
+  const curated = picks.flatMap(({ resourceId }) => byId.get(resourceId) ?? []);
+
+  return {
+    programName: application.program.name,
+    levelName: application.level.name,
+    curated: curated.length > 0,
+    resources: (curated.length
+      ? curated
+      : visible.filter(
+          (resource) =>
+            resource.levelId === application.levelId &&
+            resource.trackIds.includes(application.programId),
+        )
+    ).slice(0, MAX_RECOMMENDED),
+  };
+}
+
+/**
+ * A resource the intern may open, or null if it isn't on their track or is
+ * above their level.
+ */
 export async function getResourceForIntern(userId: string, slug: string) {
-  const trackIds = await getInternTrackIds(userId);
-  if (!trackIds.length) return null;
+  const access = await getInternTrackAccess(userId);
+  if (!access.length) return null;
   return getPrisma().internResource.findFirst({
-    where: { slug, ...internResourceWhere(trackIds) },
+    where: { slug, ...internResourceWhere(access) },
     include: internResourceInclude,
   });
 }
@@ -172,6 +246,8 @@ export function serializeAdminResource(resource: InternResourceRecord) {
     description: resource.description,
     thumbnail: resource.thumbnail,
     status: resource.status,
+    levelId: resource.levelId,
+    levelName: resource.level.name,
     updatedAt: resource.updatedAt,
     tracks: resource.tracks.map((track) => ({
       id: track.program.id,
@@ -228,6 +304,7 @@ export type ResourceWriteInput = {
   description?: string | null;
   thumbnail?: string | null;
   status?: InternResourceStatus;
+  levelId?: string;
   trackIds?: string[];
   modules?: ResourceModuleInput[];
 };
@@ -313,6 +390,11 @@ export function parseResourceInput(
     input.trackIds = [...new Set(ids)];
     if (!input.trackIds.length)
       return { error: "Assign the resource to at least one track." };
+  }
+  if (raw.levelId !== undefined) {
+    if (typeof raw.levelId !== "string" || !raw.levelId)
+      return { error: "Choose a level for the resource." };
+    input.levelId = raw.levelId;
   }
   if (raw.modules !== undefined) input.modules = parseModules(raw.modules);
   return { input };
@@ -505,4 +587,94 @@ export async function syncResourceCurriculum(
       );
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Recommendations (admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resources that may be recommended for a track at a level: on that track,
+ * at that level or below. Drafts are listed too (they only reach interns
+ * once published).
+ */
+async function recommendableResources(programId: string, levelId: string) {
+  const prisma = getPrisma();
+  const level = await prisma.internshipLevel.findUnique({
+    where: { id: levelId },
+    select: { rank: true },
+  });
+  if (!level) return null;
+  return prisma.internResource.findMany({
+    where: {
+      tracks: { some: { programId } },
+      level: { rank: { lte: level.rank } },
+    },
+    orderBy: { title: "asc" },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      level: { select: { name: true } },
+    },
+  });
+}
+
+/** The recommended list for a track and level, and what can be added. */
+export async function getRecommendations(programId: string, levelId: string) {
+  const available = await recommendableResources(programId, levelId);
+  if (!available) return null;
+  const picks = await getPrisma().internResourceRecommendation.findMany({
+    where: { programId, levelId },
+    orderBy: { order: "asc" },
+    select: { resourceId: true },
+  });
+  const byId = new Map(
+    available.map((resource) => [
+      resource.id,
+      {
+        id: resource.id,
+        title: resource.title,
+        status: resource.status,
+        levelName: resource.level.name,
+      },
+    ]),
+  );
+  return {
+    recommended: picks.flatMap(({ resourceId }) => byId.get(resourceId) ?? []),
+    available: [...byId.values()],
+  };
+}
+
+/** Replaces the recommended list (in order) for a track and level. */
+export async function setRecommendations(
+  programId: string,
+  levelId: string,
+  resourceIds: string[],
+): Promise<{ error: string } | null> {
+  const available = await recommendableResources(programId, levelId);
+  if (!available) return { error: "Level not found." };
+  const allowed = new Set(available.map((resource) => resource.id));
+  const ids = [...new Set(resourceIds)];
+  if (ids.some((id) => !allowed.has(id)))
+    return {
+      error:
+        "Only resources on this track, at this level or below, can be recommended.",
+    };
+
+  const prisma = getPrisma();
+  await prisma.$transaction([
+    prisma.internResourceRecommendation.deleteMany({
+      where: { programId, levelId },
+    }),
+    prisma.internResourceRecommendation.createMany({
+      data: ids.map((resourceId, order) => ({
+        programId,
+        levelId,
+        resourceId,
+        order,
+      })),
+    }),
+  ]);
+  return null;
 }

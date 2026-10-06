@@ -7,6 +7,7 @@ import {
   type PaystackSettlementPrisma,
   type PaystackWebhookEvent,
 } from "@/lib/paystack-webhook";
+import { activatePromotion } from "@/lib/internship-progression";
 
 export function isValidPaystackSignature(
   rawBody: string,
@@ -72,6 +73,21 @@ export async function POST(request: Request) {
     payload,
   );
   console.info("[paystack-webhook] Settlement completed.", settlement);
+
+  // A paid move up to the next level becomes the intern's current level.
+  if (
+    settlement.updatedInternshipPayment &&
+    typeof data.reference === "string"
+  ) {
+    const paid = await prisma.internshipPayment.findUnique({
+      where: { reference: data.reference },
+      select: { applicationId: true },
+    });
+    if (paid)
+      await activatePromotion(paid.applicationId).catch((error) =>
+        console.error("[paystack-webhook] Promotion activation failed.", error),
+      );
+  }
 
   return NextResponse.json({ status: "success" });
 }

@@ -4,10 +4,8 @@ import CourseLearningPlayer, {
 } from "@/components/CourseLearningPlayer";
 import InternshipShell from "@/components/InternshipShell";
 import { getCurrentUserId } from "@/lib/route-guards";
-import {
-  getResourceForIntern,
-  resourceProgress,
-} from "@/lib/intern-resources";
+import { getResourceForIntern, resourceProgress } from "@/lib/intern-resources";
+import { lessonVideoSrc } from "@/lib/video-embed";
 
 export default async function InternResourcePage({
   params,
@@ -30,7 +28,12 @@ export default async function InternResourcePage({
       id: module.id,
       title: module.title,
       description: module.description,
-      videoUrl: module.videoUrl,
+      videoUrl: lessonVideoSrc(
+        module.videoUrl,
+        "resource",
+        "module",
+        module.id,
+      ),
       content: module.content,
       resources: module.materials.map(({ id, title, url }) => ({
         id,
@@ -40,7 +43,12 @@ export default async function InternResourcePage({
       lessons: module.lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.title,
-        videoUrl: lesson.videoUrl,
+        videoUrl: lessonVideoSrc(
+          lesson.videoUrl,
+          "resource",
+          "lesson",
+          lesson.id,
+        ),
         content: lesson.content,
         resources: lesson.materials.map(({ id, title, url }) => ({
           id,

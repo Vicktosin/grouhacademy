@@ -320,7 +320,8 @@ export default function CourseLearningPlayer({
               {course.title}
             </p>
             <p className="text-[10px] text-slate-500">
-              {itemLabel} player · Module {selectedModule + 1} of {modules.length}
+              {itemLabel} player · Module {selectedModule + 1} of{" "}
+              {modules.length}
             </p>
           </div>
         </div>
@@ -576,6 +577,20 @@ export default function CourseLearningPlayer({
                     Continue with the lesson material below.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {media?.kind === "file" && media.downloadUrl && (
+              <div className="mt-3 flex justify-end">
+                {/* R2 sends the file as an attachment, so this downloads
+                    straight away without leaving the lesson. */}
+                <a
+                  href={media.downloadUrl}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-xs font-semibold text-[#1C1D52] hover:border-[#5FBB46] hover:text-[#5FBB46]"
+                >
+                  <Download className="h-4 w-4" />
+                  Download video
+                </a>
               </div>
             )}
 

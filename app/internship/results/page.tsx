@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowDown,
   ArrowRight,
   CheckCircle2,
   Loader2,
@@ -14,6 +15,9 @@ import CommunityLink from "@/components/CommunityLink";
 
 type Result = {
   programName: string;
+  levelName: string;
+  /** Open levels below this one, offered after a fail. */
+  lowerLevels: Array<{ id: string; name: string; acceptanceFee: number }>;
   scorePercent: number;
   score: number;
   totalQuestions: number;
@@ -35,6 +39,8 @@ export default function AssessmentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retrying, setRetrying] = useState(false);
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const [showPassModal, setShowPassModal] = useState(false);
 
   useEffect(() => {
@@ -65,6 +71,29 @@ export default function AssessmentResultsPage() {
       router.push("/internship/assessment/take");
     } catch {
       setRetrying(false);
+    }
+  }
+
+  async function switchToLevel(levelId: string) {
+    setSwitchingTo(levelId);
+    setActionError("");
+    try {
+      const response = await fetch("/api/internship/application/level", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ levelId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok)
+        throw new Error(data.error || "Unable to change your level.");
+      router.push("/internship/assessment/readiness");
+    } catch (switchError) {
+      setActionError(
+        switchError instanceof Error
+          ? switchError.message
+          : "Unable to change your level.",
+      );
+      setSwitchingTo(null);
     }
   }
 
@@ -109,10 +138,12 @@ export default function AssessmentResultsPage() {
           You scored{" "}
           <strong className="text-[#1C1D52]">{result.scorePercent}%</strong> (
           {result.score}/{result.totalQuestions}) on the {result.programName}{" "}
-          assessment.
+          {result.levelName} level assessment.
           {result.passed
             ? " You are qualified for this internship program."
-            : " You can try again whenever you're ready."}
+            : result.lowerLevels.length
+              ? " You can try again whenever you're ready, or start at a lower level."
+              : " You can try again whenever you're ready."}
         </p>
 
         <section className="mt-8 text-left">
@@ -165,24 +196,48 @@ export default function AssessmentResultsPage() {
             Get Started <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={retryAssessment}
-            disabled={retrying}
-            className="mt-7 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1D52] px-6 py-3.5 text-sm font-bold text-white disabled:opacity-60"
-          >
-            {retrying ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Starting...
-              </>
-            ) : (
-              <>
-                <RotateCcw className="h-4 w-4" />
-                Retry Assessment
-              </>
+          <div className="mt-7 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={retryAssessment}
+              disabled={retrying || switchingTo !== null}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1D52] px-6 py-3.5 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {retrying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4" />
+                  Retry {result.levelName} Assessment
+                </>
+              )}
+            </button>
+            {result.lowerLevels.map((level) => (
+              <button
+                key={level.id}
+                type="button"
+                onClick={() => void switchToLevel(level.id)}
+                disabled={retrying || switchingTo !== null}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-[#1C1D52] transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                {switchingTo === level.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowDown className="h-4 w-4" />
+                )}
+                Apply for {level.name} level instead (₦
+                {level.acceptanceFee.toLocaleString()})
+              </button>
+            ))}
+            {actionError && (
+              <p className="text-xs font-semibold text-red-600" role="alert">
+                {actionError}
+              </p>
             )}
-          </button>
+          </div>
         )}
       </div>
 

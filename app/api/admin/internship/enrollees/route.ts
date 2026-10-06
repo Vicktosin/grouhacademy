@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { AssessmentAttemptStatus, InternshipPaymentStatus } from "@/generated/prisma/client";
+import {
+  AssessmentAttemptStatus,
+  InternshipPaymentStatus,
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
-
 
 function formatDate(date: Date | null | undefined) {
   if (!date) return "Not available";
@@ -32,6 +34,7 @@ export async function GET() {
     },
     orderBy: { createdAt: "desc" },
     include: {
+      level: { select: { name: true } },
       student: {
         select: {
           id: true,
@@ -104,7 +107,7 @@ export async function GET() {
           .join(" ") ||
         "Unnamed enrollee",
       email: student.email,
-      track: application.program.name,
+      track: `${application.program.name} · ${application.level.name}`,
       examScore: latestAttempt?.scorePercent ?? null,
       attempts: application.attempts.length,
       cohort: application.cohort?.name ?? "Unassigned",

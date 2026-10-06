@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import {
+  chooseApplicationLevel,
+  getEntryLevel,
+  getOpenLevels,
+} from "@/lib/internship-levels";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -37,8 +42,20 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    // Applicants choose a level as well as a track; only levels with a fee
+    // and an entrance assessment are offered.
+    const openLevels = await getOpenLevels(programs.map((item) => item.id));
+
     return NextResponse.json({
-      programs,
+      programs: programs.map((program) => ({
+        ...program,
+        levels: (openLevels.get(program.id) ?? []).map((level) => ({
+          id: level.id,
+          name: level.name,
+          description: level.description,
+          acceptanceFee: level.acceptanceFee,
+        })),
+      })),
       questions: questions.map((question) => ({
         ...question,
         options: Array.isArray(question.options)
@@ -48,6 +65,7 @@ export async function GET() {
           : [],
       })),
       existingProgramId: existingApplication?.programId ?? null,
+      existingLevelId: existingApplication?.levelId ?? null,
       existingAnswers: existingApplication?.onboardingAnswers ?? null,
     });
   } catch (error) {
@@ -105,13 +123,23 @@ export async function POST(request: Request) {
         );
     }
 
-    const application = await prisma.internshipApplication.upsert({
-      where: { studentId_programId: { studentId: userId, programId } },
-      create: { studentId: userId, programId, onboardingAnswers: answers },
-      update: { onboardingAnswers: answers },
-    });
+    const levelId =
+      typeof body?.levelId === "string" && body.levelId
+        ? body.levelId
+        : (await getEntryLevel()).id;
+    const result = await chooseApplicationLevel(
+      userId,
+      programId,
+      levelId,
+      answers,
+    );
+    if ("error" in result)
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.status },
+      );
 
-    return NextResponse.json({ applicationId: application.id });
+    return NextResponse.json({ applicationId: result.applicationId });
   } catch (error) {
     console.error("Failed to save onboarding answers:", error);
     return NextResponse.json(

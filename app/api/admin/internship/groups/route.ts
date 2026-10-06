@@ -165,6 +165,11 @@ async function loadGroups(request: Request) {
         await prisma.internshipApplication.findMany({
           where: {
             cohortId: selected,
+            // Interns who have moved up to the next level have left this
+            // cohort's groups on purpose.
+            NOT: {
+              promotedTo: { is: { payment: { is: { status: "PAID" } } } },
+            },
             student: {
               groupMemberships: {
                 none: { programId: cohorts.find((c) => c.id === selected)!.programId },
@@ -282,13 +287,17 @@ export async function POST(request: Request) {
             );
           await lockCohortGroups(tx, target.cohortId);
 
-          const application = await tx.internshipApplication.findUnique({
+          // An intern has one application per level, so look for the one in
+          // this group's cohort.
+          const application = await tx.internshipApplication.findFirst({
             where: {
-              studentId_programId: { studentId: userId, programId: target.programId },
+              studentId: userId,
+              programId: target.programId,
+              cohortId: target.cohortId,
             },
-            select: { cohortId: true },
+            select: { id: true },
           });
-          if (!application || application.cohortId !== target.cohortId)
+          if (!application)
             throw new GroupActionError(
               "This intern isn't in this group's cohort.",
             );

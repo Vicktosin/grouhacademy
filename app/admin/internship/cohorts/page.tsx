@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 
 type ProgramOption = { id: string; name: string };
+type LevelOption = { id: string; name: string };
 type CohortRecord = {
   id: string;
   name: string;
@@ -21,6 +22,8 @@ type CohortRecord = {
   programId: string;
   programName: string;
   trackName: string;
+  levelId: string;
+  levelName: string;
   startDate: string;
   endDate: string;
   status: "UPCOMING" | "ACTIVE" | "COMPLETED";
@@ -42,6 +45,7 @@ type CohortFormState = {
   id: string | null;
   name: string;
   programId: string;
+  levelId: string;
   startDate: string;
   endDate: string;
   description: string;
@@ -52,6 +56,7 @@ const initialForm: CohortFormState = {
   id: null,
   name: "",
   programId: "",
+  levelId: "",
   startDate: "",
   endDate: "",
   description: "",
@@ -66,6 +71,7 @@ const statusStyles: Record<CohortRecord["status"], string> = {
 
 export default function InternshipCohortsPage() {
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
+  const [levels, setLevels] = useState<LevelOption[]>([]);
   const [cohorts, setCohorts] = useState<CohortRecord[]>([]);
   const [form, setForm] = useState<CohortFormState>(initialForm);
   const [filters, setFilters] = useState({ track: "all", month: "all" });
@@ -84,16 +90,20 @@ export default function InternshipCohortsPage() {
         throw new Error(`Cohort request failed (${response.status}).`);
       const payload = (await response.json()) as {
         programs?: ProgramOption[];
+        levels?: LevelOption[];
         cohorts?: CohortRecord[];
       };
       const nextPrograms = payload.programs ?? [];
       const nextCohorts = payload.cohorts ?? [];
+      const nextLevels = payload.levels ?? [];
       setPrograms(nextPrograms);
+      setLevels(nextLevels);
       setCohorts(nextCohorts);
-      setForm((current) => {
-        if (current.programId) return current;
-        return { ...current, programId: nextPrograms[0]?.id ?? "" };
-      });
+      setForm((current) => ({
+        ...current,
+        programId: current.programId || (nextPrograms[0]?.id ?? ""),
+        levelId: current.levelId || (nextLevels[0]?.id ?? ""),
+      }));
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Unable to load cohorts.",
@@ -158,10 +168,13 @@ export default function InternshipCohortsPage() {
     if (
       !form.name.trim() ||
       !form.programId ||
+      !form.levelId ||
       !form.startDate ||
       !form.endDate
     ) {
-      setError("Select a track, name the cohort, and provide both dates.");
+      setError(
+        "Select a track and level, name the cohort, and provide both dates.",
+      );
       return;
     }
 
@@ -182,11 +195,12 @@ export default function InternshipCohortsPage() {
           ? "Cohort updated successfully."
           : "Cohort created successfully.",
       );
-      setForm(initialForm);
+      setForm({
+        ...initialForm,
+        programId: programs[0]?.id ?? "",
+        levelId: levels[0]?.id ?? "",
+      });
       setFilters((current) => ({ ...current, track: "all", month: "all" }));
-      if (programs.length > 0) {
-        setForm((current) => ({ ...current, programId: programs[0].id }));
-      }
       await loadCohorts();
     } catch (reason) {
       setError(
@@ -202,6 +216,7 @@ export default function InternshipCohortsPage() {
       id: cohort.id,
       name: cohort.name,
       programId: cohort.programId,
+      levelId: cohort.levelId,
       startDate: cohort.startDate.slice(0, 10),
       endDate: cohort.endDate.slice(0, 10),
       description: cohort.description ?? "",
@@ -379,7 +394,7 @@ export default function InternshipCohortsPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          {cohort.programName}
+                          {cohort.programName} · {cohort.levelName} level
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -498,6 +513,30 @@ export default function InternshipCohortsPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="block text-[10px] font-semibold text-slate-500">
+                Level
+                <select
+                  value={form.levelId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      levelId: event.target.value,
+                    }))
+                  }
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-[#1C1D52] outline-none"
+                >
+                  <option value="">Select a level</option>
+                  {levels.map((level) => (
+                    <option key={level.id} value={level.id}>
+                      {level.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block font-normal text-slate-400">
+                  Interns are placed in cohorts for their own track and level.
+                </span>
               </label>
 
               <div className="grid gap-4 sm:grid-cols-2">

@@ -20,6 +20,7 @@ type AssessmentRow = {
   id: string;
   title: string;
   track: string;
+  level: string;
   questionCount: number;
   passingScore: number;
   instructions: string;
@@ -204,7 +205,7 @@ export default function InternshipAssessmentsPage() {
                 <thead>
                   <tr className="bg-[#f5f8fb] text-slate-600">
                     <th className="px-3 py-3 font-semibold">Assessment</th>
-                    <th className="px-3 py-3 font-semibold">Track</th>
+                    <th className="px-3 py-3 font-semibold">Track · Level</th>
                     <th className="px-3 py-3 font-semibold">Passing score</th>
                     <th className="px-3 py-3 font-semibold">Questions</th>
                   </tr>
@@ -230,7 +231,7 @@ export default function InternshipAssessmentsPage() {
                           ) : null}
                         </td>
                         <td className="px-3 py-3.5 text-slate-600">
-                          {assessment.track}
+                          {assessment.track} · {assessment.level}
                         </td>
                         <td className="px-3 py-3.5 text-slate-600">
                           {assessment.passingScore}%

@@ -4,6 +4,7 @@ import {
   assignApplicationCohort,
   type CohortDb,
 } from "@/lib/internship-cohort";
+import { activatePromotion } from "@/lib/internship-progression";
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get("reference");
@@ -83,8 +84,12 @@ export async function GET(request: Request) {
       );
     }
 
+    // The amount was fixed (for this track and level) when the payment was
+    // started; compare against that rather than today's fee.
+    const expectedAmount = application.payment?.amount;
     if (
-      data.data.amount !== application.program.acceptanceFee * 100 ||
+      expectedAmount === undefined ||
+      data.data.amount !== expectedAmount * 100 ||
       data.data.currency !== application.payment?.currency
     ) {
       return NextResponse.json(
@@ -102,12 +107,14 @@ export async function GET(request: Request) {
     });
 
     await assignApplicationCohort(prisma as unknown as CohortDb, application);
+    // A paid move up to the next level becomes the intern's current level.
+    await activatePromotion(application.id);
 
     // Amount and currency let the browser report the purchase value to
     // Google Analytics and Meta Pixel.
     return NextResponse.json({
       status: "success",
-      amount: application.program.acceptanceFee,
+      amount: expectedAmount,
       currency: data.data.currency,
       programName: application.program.name,
     });
