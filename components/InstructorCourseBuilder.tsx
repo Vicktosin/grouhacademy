@@ -13,40 +13,25 @@ import {
   Plus,
   Save,
   Send,
-  Trash2,
-  Upload,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import {
+  BuilderHeading,
+  CurriculumEditor,
+  ImageUploadInput,
+  Input,
+  ReviewItem,
+  Textarea,
+  curriculumPayload,
+  hydrateCurriculum,
+  newItemId,
+  useCurriculum,
+  type CurriculumModule,
+} from "@/components/CurriculumEditor";
 import type { PublicCourse } from "@/lib/course-data";
-
-type LessonResource = {
-  id: string;
-  url: string;
-};
-
-type Lesson = {
-  id: string;
-  title: string;
-  videoUrl: string;
-  content: string;
-  resources: LessonResource[];
-};
-
-type Module = {
-  id: string;
-  title: string;
-  duration: string;
-  summary: string;
-  hasLessons: boolean;
-  videoUrl: string;
-  content: string;
-  resources: LessonResource[];
-  lessons: Lesson[];
-};
 
 type Question = {
   id: string;
@@ -83,23 +68,22 @@ const emptyCourse = {
   thumbnail: "",
 };
 
-const startingModules: Module[] = [
+const startingModules: CurriculumModule[] = [
   {
     id: "new-1",
     title: "Foundations of Product Design",
-    duration: "1h 40m",
     summary: "",
     hasLessons: true,
     videoUrl: "",
     content: "",
-    resources: [],
+    materials: [],
     lessons: [
       {
         id: "new-2",
         title: "What makes a product useful?",
         videoUrl: "",
         content: "",
-        resources: [],
+        materials: [],
       },
     ],
   },
@@ -119,54 +103,30 @@ const startingQuestions: Question[] = [
   },
 ];
 
-function newItemId() {
-  return `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function persistedId(id: string) {
-  return id.startsWith("new-") ? undefined : id;
-}
-
-function hydrateModules(course: SavedCourse): Module[] {
-  if (!course.modules.length) {
-    return [];
-  }
-
-  return course.modules.map((module) => {
-    const moduleResources = module.resources.map((resource) => ({
-      id: resource.id,
-      url: resource.url,
-    }));
-
-    const hasDirectContent = Boolean(
-      module.videoUrl || module.content || moduleResources.length,
-    );
-
-    return {
-      id: module.id,
-      title: module.title,
-      duration: "",
-      summary: module.description ?? "",
-      // A module is treated as lesson-based unless it has lessons (true),
-      // OR it has no lessons but does have direct content saved (false).
-      // A brand-new, entirely empty module defaults to lesson-based, same
-      // as addModule() below.
-      hasLessons: module.lessons.length > 0 || !hasDirectContent,
-      videoUrl: module.videoUrl ?? "",
-      content: module.content ?? "",
-      resources: moduleResources,
-      lessons: module.lessons.map((lesson) => ({
-        id: lesson.id,
-        title: lesson.title,
-        videoUrl: lesson.videoUrl ?? "",
-        content: lesson.content ?? "",
-        resources: lesson.resources.map((resource) => ({
-          id: resource.id,
-          url: resource.url,
-        })),
+// The course API names a module's or lesson's links `resources`; the
+// shared curriculum editor calls them `materials`.
+function hydrateModules(course: SavedCourse): CurriculumModule[] {
+  return hydrateCurriculum(
+    course.modules.map(({ resources, lessons, ...module }) => ({
+      ...module,
+      materials: resources,
+      lessons: lessons.map(({ resources: lessonResources, ...lesson }) => ({
+        ...lesson,
+        materials: lessonResources,
       })),
-    };
-  });
+    })),
+  );
+}
+
+function courseModulesPayload(modules: CurriculumModule[]) {
+  return curriculumPayload(modules).map(({ materials, lessons, ...module }) => ({
+    ...module,
+    resources: materials,
+    lessons: lessons.map(({ materials: lessonMaterials, ...lesson }) => ({
+      ...lesson,
+      resources: lessonMaterials,
+    })),
+  }));
 }
 
 export default function InstructorCourseBuilder({
@@ -193,9 +153,8 @@ export default function InstructorCourseBuilder({
     title: courseTitle ?? emptyCourse.title,
   });
 
-  const [modules, setModules] = useState<Module[]>(
-    mode === "edit" ? [] : startingModules,
-  );
+  const curriculum = useCurriculum(mode === "edit" ? [] : startingModules);
+  const { modules, setModules } = curriculum;
 
   const [quizEnabled, setQuizEnabled] = useState(true);
   const [quizTitle, setQuizTitle] = useState("Module Checkpoint Quiz");
@@ -233,224 +192,6 @@ export default function InstructorCourseBuilder({
     }));
   };
 
-  const updateModule = (
-    id: string,
-    key: keyof Module,
-    value: string | boolean,
-  ) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              [key]: value,
-            }
-          : item,
-      ),
-    );
-  };
-
-  const addModule = () => {
-    setModules((items) => [
-      ...items,
-      {
-        id: newItemId(),
-        title: `Module ${items.length + 1}`,
-        duration: "45m",
-        summary: "",
-        hasLessons: true,
-        videoUrl: "",
-        content: "",
-        resources: [],
-        lessons: [],
-      },
-    ]);
-  };
-
-  const removeModule = (id: string) => {
-    setModules((items) => items.filter((item) => item.id !== id));
-  };
-
-  const addLesson = (moduleId: string) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: [
-                ...item.lessons,
-                {
-                  id: newItemId(),
-                  title: `Lesson ${item.lessons.length + 1}`,
-                  videoUrl: "",
-                  content: "",
-                  resources: [],
-                },
-              ],
-            }
-          : item,
-      ),
-    );
-  };
-
-  const removeLesson = (moduleId: string, lessonId: string) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: item.lessons.filter((lesson) => lesson.id !== lessonId),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const updateLesson = (
-    moduleId: string,
-    lessonId: string,
-    key: keyof Lesson,
-    value: Lesson[keyof Lesson],
-  ) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: item.lessons.map((lesson) =>
-                lesson.id === lessonId
-                  ? {
-                      ...lesson,
-                      [key]: value,
-                    }
-                  : lesson,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const addResourceToLesson = (moduleId: string, lessonId: string) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: item.lessons.map((lesson) =>
-                lesson.id === lessonId
-                  ? {
-                      ...lesson,
-                      resources: [
-                        ...lesson.resources,
-                        { id: newItemId(), url: "" },
-                      ],
-                    }
-                  : lesson,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const updateLessonResource = (
-    moduleId: string,
-    lessonId: string,
-    resourceId: string,
-    url: string,
-  ) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: item.lessons.map((lesson) =>
-                lesson.id === lessonId
-                  ? {
-                      ...lesson,
-                      resources: lesson.resources.map((res) =>
-                        res.id === resourceId ? { ...res, url } : res,
-                      ),
-                    }
-                  : lesson,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const removeLessonResource = (
-    moduleId: string,
-    lessonId: string,
-    resourceId: string,
-  ) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              lessons: item.lessons.map((lesson) =>
-                lesson.id === lessonId
-                  ? {
-                      ...lesson,
-                      resources: lesson.resources.filter(
-                        (res) => res.id !== resourceId,
-                      ),
-                    }
-                  : lesson,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const addModuleResource = (moduleId: string) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              resources: [...item.resources, { id: newItemId(), url: "" }],
-            }
-          : item,
-      ),
-    );
-  };
-
-  const updateModuleResource = (
-    moduleId: string,
-    resourceId: string,
-    url: string,
-  ) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              resources: item.resources.map((res) =>
-                res.id === resourceId ? { ...res, url } : res,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const removeModuleResource = (moduleId: string, resourceId: string) => {
-    setModules((items) =>
-      items.map((item) =>
-        item.id === moduleId
-          ? {
-              ...item,
-              resources: item.resources.filter((res) => res.id !== resourceId),
-            }
-          : item,
-      ),
-    );
-  };
 
   const addQuestion = () => {
     setQuestions((items) => [
@@ -542,47 +283,7 @@ export default function InstructorCourseBuilder({
         price: Number(course.price.replace(/[^0-9.]/g, "")) || 0,
         thumbnail: course.thumbnail || null,
 
-        modules: modules.map((module) => ({
-          id: persistedId(module.id),
-          title: module.title,
-          description: module.summary,
-
-          // A module is either lesson-based or direct-content - never
-          // both. Enforced here at save time (not just in the UI) so a
-          // stale toggle state can't send both lessons and module-level
-          // content: whichever mode is off gets sent as empty, which
-          // makes syncCourseCurriculum/syncModuleResources/syncLessons
-          // delete any leftover rows on the other side.
-          videoUrl: module.hasLessons ? null : module.videoUrl.trim() || null,
-          content: module.hasLessons ? null : module.content.trim() || null,
-          resources: module.hasLessons
-            ? []
-            : module.resources
-                .map((res) => ({
-                  id: persistedId(res.id),
-                  title: res.url.trim(),
-                  type: "link",
-                  url: res.url.trim(),
-                }))
-                .filter((res) => res.url),
-
-          lessons: module.hasLessons
-            ? module.lessons.map((lesson) => ({
-                id: persistedId(lesson.id),
-                title: lesson.title,
-                content: lesson.content,
-                videoUrl: lesson.videoUrl,
-                resources: lesson.resources
-                  .map((res) => ({
-                    id: persistedId(res.id),
-                    title: res.url.trim(),
-                    type: "link",
-                    url: res.url.trim(),
-                  }))
-                  .filter((res) => res.url),
-              }))
-            : [],
-        })),
+        modules: courseModulesPayload(modules),
       };
 
       if (isAdmin && action === "publish") {
@@ -766,20 +467,11 @@ export default function InstructorCourseBuilder({
           )}
 
           {currentStep === 1 && (
-            <BuilderCurriculum
-              modules={modules}
-              updateModule={updateModule}
-              addModule={addModule}
-              removeModule={removeModule}
-              addLesson={addLesson}
-              removeLesson={removeLesson}
-              updateLesson={updateLesson}
-              addResourceToLesson={addResourceToLesson}
-              updateLessonResource={updateLessonResource}
-              removeLessonResource={removeLessonResource}
-              addModuleResource={addModuleResource}
-              updateModuleResource={updateModuleResource}
-              removeModuleResource={removeModuleResource}
+            <CurriculumEditor
+              curriculum={curriculum}
+              title="Course curriculum"
+              description="Organize the course into modules and lessons."
+              materialsLabel="Course materials"
             />
           )}
 
@@ -860,26 +552,6 @@ export default function InstructorCourseBuilder({
   );
 }
 
-function BuilderHeading({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: typeof BookOpen;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-[#5FBB46]" />
-        <h2 className="text-lg font-semibold text-[#1C1D52]">{title}</h2>
-      </div>
-
-      <p className="mt-2 text-xs leading-5 text-slate-500">{text}</p>
-    </div>
-  );
-}
 
 function CategorySelect({
   value,
@@ -1020,352 +692,6 @@ function BuilderBasics({
   );
 }
 
-function BuilderCurriculum({
-  modules,
-  updateModule,
-  addModule,
-  removeModule,
-  addLesson,
-  removeLesson,
-  updateLesson,
-  addResourceToLesson,
-  updateLessonResource,
-  removeLessonResource,
-  addModuleResource,
-  updateModuleResource,
-  removeModuleResource,
-}: {
-  modules: Module[];
-  updateModule: (
-    id: string,
-    key: keyof Module,
-    value: string | boolean,
-  ) => void;
-  addModule: () => void;
-  removeModule: (id: string) => void;
-  addLesson: (moduleId: string) => void;
-  removeLesson: (moduleId: string, lessonId: string) => void;
-  updateLesson: (
-    moduleId: string,
-    lessonId: string,
-    key: keyof Lesson,
-    value: Lesson[keyof Lesson],
-  ) => void;
-  addResourceToLesson: (moduleId: string, lessonId: string) => void;
-  updateLessonResource: (
-    moduleId: string,
-    lessonId: string,
-    resourceId: string,
-    url: string,
-  ) => void;
-  removeLessonResource: (
-    moduleId: string,
-    lessonId: string,
-    resourceId: string,
-  ) => void;
-  addModuleResource: (moduleId: string) => void;
-  updateModuleResource: (
-    moduleId: string,
-    resourceId: string,
-    url: string,
-  ) => void;
-  removeModuleResource: (moduleId: string, resourceId: string) => void;
-}) {
-  return (
-    <>
-      <BuilderHeading
-        icon={Layers3}
-        title="Course curriculum"
-        text="Organize the course into modules and lessons."
-      />
-
-      <div className="space-y-5">
-        {modules.map((module, moduleIndex) => (
-          <div
-            key={module.id}
-            className="rounded-xl border border-slate-200 p-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                  Module {moduleIndex + 1}
-                </p>
-
-                <input
-                  value={module.title}
-                  onChange={(event) =>
-                    updateModule(module.id, "title", event.target.value)
-                  }
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                  placeholder="Module title"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => removeModule(module.id)}
-                className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4">
-              <Textarea
-                label="Module summary"
-                value={module.summary}
-                onChange={(value) => updateModule(module.id, "summary", value)}
-                placeholder="Describe this module..."
-              />
-            </div>
-
-            <div className="mt-4">
-              <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                Module format
-              </span>
-              <div className="inline-flex rounded-lg border border-slate-200 p-1">
-                <button
-                  type="button"
-                  onClick={() => updateModule(module.id, "hasLessons", true)}
-                  className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${
-                    module.hasLessons
-                      ? "bg-[#1C1D52] text-white"
-                      : "text-slate-500"
-                  }`}
-                >
-                  Lessons
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateModule(module.id, "hasLessons", false)}
-                  className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${
-                    !module.hasLessons
-                      ? "bg-[#1C1D52] text-white"
-                      : "text-slate-500"
-                  }`}
-                >
-                  Direct content
-                </button>
-              </div>
-              <p className="mt-2 text-[10px] text-slate-500">
-                {module.hasLessons
-                  ? "Break this module into individual lessons students step through."
-                  : "This module is one piece of content - a single video/workshop - with no separate lessons."}
-              </p>
-            </div>
-
-            {!module.hasLessons && (
-              <div className="mt-4 space-y-3 rounded-lg bg-[#f8fbff] p-4">
-                <Input
-                  label="Video URL"
-                  value={module.videoUrl}
-                  onChange={(value) =>
-                    updateModule(module.id, "videoUrl", value)
-                  }
-                  placeholder="https://..."
-                />
-
-                <Textarea
-                  label="Module content"
-                  value={module.content}
-                  onChange={(value) =>
-                    updateModule(module.id, "content", value)
-                  }
-                  placeholder="Workshop brief, instructions, or notes for this module..."
-                />
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Course materials
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => addModuleResource(module.id)}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1C1D52]"
-                    >
-                      <Plus className="h-3 w-3" /> Add Resource URL
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {module.resources.map((resource) => (
-                      <div
-                        key={resource.id}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          value={resource.url}
-                          onChange={(e) =>
-                            updateModuleResource(
-                              module.id,
-                              resource.id,
-                              e.target.value,
-                            )
-                          }
-                          placeholder="https://..."
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeModuleResource(module.id, resource.id)
-                          }
-                          className="text-red-500 p-1 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {module.resources.length === 0 && (
-                      <p className="text-[10px] text-slate-400 italic">
-                        No resources added yet.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {module.hasLessons && (
-              <div className="mt-4 space-y-3">
-                {module.lessons.map((lesson, lessonIndex) => (
-                  <div key={lesson.id} className="rounded-lg bg-[#f8fbff] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                        Lesson {lessonIndex + 1}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => removeLesson(module.id, lesson.id)}
-                        className="text-red-500"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-
-                    <input
-                      value={lesson.title}
-                      onChange={(event) =>
-                        updateLesson(
-                          module.id,
-                          lesson.id,
-                          "title",
-                          event.target.value,
-                        )
-                      }
-                      className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                      placeholder="Lesson title"
-                    />
-
-                    <div className="mt-3">
-                      <Textarea
-                        label="Lesson content"
-                        value={lesson.content}
-                        onChange={(value) =>
-                          updateLesson(module.id, lesson.id, "content", value)
-                        }
-                        placeholder="Lesson notes or text..."
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <Input
-                        label="Video URL"
-                        value={lesson.videoUrl}
-                        onChange={(value) =>
-                          updateLesson(module.id, lesson.id, "videoUrl", value)
-                        }
-                        placeholder="https://..."
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                          Course materials
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            addResourceToLesson(module.id, lesson.id)
-                          }
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1C1D52]"
-                        >
-                          <Plus className="h-3 w-3" /> Add Resource URL
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {lesson.resources.map((resource) => (
-                          <div
-                            key={resource.id}
-                            className="flex items-center gap-2"
-                          >
-                            <input
-                              value={resource.url}
-                              onChange={(e) =>
-                                updateLessonResource(
-                                  module.id,
-                                  lesson.id,
-                                  resource.id,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="https://..."
-                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeLessonResource(
-                                  module.id,
-                                  lesson.id,
-                                  resource.id,
-                                )
-                              }
-                              className="text-red-500 p-1 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                        {lesson.resources.length === 0 && (
-                          <p className="text-[10px] text-slate-400 italic">
-                            No resources added yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {module.hasLessons && (
-              <button
-                type="button"
-                onClick={() => addLesson(module.id)}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[10px] font-semibold text-[#1C1D52]"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Lesson
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={addModule}
-        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-semibold text-white"
-      >
-        <Plus className="h-4 w-4" />
-        Add Module
-      </button>
-    </>
-  );
-}
 
 function BuilderMedia({
   course,
@@ -1557,7 +883,7 @@ function BuilderReview({
   isAdmin,
 }: {
   course: typeof emptyCourse;
-  modules: Module[];
+  modules: CurriculumModule[];
   isAdmin: boolean;
 }) {
   return (
@@ -1605,138 +931,3 @@ function BuilderReview({
   );
 }
 
-function ReviewItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-[#f8fbff] p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-1 text-sm font-semibold text-[#1C1D52]">
-        {value || "Not provided"}
-      </p>
-    </div>
-  );
-}
-
-function Input({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        {label}
-      </span>
-
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-      />
-    </label>
-  );
-}
-
-function ImageUploadInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      if (uploadEvent.target?.result) {
-        onChange(uploadEvent.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div className="block">
-      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        {label}
-      </span>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="https://... or upload image"
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-        />
-
-        <label className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52] hover:bg-slate-50">
-          <Upload className="h-4 w-4" />
-          <span>Upload File</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </label>
-      </div>
-
-      {value && (
-        <div className="mt-3">
-          <Image
-            src={value}
-            alt="Thumbnail preview"
-            width={128}
-            height={80}
-            className="h-20 w-32 rounded-lg border border-slate-200 object-cover"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Textarea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        {label}
-      </span>
-
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        rows={4}
-        className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs leading-5 text-[#1C1D52] outline-none focus:border-[#5FBB46]"
-      />
-    </label>
-  );
-}

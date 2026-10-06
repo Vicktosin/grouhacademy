@@ -64,6 +64,7 @@ const internshipItems = [
     icon: GraduationCap,
   },
   { label: "Tasks", href: "/admin/internship/tasks", icon: ClipboardCheck },
+  { label: "Resources", href: "/admin/internship/resources", icon: BookOpen },
   { label: "Mentors", href: "/admin/internship/mentors", icon: Users },
   { label: "Payments", href: "/admin/internship/payments", icon: WalletCards },
   {

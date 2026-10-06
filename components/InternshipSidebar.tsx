@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   Award,
+  BookOpen,
   CheckSquare,
   Crown,
   FileText,
@@ -30,6 +31,11 @@ const navItems = [
     label: "Group Discussion",
     href: "/internship/dashboard/discussion",
     icon: UserRound,
+  },
+  {
+    label: "Resources",
+    href: "/internship/dashboard/resources",
+    icon: BookOpen,
   },
   { label: "Task", href: "/internship/dashboard/tasks", icon: CheckSquare },
   { label: "Grades", href: "/internship/dashboard/grades", icon: Award },
