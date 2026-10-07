@@ -70,5 +70,22 @@ export async function uploadDataImage(dataUrl: string, folder: string) {
  * through unchanged.
  */
 export async function storeImage<T>(value: T, folder: string) {
-  return isDataImage(value) ? uploadDataImage(value, folder) : value;
+  if (!isDataImage(value)) return value;
+  // Without Storage credentials (e.g. SUPABASE_SERVICE_ROLE_KEY not set on
+  // the host), keep the image inline rather than failing the save.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn(
+      "Image kept inline: set SUPABASE_SERVICE_ROLE_KEY to store images in Supabase Storage.",
+    );
+    return value;
+  }
+  try {
+    return await uploadDataImage(value, folder);
+  } catch (error) {
+    // A wrong type or an oversized image is the uploader's to fix.
+    if (error instanceof Error && /^(Use a |Images must|Not a base64)/.test(error.message))
+      throw error;
+    console.error("Image upload to Storage failed; keeping it inline.", error);
+    return value;
+  }
 }

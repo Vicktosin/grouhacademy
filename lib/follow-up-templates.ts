@@ -14,6 +14,8 @@ export type FollowUpValues = {
   passMark: string;
   nextCohort: string;
   nextCohortDate: string;
+  /** How soon the cohort starts, e.g. "That's just a few hours to go!" */
+  countdown: string;
   loginLink: string;
 };
 
@@ -28,19 +30,19 @@ export const PLACEHOLDERS: Array<{ key: keyof FollowUpValues; label: string }> =
     { key: "passMark", label: "Pass mark" },
     { key: "nextCohort", label: "Next cohort" },
     { key: "nextCohortDate", label: "Next cohort start" },
+    { key: "countdown", label: "Countdown to start" },
     { key: "loginLink", label: "Login link" },
   ];
 
 export const DEFAULT_TEMPLATES: Record<FollowUpStageKey, string> = {
-  PASSED_UNPAID: `Hi {firstName}! 🎉
+  PASSED_UNPAID: `Dear {name},
 
-Congratulations on passing the {track} ({level} level) entrance assessment with {score}%.
+Congratulations on passing the {track} assessment! 🎉
 
-Your place in the internship is waiting. The acceptance fee is {fee}, and the next cohort starts {nextCohortDate}.
+We noticed you have not completed your payment to join the internship. Do you have any questions, or anything you would like us to clarify?
 
-To secure your spot, log in at {loginLink} and tap "Pay acceptance fee".
+Your cohort starts {nextCohortDate}. {countdown}
 
-Any questions? Just reply to this message.
 — Grouh Academy`,
   FAILED: `Hi {firstName},
 

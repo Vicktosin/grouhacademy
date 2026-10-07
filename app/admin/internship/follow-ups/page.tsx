@@ -979,7 +979,8 @@ function TemplateEditor({
     score: "85",
     passMark: "70",
     nextCohort: "November cohort",
-    nextCohortDate: "3 November 2026",
+    nextCohortDate: "Tuesday, 3 November 2026",
+    countdown: "That's just 2 days to go!",
     loginLink: "https://grouhacademy.space/login",
   };
 

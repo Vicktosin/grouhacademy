@@ -26,11 +26,21 @@ function publicSiteUrl() {
 
 function formatDate(date: Date) {
   return date.toLocaleDateString("en-GB", {
+    weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "Africa/Lagos",
   });
+}
+
+/** "That's just a few hours to go!", "…just 2 days to go!" and so on. */
+function countdownTo(date: Date) {
+  const hours = (date.getTime() - Date.now()) / 3_600_000;
+  if (hours < 24) return "That's just a few hours to go!";
+  const days = Math.round(hours / 24);
+  if (days === 1) return "That's just 1 day to go!";
+  return days <= 7 ? `That's just ${days} days to go!` : `That's ${days} days to go.`;
 }
 
 function formatNaira(amount: number | null) {
@@ -257,6 +267,9 @@ export async function listFollowUps(
         passMark: passMark === null ? "" : String(passMark),
         nextCohort: nextCohort?.name ?? "the next cohort",
         nextCohortDate: nextCohort ? formatDate(nextCohort.startDate) : "soon",
+        countdown: nextCohort
+          ? countdownTo(nextCohort.startDate)
+          : "Spaces are filling up fast!",
         loginLink,
       },
     });
