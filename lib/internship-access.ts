@@ -58,6 +58,8 @@ export async function hasInternshipWorkspaceAccess(
   const application = await getPrisma().internshipApplication.findFirst({
     where: {
       studentId: userId,
+      // An intern an admin removed has no workspace until restored.
+      status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
       attempts: { some: { status: "PASSED" } },
     },

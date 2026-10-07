@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   AssessmentAttemptStatus,
+  InternshipApplicationStatus,
   InternshipPaymentStatus,
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -147,13 +148,63 @@ export async function GET() {
 
   const assignedCohortIds = await Promise.all(
     applications.map((application) =>
-      assignApplicationCohort(prisma as unknown as CohortDb, {
-        id: application.id,
-        programId: application.programId,
-        levelId: application.levelId,
-        cohortId: application.cohortId,
-      }),
+      // Removed interns keep whatever cohort they had; nobody re-places them.
+      application.status === InternshipApplicationStatus.REMOVED
+        ? application.cohortId
+        : assignApplicationCohort(prisma as unknown as CohortDb, {
+            id: application.id,
+            programId: application.programId,
+            levelId: application.levelId,
+            cohortId: application.cohortId,
+          }),
     ),
+  );
+
+  // Each intern's group on their track, and the choices for moving them.
+  const [memberships, tracks, levels, cohorts, groups] = await Promise.all([
+    prisma.internshipGroupMember.findMany({
+      where: {
+        userId: { in: applications.map((application) => application.studentId) },
+      },
+      select: {
+        userId: true,
+        programId: true,
+        group: { select: { id: true, number: true } },
+      },
+    }),
+    prisma.internshipProgram.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, status: true },
+    }),
+    prisma.internshipLevel.findMany({
+      orderBy: { rank: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.internshipCohort.findMany({
+      orderBy: { startDate: "desc" },
+      select: {
+        id: true,
+        name: true,
+        programId: true,
+        levelId: true,
+        startDate: true,
+        endDate: true,
+      },
+    }),
+    prisma.internshipGroup.findMany({
+      where: { cohortId: { not: null } },
+      orderBy: { number: "asc" },
+      select: {
+        id: true,
+        number: true,
+        cohortId: true,
+        capacity: true,
+        _count: { select: { members: true } },
+      },
+    }),
+  ]);
+  const groupByTrack = new Map(
+    memberships.map((m) => [`${m.userId}:${m.programId}`, m.group]),
   );
   const assignedCohorts = await prisma.internshipCohort.findMany({
     where: {
@@ -220,6 +271,12 @@ export async function GET() {
             : null),
       ),
       status: application.status,
+      applicationId: application.id,
+      programId: application.programId,
+      levelId: application.levelId,
+      cohortId: assignedCohortByApplicationId.get(application.id) ?? null,
+      group:
+        groupByTrack.get(`${student.id}:${application.programId}`) ?? null,
       lastAssessmentStatus: latestAttempt?.status ?? "PASSED",
       examScore: latestAttempt?.scorePercent ?? null,
       enrollmentDateIso: (
@@ -228,5 +285,20 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ interns });
+  return NextResponse.json({
+    interns,
+    options: {
+      tracks,
+      levels,
+      cohorts: cohorts.map((cohort) => ({
+        ...cohort,
+        startDate: cohort.startDate.toISOString(),
+        endDate: cohort.endDate.toISOString(),
+      })),
+      groups: groups.map(({ _count, ...group }) => ({
+        ...group,
+        members: _count.members,
+      })),
+    },
+  });
 }

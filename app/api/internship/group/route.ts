@@ -40,7 +40,8 @@ export async function GET(request: Request) {
 
   try {
     const application = await prisma.internshipApplication.findFirst({
-      where: { studentId: userId },
+      // A removed intern has no group until an admin restores them.
+      where: { studentId: userId, status: { not: "REMOVED" } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -173,7 +174,8 @@ export async function POST(request: Request) {
 
   try {
     const application = await prisma.internshipApplication.findFirst({
-      where: { studentId: userId },
+      // A removed intern has no group until an admin restores them.
+      where: { studentId: userId, status: { not: "REMOVED" } },
       orderBy: { createdAt: "desc" },
     });
     if (!application) {

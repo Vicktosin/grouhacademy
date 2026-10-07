@@ -11,6 +11,10 @@ export default async function InternshipDashboardLayout({
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
   if (!(await hasInternshipWorkspaceAccess(userId))) {
+    const removed = await getPrisma().internshipApplication.count({
+      where: { studentId: userId, status: "REMOVED" },
+    });
+    if (removed) redirect("/internship/removed");
     const application = await getPrisma().internshipApplication.findFirst({
       where: { studentId: userId },
       include: {

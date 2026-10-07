@@ -57,6 +57,7 @@ export async function getInternTrackAccess(
   const applications = await getPrisma().internshipApplication.findMany({
     where: {
       studentId: userId,
+      status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
       attempts: { some: { status: "PASSED" } },
     },

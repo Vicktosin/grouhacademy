@@ -149,6 +149,9 @@ enum ThemeMode {
 enum InternshipApplicationStatus {
   ACTIVE
   ON_HOLD
+  // Taken out of the internship by an admin: no workspace access; payment,
+  // assessment and work are kept so they can be restored.
+  REMOVED
 }
 
 enum PremiumTier {
