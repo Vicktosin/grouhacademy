@@ -34,14 +34,29 @@ export async function assignApplicationCohort(
   if (currentCohort?.startDate && currentCohort.startDate > now)
     return currentCohort.id;
 
-  const cohort = await db.internshipCohort.findFirst({
-    where: {
-      programId: application.programId,
-      levelId: application.levelId,
-      startDate: { gt: now },
-    },
-    orderBy: { startDate: "asc" },
-  });
+  // Prefer the next cohort that hasn't started. If there is none, someone
+  // who pays after the start date joins the cohort that is running now
+  // (late), rather than being left without a cohort and locked out.
+  const cohort =
+    (await db.internshipCohort.findFirst({
+      where: {
+        programId: application.programId,
+        levelId: application.levelId,
+        startDate: { gt: now },
+      },
+      orderBy: { startDate: "asc" },
+    })) ??
+    (currentCohort?.endDate && currentCohort.endDate > now
+      ? currentCohort
+      : await db.internshipCohort.findFirst({
+          where: {
+            programId: application.programId,
+            levelId: application.levelId,
+            startDate: { lte: now },
+            endDate: { gt: now },
+          },
+          orderBy: { startDate: "desc" },
+        }));
 
   if (!cohort || cohort.id === application.cohortId)
     return application.cohortId;

@@ -9,7 +9,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 
 type ProgramOption = { id: string; name: string };
@@ -74,6 +74,8 @@ export default function InternshipCohortsPage() {
   const [levels, setLevels] = useState<LevelOption[]>([]);
   const [cohorts, setCohorts] = useState<CohortRecord[]>([]);
   const [form, setForm] = useState<CohortFormState>(initialForm);
+  // On phones the form sits below the cohort list, so Edit scrolls to it.
+  const formRef = useRef<HTMLElement>(null);
   const [filters, setFilters] = useState({ track: "all", month: "all" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -224,6 +226,7 @@ export default function InternshipCohortsPage() {
     });
     setError(null);
     setSuccess(null);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function handleDelete(id: string) {
@@ -470,7 +473,10 @@ export default function InternshipCohortsPage() {
             )}
           </section>
 
-          <section className="rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
+          <section
+            ref={formRef}
+            className="scroll-mt-4 rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6"
+          >
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-[#5FBB46]" />
               <h2 className="text-lg font-bold text-[#1C1D52]">
