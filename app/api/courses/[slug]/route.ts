@@ -14,6 +14,7 @@ import {
   type CourseWriteInput,
 } from "@/lib/course-data";
 import { getUserRBAC } from "@/lib/rbac";
+import { storeImage } from "@/lib/stored-images";
 
 export async function GET(
   _request: NextRequest,
@@ -81,6 +82,16 @@ export async function PATCH(
     return NextResponse.json(
       { error: "Only an admin can publish a course." },
       { status: 403 },
+    );
+  }
+
+  // A data: image thumbnail goes to Storage; only its URL is saved.
+  try {
+    body.thumbnail = await storeImage(body.thumbnail, "course-thumbnails");
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to save the thumbnail." },
+      { status: 400 },
     );
   }
 

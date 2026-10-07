@@ -94,7 +94,8 @@ export async function GET(request: Request) {
     const [members, messages, meeting] = await Promise.all([
       prisma.internshipGroupMember.findMany({
         where: { groupId: group.id },
-        include: { user: true },
+        // Only the name: the full user row includes the avatar.
+        include: { user: { select: { name: true } } },
         orderBy: { joinedAt: "asc" },
       }),
       // Newest 200 (fetched newest-first, reversed below) so a long chat opens

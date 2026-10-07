@@ -33,8 +33,11 @@ export async function GET() {
     // Auto-generate a studentId the first time this profile is loaded.
     let profile = user.profile;
     if (!profile) {
-      profile = await prisma.profile.create({
-        data: { userId, studentId: `STU-${userId.slice(0, 8).toUpperCase()}` },
+      // Upsert: two first-time requests at once must not both create it.
+      profile = await prisma.profile.upsert({
+        where: { userId },
+        create: { userId, studentId: `STU-${userId.slice(0, 8).toUpperCase()}` },
+        update: {},
       });
     } else if (!profile.studentId) {
       profile = await prisma.profile.update({

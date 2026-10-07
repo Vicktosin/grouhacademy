@@ -117,7 +117,10 @@ function MentorMessages() {
   useEffect(() => {
     const first = window.setTimeout(() => void loadConversations(), 0);
     const interval = window.setInterval(
-      () => void loadConversations(),
+      () => {
+        // Don't poll while the tab is in the background.
+        if (!document.hidden) void loadConversations();
+      },
       LIST_POLL_MS,
     );
     return () => {
@@ -137,7 +140,9 @@ function MentorMessages() {
       void loadThread(activeId, activeProgramId, true);
     }, 0);
     const interval = window.setInterval(
-      () => void loadThread(activeId, activeProgramId, false),
+      () => {
+        if (!document.hidden) void loadThread(activeId, activeProgramId, false);
+      },
       THREAD_POLL_MS,
     );
     return () => {
