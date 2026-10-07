@@ -116,7 +116,10 @@ export default function DiscussionPage() {
   useEffect(() => {
     loadGroup(true);
     const interval = window.setInterval(
-      () => loadGroup(false),
+      () => {
+        // Don't poll while the tab is in the background.
+        if (!document.hidden) loadGroup(false);
+      },
       POLL_INTERVAL_MS,
     );
     return () => window.clearInterval(interval);

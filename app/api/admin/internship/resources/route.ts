@@ -10,6 +10,7 @@ import {
   uniqueResourceSlug,
   unknownTrackIds,
 } from "@/lib/intern-resources";
+import { storeImage } from "@/lib/stored-images";
 
 /** Every resource across all tracks, for the admin Resources table. */
 export async function GET() {
@@ -73,6 +74,16 @@ export async function POST(request: Request) {
       { error: "The selected level no longer exists." },
       { status: 400 },
     );
+
+  // A data: image thumbnail goes to Storage; only its URL is saved.
+  try {
+    input.thumbnail = await storeImage(input.thumbnail, "resource-thumbnails");
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to save the thumbnail." },
+      { status: 400 },
+    );
+  }
 
   const resource = await prisma.internResource.create({
     data: {

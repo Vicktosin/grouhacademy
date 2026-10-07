@@ -68,7 +68,10 @@ export default function MentorChatPage() {
   useEffect(() => {
     loadMessages(true);
     const interval = window.setInterval(
-      () => loadMessages(false),
+      () => {
+        // Don't poll while the tab is in the background.
+        if (!document.hidden) loadMessages(false);
+      },
       POLL_INTERVAL_MS,
     );
     return () => window.clearInterval(interval);

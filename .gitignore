@@ -44,3 +44,6 @@ next-env.d.ts
 AGENTS.md
 CLAUDE.md
 /generated/prisma
+
+# Local backups from scripts/move-images-to-storage.ts
+image-backup-*.json

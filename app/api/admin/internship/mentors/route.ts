@@ -7,6 +7,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { storeImage } from "@/lib/stored-images";
 
 function toDisplayStatus(internCount: number) {
   if (internCount >= 6) return "At capacity";
@@ -163,16 +164,26 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
   }
 
+  let avatarUrl = mentor.avatarUrl;
+  if (typeof body?.avatarUrl === "string" && body.avatarUrl.trim()) {
+    try {
+      // A data: image goes to Storage; only its URL is saved.
+      avatarUrl = await storeImage(body.avatarUrl.trim(), `avatars/${mentorId}`);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Unable to save the photo." },
+        { status: 400 },
+      );
+    }
+  }
+
   await prisma.$transaction([
     prisma.user.update({
       where: { id: mentorId },
       data: {
         name,
         email,
-        avatarUrl:
-          typeof body?.avatarUrl === "string" && body.avatarUrl.trim()
-            ? body.avatarUrl.trim()
-            : mentor.avatarUrl,
+        avatarUrl,
       },
     }),
     prisma.profile.upsert({

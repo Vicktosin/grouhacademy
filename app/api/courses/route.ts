@@ -13,6 +13,7 @@ import {
   type CourseWriteInput,
 } from "@/lib/course-data";
 import { getUserRBAC } from "@/lib/rbac";
+import { storeImage } from "@/lib/stored-images";
 
 export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.get("manage") === "1") {
@@ -106,13 +107,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // A data: image thumbnail goes to Storage; only its URL is saved.
+  let thumbnail: string | null;
+  try {
+    thumbnail = (await storeImage(body.thumbnail, "course-thumbnails")) ?? null;
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to save the thumbnail." },
+      { status: 400 },
+    );
+  }
+
   const course = await prisma.course.create({
     data: {
       title: body.title.trim(),
       slug: `${courseSlug(body.title)}-${Date.now()}`,
       description: body.description ?? null,
       price: parseCoursePrice(body.price),
-      thumbnail: body.thumbnail ?? null,
+      thumbnail,
 
       status: requestedStatus,
 

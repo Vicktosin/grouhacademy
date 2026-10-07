@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { InternshipApplicationStatus } from "@/generated/prisma/client";
+import { storeImage } from "@/lib/stored-images";
 
 function parseDurationWeeks(duration: string): number {
   const match = duration.match(/\d+/);
@@ -168,7 +169,11 @@ export async function PATCH(request: Request) {
       userUpdateData.name = name.trim();
     }
     if (typeof avatarUrl === "string" && avatarUrl.trim()) {
-      userUpdateData.avatarUrl = avatarUrl.trim();
+      // A data: image goes to Storage; only its URL is saved.
+      userUpdateData.avatarUrl = await storeImage(
+        avatarUrl.trim(),
+        `avatars/${userId}`,
+      );
     }
 
     // Only touch Profile when a profile field was actually sent. The
