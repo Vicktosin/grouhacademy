@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   try {
     const application = await prisma.internshipApplication.findFirst({
-      where: { studentId: userId },
+      where: { studentId: userId, status: { not: "REMOVED" } },
       orderBy: { createdAt: "desc" },
     });
     if (!application) {

@@ -267,6 +267,13 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
+    // Only an admin can undo a removal.
+    if (application.status === InternshipApplicationStatus.REMOVED) {
+      return NextResponse.json(
+        { error: "Your internship access has been removed." },
+        { status: 403 },
+      );
+    }
 
     await prisma.internshipApplication.update({
       where: { id: application.id },

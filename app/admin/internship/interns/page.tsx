@@ -6,12 +6,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Settings2,
   ShieldCheck,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import ManageInternDialog, {
+  type InternOptions,
+  type ManagedIntern,
+} from "@/components/ManageInternDialog";
 
 type InternRow = {
   id: string;
@@ -26,7 +31,7 @@ type InternRow = {
   cohort: string;
   status: string;
   examScore: number | null;
-};
+} & ManagedIntern;
 
 const pageSize = 8;
 
@@ -36,43 +41,64 @@ export default function InternshipInternsPage() {
   const [track, setTrack] = useState("All");
   const [cohort, setCohort] = useState("All");
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("Active");
   const [error, setError] = useState<string | null>(null);
+  const [options, setOptions] = useState<InternOptions | null>(null);
+  const [managing, setManaging] = useState<InternRow | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(
+    () =>
+      fetch("/api/admin/internship/interns", { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok)
+            throw new Error(
+              `Intern data request failed (${response.status}).`,
+            );
+          const payload = (await response.json()) as {
+            interns?: InternRow[];
+            options?: InternOptions;
+          };
+          setInterns(payload.interns ?? []);
+          setOptions(payload.options ?? null);
+        })
+        .catch((reason) => {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Intern data is unavailable.",
+          );
+        }),
+    [],
+  );
 
   useEffect(() => {
-    fetch("/api/admin/internship/interns", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error(`Intern data request failed (${response.status}).`);
-        const payload = (await response.json()) as { interns?: InternRow[] };
-        setInterns(payload.interns ?? []);
-      })
-      .catch((reason) => {
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Intern data is unavailable.",
-        );
-      });
-  }, []);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     setPage(1);
-  }, [query, track, cohort]);
+  }, [query, track, cohort, statusFilter]);
 
   const filteredInterns = useMemo(() => {
     const searchQuery = query.trim().toLowerCase();
     return interns.filter((intern) => {
       const matchesTrack = track === "All" || intern.track === track;
       const matchesCohort = cohort === "All" || intern.cohort === cohort;
+      const isRemoved = intern.status === "REMOVED";
+      const matchesStatus =
+        statusFilter === "All" ||
+        (statusFilter === "Removed" ? isRemoved : !isRemoved);
       const searchValue =
         `${intern.name} ${intern.email} ${intern.track} ${intern.cohort} ${intern.status}`.toLowerCase();
       return (
         matchesTrack &&
         matchesCohort &&
+        matchesStatus &&
         (!searchQuery || searchValue.includes(searchQuery))
       );
     });
-  }, [cohort, interns, query, track]);
+  }, [cohort, interns, query, statusFilter, track]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInterns.length / pageSize));
   const visibleInterns = filteredInterns.slice(
@@ -81,20 +107,21 @@ export default function InternshipInternsPage() {
   );
 
   const summary = useMemo(() => {
-    const avgProgress = interns.length
+    // Removed interns don't count towards the totals.
+    const counted = interns.filter((intern) => intern.status !== "REMOVED");
+    const avgProgress = counted.length
       ? Math.round(
-          interns.reduce((sum, intern) => sum + intern.progress, 0) /
-            interns.length,
+          counted.reduce((sum, intern) => sum + intern.progress, 0) / counted.length,
         )
       : 0;
-    const passedExamCount = interns.filter(
+    const passedExamCount = counted.filter(
       (intern) => (intern.examScore ?? 0) >= 70,
     ).length;
     return {
-      total: interns.length,
+      total: counted.length,
       avgProgress,
-      passRate: interns.length
-        ? Math.round((passedExamCount / interns.length) * 100)
+      passRate: counted.length
+        ? Math.round((passedExamCount / counted.length) * 100)
         : 0,
     };
   }, [interns]);
@@ -158,6 +185,23 @@ export default function InternshipInternsPage() {
           </p>
         )}
 
+        {notice && (
+          <p
+            className="flex items-start justify-between gap-3 rounded-xl bg-[#e8f7eb] px-4 py-3 text-xs font-semibold text-[#397d3a]"
+            role="status"
+          >
+            {notice}
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="text-[#397d3a]/70"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </p>
+        )}
+
         {interns.length > 0 && (
           <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
             <div className="flex flex-col gap-3 pb-4 xl:flex-row xl:items-center xl:justify-between">
@@ -180,6 +224,12 @@ export default function InternshipInternsPage() {
                     "All",
                     ...new Set(interns.map((intern) => intern.track)),
                   ]}
+                />
+                <FilterSelect
+                  label="Status"
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={["Active", "Removed", "All"]}
                 />
                 <FilterSelect
                   label="Cohort"
@@ -212,15 +262,25 @@ export default function InternshipInternsPage() {
                 <tbody>
                   {visibleInterns.map((intern) => (
                     <tr
-                      key={intern.id}
-                      className="border-b border-slate-100 text-[#1C1D52] align-top"
+                      key={intern.applicationId}
+                      className={`border-b border-slate-100 text-[#1C1D52] align-top ${intern.status === "REMOVED" ? "bg-slate-50 opacity-70" : ""}`}
                     >
                       <td className="px-3 py-3.5">
                         <div>
                           <p className="font-bold">{intern.name}</p>
-                          <p className="mt-1 text-[9px] text-slate-500">
-                            {intern.id}
-                          </p>
+                          {intern.status === "REMOVED" && (
+                            <span className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-bold text-red-600">
+                              Removed
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setManaging(intern)}
+                            disabled={!options}
+                            className="mt-2 flex items-center gap-1 rounded-lg bg-[#1C1D52] px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-50"
+                          >
+                            <Settings2 className="h-3 w-3" /> Manage
+                          </button>
                         </div>
                       </td>
                       <td className="px-3 py-3.5 text-slate-600">
@@ -239,6 +299,11 @@ export default function InternshipInternsPage() {
                       </td>
                       <td className="px-3 py-3.5 text-slate-600">
                         {intern.cohort}
+                        {intern.group && (
+                          <span className="mt-1 block text-[9px] text-slate-400">
+                            Group {intern.group.number}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <div className="flex items-center gap-2">
@@ -321,6 +386,19 @@ export default function InternshipInternsPage() {
           </section>
         )}
       </div>
+      {managing && options && (
+        <ManageInternDialog
+          key={managing.applicationId}
+          intern={managing}
+          options={options}
+          onClose={() => setManaging(null)}
+          onSaved={(message) => {
+            setManaging(null);
+            setNotice(`${managing.name}: ${message}`);
+            void load();
+          }}
+        />
+      )}
     </AdminShell>
   );
 }
