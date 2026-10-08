@@ -1,5 +1,8 @@
 import { after } from "next/server";
 import { isAiEnabled } from "@/lib/ai";
+import { isLabMediaEnabled } from "@/lib/lab-media";
+import { mediaSrc } from "@/lib/lab-media-shared";
+import { getSiteUrl } from "@/lib/site-url";
 import { Prisma, type LabScenario } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getInternTrackAccess } from "@/lib/intern-resources";
@@ -26,6 +29,9 @@ import {
 } from "@/lib/lab-shared";
 import {
   BLANK_CAMPAIGN,
+  DESTINATIONS,
+  FORMATS as AD_FORMATS,
+  keepOwnMedia,
   campaignProblems,
   formatGoalValue,
   LOCATIONS,
@@ -372,7 +378,13 @@ export async function getLabForIntern(
       campaign: attempt
         ? parseCampaign(attempt.files)
         : { ...BLANK_CAMPAIGN, name: `${config.business.name} campaign` },
-      runs: storedRuns<AdsRun>(attempt?.runs),
+      // Older runs had one ad on the campaign itself.
+      runs: storedRuns<AdsRun>(attempt?.runs).map((run) => ({
+        ...run,
+        campaign: parseCampaign(run.campaign),
+      })),
+      /** Whether interns can upload ad images (file storage is set up). */
+      mediaEnabled: isLabMediaEnabled(),
     };
   }
 
@@ -451,7 +463,7 @@ export async function saveLabDraft(
         ? parseWorkflow(files)
         : scenario.kind === "BACKEND"
           ? parseBackendFiles(files, parseBackendFiles(scenario.starterFiles))
-          : parseCampaign(files);
+          : keepOwnMedia(parseCampaign(files), userId);
   await getPrisma().labAttempt.upsert({
     where: { userId_scenarioId: { userId, scenarioId } },
     create: { userId, scenarioId, files: work },
@@ -474,7 +486,8 @@ export async function runAdsCampaign(
   if (!scenario || scenario.kind !== "ADS")
     return { error: "Exercise not found.", status: 404 };
   const config = parseAdsConfig(scenario.config);
-  const campaign = parseCampaign(input);
+  // Interns can only use images they uploaded themselves.
+  const campaign = keepOwnMedia(parseCampaign(input), userId);
   const problems = campaignProblems(campaign, config);
   if (problems.length) return { error: problems.join(" "), status: 400 };
 
@@ -719,12 +732,27 @@ ${result.goals.map((g) => `${g.met ? "✓" : "✗"} ${g.label}: ${formatGoalValu
 
 Results: spend ${naira(t.spend)} of ${naira(t.plannedBudget)} · reach ${t.reach.toLocaleString("en-NG")} · CTR ${t.ctr}% · CPC ${naira(t.cpc)} · conversions ${t.conversions} · cost/conversion ${naira(t.costPerConversion)} · ROAS ${t.roas}×
 
-Campaign: ${campaign.name} · ${OBJECTIVES[campaign.objective].label} · ${naira(campaign.dailyBudget)}/day × ${campaign.days} days
+Campaign: ${campaign.name} · ${OBJECTIVES[campaign.objective].label} · sends people to ${DESTINATIONS[campaign.destination].label} · ${naira(campaign.dailyBudget)}/day × ${campaign.days} days
 Audience: ${LOCATIONS.filter((l) => campaign.locations.includes(l.id)).map((l) => l.name).join(", ")} · age ${campaign.ageMin}-${campaign.ageMax} · ${campaign.gender.toLowerCase()} · interests: ${campaign.interests.join(", ") || "broad"}
-Headline: ${campaign.headline}
-Text: ${campaign.primaryText}
-Button: ${campaign.cta}
-Visual: ${campaign.visual}`);
+
+${campaign.creatives.map((ad) => describeAdForMentor(ad, result)).join("\n\n")}`);
+}
+
+/** One ad for the task submission, with links to its images for the mentor. */
+function describeAdForMentor(ad: AdsRun["campaign"]["creatives"][number], result: AdsRun["result"]) {
+  const link = (ref: string) => (ref ? `${getSiteUrl()}${mediaSrc(ref)}` : "(no image)");
+  const stats = result.creatives?.find((c) => c.id === ad.id);
+  const lines = [
+    `${ad.name} · ${AD_FORMATS[ad.format]}${stats ? ` · ${Math.round(stats.share * 100)}% of budget · CTR ${stats.ctr}% · ${stats.conversions} conversions` : ""}`,
+    `Text: ${ad.primaryText}`,
+  ];
+  if (ad.format === "CAROUSEL")
+    ad.cards.forEach((card, i) => lines.push(`Card ${i + 1}: ${card.headline} · image: ${link(card.image)}`));
+  else lines.push(`Headline: ${ad.headline}`, `${ad.format === "VIDEO" ? "Cover image" : "Image"}: ${link(ad.image)}`);
+  if (ad.visual) lines.push(`Visual: ${ad.visual}`);
+  if (ad.format === "VIDEO") lines.push(`Video (${ad.seconds}s) script: ${ad.script}`);
+  lines.push(`Button: ${ad.cta}`);
+  return lines.join("\n");
 }
 
 /** Task submission text for a social week: results, goals, posts, replies. */

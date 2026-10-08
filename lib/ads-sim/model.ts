@@ -6,6 +6,13 @@
 // that matter on real ad platforms (objective, audience size and fit,
 // placements, bidding, budget, creative quality, ad fatigue, the learning
 // phase) with plausible Nigerian-market prices.
+//
+// A campaign can have several ads (up to 5), like an ad set: the platform
+// spends some budget testing each, then favours the strongest, and more
+// ads also slow down ad fatigue. Too many ads on a small budget waste money
+// on testing. Results are broken down per ad.
+
+import { isMediaRef, mediaOwner } from "@/lib/lab-media-shared";
 
 export type Objective = "AWARENESS" | "TRAFFIC" | "LEADS" | "SALES";
 export type Placement = "FEED" | "STORIES" | "REELS" | "PARTNER_APPS";
@@ -192,6 +199,64 @@ export type Audience = {
 };
 
 /** What the intern builds. */
+/** Where the ad sends people. */
+export type Destination = "WEBSITE" | "WHATSAPP" | "INSTAGRAM_DM" | "CALL";
+
+export const DESTINATIONS: Record<
+  Destination,
+  { label: string; help: string; ctr: number; cvr: Record<"SALES" | "LEADS", number> }
+> = {
+  WEBSITE: {
+    label: "Website",
+    help: "A product page or form on the business's site.",
+    ctr: 1,
+    cvr: { SALES: 1, LEADS: 0.9 },
+  },
+  WHATSAPP: {
+    label: "WhatsApp chat",
+    help: "Opens a chat with the business; many Nigerian customers prefer to ask and order this way.",
+    ctr: 1,
+    cvr: { SALES: 1.05, LEADS: 1.15 },
+  },
+  INSTAGRAM_DM: {
+    label: "Instagram message",
+    help: "Opens a direct message to the business's Instagram.",
+    ctr: 1,
+    cvr: { SALES: 0.95, LEADS: 1 },
+  },
+  CALL: {
+    label: "Phone call",
+    help: "Calls the business. Fewer people tap, but callers are ready.",
+    ctr: 0.85,
+    cvr: { SALES: 0.85, LEADS: 1.05 },
+  },
+};
+
+/** One ad in the campaign; the platform tests them and favours the best. */
+export type Creative = {
+  id: string;
+  /** "Ad A", "Ad B"… or the intern's own name for it. */
+  name: string;
+  format: AdFormat;
+  /** Image ad: the image. Video ad: the cover (first frame). "" = none. */
+  image: string;
+  /** Carousel: 2–5 cards, each an image (or "") and a headline. */
+  cards: Array<{ image: string; headline: string }>;
+  primaryText: string;
+  headline: string;
+  description: string;
+  cta: string;
+  /** What the image or video shows (also its alt text without an upload). */
+  visual: string;
+  /** Video: the script or storyboard, scene by scene. */
+  script: string;
+  /** Video length in seconds. */
+  seconds: number;
+};
+
+export const MAX_CREATIVES = 5;
+export const MAX_CARDS = 5;
+
 export type Campaign = Audience & {
   name: string;
   objective: Objective;
@@ -201,12 +266,8 @@ export type Campaign = Audience & {
   bidding: Bidding;
   /** ₦ cap for COST_CAP (per result) or BID_CAP (per 1,000 views). */
   bidAmount: number | null;
-  format: AdFormat;
-  headline: string;
-  primaryText: string;
-  description: string;
-  cta: string;
-  visual: string;
+  destination: Destination;
+  creatives: Creative[];
 };
 
 export type GoalTarget = { metric: GoalMetric; value: number };
@@ -266,13 +327,47 @@ export const BLANK_CAMPAIGN: Campaign = {
   placements: ["FEED", "STORIES", "REELS", "PARTNER_APPS"],
   bidding: "LOWEST_COST",
   bidAmount: null,
-  format: "IMAGE",
-  headline: "",
-  primaryText: "",
-  description: "",
-  cta: "Learn more",
-  visual: "",
+  destination: "WEBSITE",
+  creatives: [blankCreative(0)],
 };
+
+/** A new empty ad; `index` names it Ad A, Ad B… */
+export function blankCreative(index: number, format: AdFormat = "IMAGE"): Creative {
+  return {
+    id: `ad${index + 1}-${Math.random().toString(36).slice(2, 7)}`,
+    name: `Ad ${String.fromCharCode(65 + index)}`,
+    format,
+    image: "",
+    cards: format === "CAROUSEL" ? [{ image: "", headline: "" }, { image: "", headline: "" }] : [],
+    primaryText: "",
+    headline: "",
+    description: "",
+    cta: "Learn more",
+    visual: "",
+    script: "",
+    seconds: 15,
+  };
+}
+
+/** Every image a campaign uses. */
+export function campaignMedia(campaign: Campaign) {
+  return campaign.creatives.flatMap((creative) =>
+    [creative.image, ...creative.cards.map((card) => card.image)].filter(Boolean),
+  );
+}
+
+/** The campaign with images that aren't `userId`'s removed (they can't use others'). */
+export function keepOwnMedia(campaign: Campaign, userId: string): Campaign {
+  const own = (ref: string) => (ref && mediaOwner(ref) === userId ? ref : "");
+  return {
+    ...campaign,
+    creatives: campaign.creatives.map((creative) => ({
+      ...creative,
+      image: own(creative.image),
+      cards: creative.cards.map((card) => ({ ...card, image: own(card.image) })),
+    })),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -309,9 +404,46 @@ function parseAudience(raw: Record<string, unknown>, fallback: Audience): Audien
   };
 }
 
+const imageRef = (value: unknown) => (isMediaRef(value) ? value : "");
+
+function parseCreative(value: unknown, index: number): Creative {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const format = oneOf(raw.format, Object.keys(FORMATS) as AdFormat[], "IMAGE");
+  const cards = Array.isArray(raw.cards)
+    ? raw.cards.slice(0, MAX_CARDS).map((card) => {
+        const c = card && typeof card === "object" ? (card as Record<string, unknown>) : {};
+        return { image: imageRef(c.image), headline: text(c.headline, 60) };
+      })
+    : [];
+  const blank = blankCreative(index, format);
+  return {
+    id: (typeof raw.id === "string" && /^[\w-]{1,40}$/.test(raw.id) ? raw.id : null) ?? blank.id,
+    name: text(raw.name, 40) || blank.name,
+    format,
+    image: format === "CAROUSEL" ? "" : imageRef(raw.image),
+    cards: format === "CAROUSEL" ? (cards.length ? cards : blank.cards) : [],
+    primaryText: text(raw.primaryText, 600),
+    headline: text(raw.headline, 80),
+    description: text(raw.description, 120),
+    cta: oneOf(raw.cta, CALLS_TO_ACTION, "Learn more"),
+    visual: text(raw.visual, 400),
+    script: format === "VIDEO" ? text(raw.script, 1200) : "",
+    seconds: clampInt(raw.seconds, 5, 120, 15),
+  };
+}
+
 /** A campaign from untrusted input, with safe defaults. */
 export function parseCampaign(value: unknown): Campaign {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  // Campaigns saved before multiple ads had one ad's fields on the campaign.
+  const creatives = Array.isArray(raw.creatives)
+    ? raw.creatives.slice(0, MAX_CREATIVES).map(parseCreative)
+    : [parseCreative({ ...raw, id: "ad1", name: "Ad A" }, 0)];
+  const ids = new Set<string>();
+  for (const creative of creatives) {
+    if (ids.has(creative.id)) creative.id = `${creative.id}-${ids.size}`;
+    ids.add(creative.id);
+  }
   const placements = Array.isArray(raw.placements)
     ? [
         ...new Set(
@@ -332,12 +464,8 @@ export function parseCampaign(value: unknown): Campaign {
     bidding,
     bidAmount:
       bidding === "LOWEST_COST" ? null : clampInt(raw.bidAmount, 1, 10_000_000, 1000),
-    format: oneOf(raw.format, Object.keys(FORMATS) as AdFormat[], "IMAGE"),
-    headline: text(raw.headline, 80),
-    primaryText: text(raw.primaryText, 600),
-    description: text(raw.description, 120),
-    cta: oneOf(raw.cta, CALLS_TO_ACTION, "Learn more"),
-    visual: text(raw.visual, 400),
+    destination: oneOf(raw.destination, Object.keys(DESTINATIONS) as Destination[], "WEBSITE"),
+    creatives: creatives.length ? creatives : [blankCreative(0)],
   };
 }
 
@@ -354,8 +482,19 @@ export function campaignProblems(
       `Your total budget (₦${total.toLocaleString("en-NG")}) is over this exercise's limit of ₦${config.maxTotalBudget.toLocaleString("en-NG")}.`,
     );
   if (!campaign.locations.length) problems.push("Choose at least one location.");
-  if (!campaign.headline) problems.push("Write a headline.");
-  if (!campaign.primaryText) problems.push("Write the ad's primary text.");
+  for (const ad of campaign.creatives) {
+    if (!ad.primaryText) problems.push(`${ad.name}: write the primary text.`);
+    if (ad.format === "CAROUSEL") {
+      if (ad.cards.length < 2) problems.push(`${ad.name}: a carousel needs at least 2 cards.`);
+      if (ad.cards.some((card) => !card.headline)) problems.push(`${ad.name}: give every card a headline.`);
+    } else {
+      if (!ad.headline) problems.push(`${ad.name}: write a headline.`);
+      if (!ad.image && ad.visual.length < 10)
+        problems.push(`${ad.name}: add ${ad.format === "VIDEO" ? "a cover image" : "an image"} or describe it.`);
+    }
+    if (ad.format === "VIDEO" && ad.script.length < 20)
+      problems.push(`${ad.name}: write the video's script (what happens, scene by scene).`);
+  }
   return problems;
 }
 
@@ -424,9 +563,35 @@ export type PublicAdsConfig = ReturnType<typeof publicAdsConfig>;
 /** How well the plan fits, 0–1, from the AI judge (or the rules fallback). */
 export type Ratings = {
   audienceFit: number;
+  /** The ads' quality overall (the average of `creatives`). */
   creative: number;
   objectiveFit: number;
   source: "ai" | "rules";
+  /** Each ad's quality, 0–1 (missing on runs from before multiple ads). */
+  creatives?: Array<{ id: string; quality: number }>;
+};
+
+/** How one ad did within the campaign. */
+export type CreativeResult = {
+  id: string;
+  name: string;
+  format: AdFormat;
+  /** Share of the budget the platform gave it, 0–1. */
+  share: number;
+  quality: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  costPerConversion: number;
+};
+
+/** How well each format suits each placement (a CTR multiplier). */
+const FORMAT_FIT: Record<AdFormat, Record<Placement, number>> = {
+  IMAGE: { FEED: 1, STORIES: 0.9, REELS: 0.8, PARTNER_APPS: 1 },
+  VIDEO: { FEED: 1.05, STORIES: 1.12, REELS: 1.2, PARTNER_APPS: 0.9 },
+  CAROUSEL: { FEED: 1.1, STORIES: 0.85, REELS: 0.75, PARTNER_APPS: 0.95 },
 };
 
 export type RunTotals = {
@@ -462,6 +627,8 @@ export type RunResult = {
   /** 0–100: how close the run came to every goal. */
   score: number;
   notes: string[];
+  /** Per ad (missing on runs from before multiple ads). */
+  creatives?: CreativeResult[];
 };
 
 /** Deterministic random numbers (mulberry32) from a text seed. */
@@ -559,7 +726,41 @@ export function simulateCampaign(input: {
   if (narrow > 1.2)
     notes.push("Your audience is small, so views cost more and the same people see the ad repeatedly.");
 
-  const creativeMult = 0.45 + 1.1 * ratings.creative;
+  // The ads: each one's strength is its quality and how well its format
+  // suits the placements. The platform spends part of the budget testing
+  // every ad, then gives the rest mostly to the strongest.
+  const ads = campaign.creatives;
+  const strength = ads.map((ad) => {
+    const quality = ratings.creatives?.find((r) => r.id === ad.id)?.quality ?? ratings.creative;
+    const fit =
+      campaign.placements.reduce((sum, key) => sum + FORMAT_FIT[ad.format][key], 0) /
+      campaign.placements.length;
+    return { quality, value: Math.max(0.02, Math.min(1, quality * fit)) };
+  });
+  const perAdDaily = campaign.dailyBudget / ads.length;
+  const tooThin = ads.length > 1 && perAdDaily < 1500;
+  const explore = ads.length === 1 ? 0 : Math.min(0.6, 0.1 * ads.length * (tooThin ? 1.6 : 1));
+  const weight = strength.map((s) => s.value ** 3);
+  const weightSum = weight.reduce((a, b) => a + b, 0) || 1;
+  const shares = weight.map((w) => explore / ads.length + (1 - explore) * (w / weightSum));
+  const creativeQuality = shares.reduce((sum, share, i) => sum + share * strength[i].value, 0);
+  const creativeMult = (0.45 + 1.1 * creativeQuality) * (tooThin ? 0.92 : 1);
+  if (tooThin)
+    notes.push(
+      `Each of your ${ads.length} ads got about ₦${Math.round(perAdDaily).toLocaleString("en-NG")} a day: too little for the platform to learn which works. Use fewer ads or a bigger budget.`,
+    );
+  else if (ads.length > 1) {
+    const best = shares.indexOf(Math.max(...shares));
+    if (Math.max(...shares) - Math.min(...shares) < 0.05)
+      notes.push(
+        `Your ${ads.length} ads performed about the same, so the budget was split evenly. Make them more different (another image, angle or offer) to learn what works.`,
+      );
+    else
+      notes.push(
+        `The platform tested your ${ads.length} ads and gave ${ads[best].name} ${Math.round(shares[best] * 100)}% of the budget because it performed best.`,
+      );
+  }
+  const destination = DESTINATIONS[campaign.destination];
   const audienceMult = 0.4 + 1.2 * ratings.audienceFit;
   const objectiveMult = Math.max(
     0.2,
@@ -586,8 +787,10 @@ export function simulateCampaign(input: {
     Math.min(size, Math.round(size * (1 - Math.exp(-views / size))));
   let reach = reachFor(impressions);
   let frequency = reach ? impressions / reach : 0;
-  const fatigue = frequency > 3 ? 1 / (1 + 0.12 * (frequency - 3)) : 1;
-  if (frequency > 4) notes.push(`People saw the ad ${frequency.toFixed(1)} times on average, so it wore out and clicks dropped.`);
+  // Rotating several ads keeps them fresh for longer.
+  const fatigueStart = 3 + 0.6 * Math.min(3, ads.length - 1);
+  const fatigue = frequency > fatigueStart ? 1 / (1 + 0.12 * (frequency - fatigueStart)) : 1;
+  if (frequency > fatigueStart + 1) notes.push(`People saw the ad ${frequency.toFixed(1)} times on average, so it wore out and clicks dropped.`);
 
   const ctr =
     (config.benchmarks.ctr / 100) *
@@ -595,10 +798,16 @@ export function simulateCampaign(input: {
     (0.6 + 0.4 * audienceMult) *
     placementCtr *
     OBJECTIVE_CTR[campaign.objective] *
+    destination.ctr *
     fatigue *
     noise(0.1);
   let clicks = impressions * ctr;
-  const cvr = (config.benchmarks.cvr / 100) * audienceMult * objectiveMult * noise(0.12);
+  const cvr =
+    (config.benchmarks.cvr / 100) *
+    audienceMult *
+    objectiveMult *
+    destination.cvr[config.conversionEvent] *
+    noise(0.12);
   let conversions = clicks * 0.8 * cvr;
   let spend = (impressions / 1000) * cpm;
 
@@ -649,11 +858,34 @@ export function simulateCampaign(input: {
     roas: spend ? Math.round((revenue / spend) * 100) / 100 : 0,
   };
 
+  // Per ad: its share of the spend, and clicks by how strong it is.
+  const pull = shares.map((share, i) => share * (0.45 + 1.1 * strength[i].value));
+  const pullSum = pull.reduce((a, b) => a + b, 0) || 1;
+  const creatives: CreativeResult[] = ads.map((ad, i) => {
+    const adImpressions = totals.impressions * shares[i];
+    const adClicks = totals.clicks * (pull[i] / pullSum);
+    const adConversions = Math.round(totals.conversions * (pull[i] / pullSum) * 10) / 10;
+    const adSpend = Math.round(totals.spend * shares[i]);
+    return {
+      id: ad.id,
+      name: ad.name,
+      format: ad.format,
+      share: Math.round(shares[i] * 1000) / 1000,
+      quality: Math.round(strength[i].quality * 100) / 100,
+      spend: adSpend,
+      impressions: Math.round(adImpressions),
+      clicks: Math.round(adClicks),
+      ctr: Math.round((adClicks / Math.max(1, adImpressions)) * 10000) / 100,
+      conversions: adConversions,
+      costPerConversion: adConversions >= 1 ? Math.round(adSpend / adConversions) : 0,
+    };
+  });
+
   const goals = config.goals.map((goal) => evaluateGoal(goal, totals));
   const score = goals.length
     ? Math.round((goals.reduce((sum, goal) => sum + goalCredit(goal), 0) / goals.length) * 100)
     : 0;
-  return { totals, daily, ratings, goals, score, notes };
+  return { totals, daily, ratings, goals, score, notes, creatives };
 }
 
 function metricValue(metric: GoalMetric, totals: RunTotals) {

@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { listLevels } from "@/lib/internship-levels";
 import { parseScenarioInput } from "@/lib/lab-admin";
 import { isLabReviewEnabled } from "@/lib/practice-lab";
+import { isLabMediaEnabled } from "@/lib/lab-media";
 import { isCodeKind, LAB_KIND_LABEL, normalizeChecks } from "@/lib/lab-shared";
 import { parseAdsConfig } from "@/lib/ads-sim/model";
 import { parseSocialConfig } from "@/lib/social-sim/model";
@@ -33,6 +34,7 @@ export async function GET() {
   ]);
   return NextResponse.json({
     reviewEnabled: isLabReviewEnabled(),
+    mediaEnabled: isLabMediaEnabled(),
     tracks,
     levels: levels.map(({ id, name }) => ({ id, name })),
     scenarios: scenarios.map((scenario) => ({

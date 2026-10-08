@@ -18,6 +18,7 @@ import AutomationConfigEditor from "@/components/AutomationConfigEditor";
 import BackendConfigEditor from "@/components/BackendConfigEditor";
 import { TestResultsList } from "@/components/BackendSimulator";
 import { RunResult } from "@/components/AutomationSimulator";
+import { AdBreakdown } from "@/components/AdsSimulator";
 import WorkflowBuilder from "@/components/WorkflowBuilder";
 import type { AutomationRun, BackendRun, SocialRun } from "@/lib/practice-lab";
 import {
@@ -43,10 +44,13 @@ import {
 import type { SimRun } from "@/components/AdsSimulator";
 import {
   DEFAULT_ADS_CONFIG,
+  DESTINATIONS,
   formatGoalValue,
   OBJECTIVES,
+  parseCampaign,
   type AdsConfig,
 } from "@/lib/ads-sim/model";
+import { mediaSrc } from "@/lib/lab-media-shared";
 import {
   DEFAULT_STARTER,
   EXAMPLE_CHECKS,
@@ -93,6 +97,7 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(id ? null : blank());
   const [tracks, setTracks] = useState<Option[]>([]);
+  const [mediaEnabled, setMediaEnabled] = useState(false);
   const [levels, setLevels] = useState<Option[]>([]);
   const [tab, setTab] = useState<"starter" | "solution">("starter");
   const [saving, setSaving] = useState(false);
@@ -106,6 +111,7 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
       .then((response) => response.json())
       .then((body) => {
         setTracks(body.tracks ?? []);
+        setMediaEnabled(body.mediaEnabled === true);
         setLevels(body.levels ?? []);
         setDraft((current) =>
           current && !id
@@ -371,6 +377,7 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
         <AdsConfigEditor
           config={(draft.config as AdsConfig | undefined) ?? DEFAULT_ADS_CONFIG}
           onChange={(config) => change({ config })}
+          mediaEnabled={mediaEnabled}
         />
       ) : draft.kind === "AUTOMATION" ? (
         <AutomationConfigEditor
@@ -718,7 +725,11 @@ function Attempts({
                               kind === "SOCIAL" ? (
                                 <SocialRunSummary key={run.at} run={run as SocialRun} index={index} />
                               ) : (
-                                <AdsRunSummary key={run.at} run={run as SimRun} index={index} />
+                                <AdsRunSummary
+                                  key={run.at}
+                                  run={{ ...(run as SimRun), campaign: parseCampaign((run as SimRun).campaign) }}
+                                  index={index}
+                                />
                               ),
                             )
                           ) : (
@@ -890,8 +901,39 @@ function AdsRunSummary({ run, index }: { run: SimRun; index: number }) {
         {Math.round(result.ratings.creative * 100)}% · objective{" "}
         {Math.round(result.ratings.objectiveFit * 100)}%
       </p>
-      <p className="mt-1 italic">“{campaign.headline}”: {campaign.primaryText}</p>
+      <p className="mt-1">
+        {campaign.creatives.length} ad{campaign.creatives.length === 1 ? "" : "s"} · sends people to{" "}
+        {DESTINATIONS[campaign.destination].label}
+      </p>
       <p className="mt-1">{feedback.summary}</p>
+      <details className="mt-2">
+        <summary className="cursor-pointer font-semibold text-[#1C1D52]">Their ads and images</summary>
+        <div className="mt-2 space-y-2">
+          {campaign.creatives.map((ad) => (
+            <div key={ad.id} className="rounded-lg bg-white p-2">
+              <p className="font-bold text-[#1C1D52]">
+                {ad.name}: {ad.format === "CAROUSEL" ? ad.cards.map((c) => c.headline).join(" / ") : ad.headline}
+              </p>
+              <p className="whitespace-pre-line">{ad.primaryText}</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {[ad.image, ...ad.cards.map((c) => c.image)].filter(Boolean).map((ref) => (
+                  <a key={ref} href={mediaSrc(ref)} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={mediaSrc(ref)} alt="" className="h-24 w-24 rounded object-cover" />
+                  </a>
+                ))}
+              </div>
+              {ad.visual && <p className="mt-1 italic">Visual: {ad.visual}</p>}
+              {ad.format === "VIDEO" && (
+                <p className="mt-1 whitespace-pre-line">
+                  Video ({ad.seconds}s) script: {ad.script}
+                </p>
+              )}
+            </div>
+          ))}
+          {result.creatives && <AdBreakdown run={run} />}
+        </div>
+      </details>
     </div>
   );
 }

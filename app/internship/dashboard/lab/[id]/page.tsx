@@ -305,6 +305,7 @@ function AdsExercise({
         }}
         runs={runs}
         maxRuns={lab.ads.maxRuns}
+        mediaEnabled={lab.mediaEnabled}
         onRun={async (plan) => {
           const response = await fetch(`/api/internship/lab/${id}/run`, {
             method: "POST",

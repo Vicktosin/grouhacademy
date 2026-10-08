@@ -96,3 +96,46 @@ test("models can be changed with environment variables", async () => {
   });
   delete process.env.GROQ_MODEL;
 });
+
+test("images go to a vision model as image parts", async () => {
+  await withProviders({ GROQ_API_KEY: "q", GROQ_MODEL: "openai/gpt-oss-120b" }, () => reply('{"rating": 5, "summary": "x"}'), async (calls) => {
+    await generateObject({
+      task: "test",
+      schema,
+      system: "Rate it.",
+      prompt: "An ad",
+      maxTokens: 1000,
+      effort: "low",
+      images: [{ label: "Ad A: image", mediaType: "image/webp", data: "AAAA" }],
+    });
+    assert.equal(calls[0].body.model, "qwen/qwen3.8-27b");
+    const content = calls[0].body.messages[1].content as unknown as Array<{ type: string; image_url?: { url: string } }>;
+    assert.equal(content[2].type, "image_url");
+    assert.equal(content[2].image_url?.url, "data:image/webp;base64,AAAA");
+  });
+  delete process.env.GROQ_MODEL;
+});
+
+test("if no provider can read the images, it's judged from the words", async () => {
+  await withProviders(
+    { GROQ_API_KEY: "q" },
+    () => reply('{"rating": 4, "summary": "words only"}'),
+    async (calls) => {
+      let first = true;
+      globalThis.fetch = (async (url: string, init: RequestInit) => {
+        calls.push({ url, body: JSON.parse(String(init.body)) });
+        if (first) {
+          first = false;
+          return new Response("model can't see", { status: 400 });
+        }
+        return reply('{"rating": 4, "summary": "words only"}');
+      }) as typeof fetch;
+      const answer = await generateObject({
+        task: "test", schema, system: "Rate it.", prompt: "An ad", maxTokens: 1000, effort: "low",
+        images: [{ label: "Ad A", mediaType: "image/png", data: "AAAA" }],
+      });
+      assert.equal(answer.summary, "words only");
+      assert.equal(typeof calls[1].body.messages[1].content, "string");
+    },
+  );
+});
