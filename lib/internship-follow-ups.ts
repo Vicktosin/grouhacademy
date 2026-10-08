@@ -181,10 +181,24 @@ export async function listFollowUps(
     ).map((a) => `${a.studentId}:${a.programId}`),
   );
 
+  // Someone who has since moved to another track (or applied again) is
+  // followed up on their newest application only.
+  const newest = new Map(
+    (
+      await prisma.internshipApplication.groupBy({
+        by: ["studentId"],
+        where: { studentId: { in: applications.map((a) => a.studentId) } },
+        _max: { createdAt: true },
+      })
+    ).map((group) => [group.studentId, group._max.createdAt?.getTime()]),
+  );
+
   const loginLink = `${publicSiteUrl()}/login`;
   const rows: FollowUpRow[] = [];
   for (const application of applications) {
     if (admitted.has(`${application.studentId}:${application.programId}`))
+      continue;
+    if (newest.get(application.studentId) !== application.createdAt.getTime())
       continue;
     // Only attempts at the application's current level count.
     const attempts = application.attempts.filter(
