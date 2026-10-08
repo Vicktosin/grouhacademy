@@ -598,12 +598,11 @@ function ImagePicker({
     setBusy(true);
     setError(null);
     try {
-      const blob = await shrinkImage(file);
-      const response = await fetch("/api/internship/lab/media", {
-        method: "POST",
-        headers: { "Content-Type": blob.type },
-        body: blob,
-      });
+      const { full, thumb } = await shrinkImage(file);
+      const form = new FormData();
+      form.set("image", full);
+      form.set("thumb", thumb);
+      const response = await fetch("/api/internship/lab/media", { method: "POST", body: form });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Upload failed.");
       onChange(body.ref as string);
@@ -632,7 +631,7 @@ function ImagePicker({
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={mediaSrc(value)} alt="" className="h-full w-full object-cover" />
+          <img src={mediaSrc(value, "thumb")} alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="flex flex-col items-center gap-1 text-[10px] font-semibold">
             <ImagePlus className="h-5 w-5" /> Upload
@@ -934,7 +933,7 @@ export function AdBreakdown({ run }: { run: SimRun }) {
               <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-[#1C1D52] to-[#5FBB46]">
                 {image && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaSrc(image)} alt="" className="h-full w-full object-cover" />
+                  <img src={mediaSrc(image, "thumb")} alt="" className="h-full w-full object-cover" />
                 )}
               </div>
               <div className="min-w-0 flex-1">

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
   GetObjectCommand,
-  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -113,52 +112,4 @@ export async function signedVideoUrl(key: string, download: boolean) {
     // needs longer than a download, which only has to start in time.
     { expiresIn: download ? 10 * 60 : 4 * 60 * 60 },
   );
-}
-
-// ---------------------------------------------------------------------------
-// Small files (Practice Lab ad images, see lib/lab-media.ts). Uploaded by the
-// server after it has checked them, so there's no browser upload to R2.
-// ---------------------------------------------------------------------------
-
-export async function putR2Object(key: string, body: Uint8Array, contentType: string) {
-  const { client, bucket } = r2();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-      // Each upload has a new key, so it never changes.
-      CacheControl: "private, max-age=31536000, immutable",
-    }),
-  );
-}
-
-export async function getR2Object(key: string) {
-  const { client, bucket } = r2();
-  try {
-    const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const bytes = await result.Body?.transformToByteArray();
-    return bytes ? { bytes, contentType: result.ContentType ?? "application/octet-stream" } : null;
-  } catch (error) {
-    if ((error as { name?: string }).name === "NoSuchKey") return null;
-    throw error;
-  }
-}
-
-/** How many objects start with `prefix`, counting no further than `max`. */
-export async function countR2Objects(prefix: string, max: number) {
-  const { client, bucket } = r2();
-  const result = await client.send(
-    new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, MaxKeys: max }),
-  );
-  return result.KeyCount ?? 0;
-}
-
-/** A short-lived link to view a private object. */
-export function signedR2Url(key: string, seconds: number) {
-  const { client, bucket } = r2();
-  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: seconds,
-  });
 }

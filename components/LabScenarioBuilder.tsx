@@ -919,7 +919,7 @@ function AdsRunSummary({ run, index }: { run: SimRun; index: number }) {
                 {[ad.image, ...ad.cards.map((c) => c.image)].filter(Boolean).map((ref) => (
                   <a key={ref} href={mediaSrc(ref)} target="_blank" rel="noreferrer">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={mediaSrc(ref)} alt="" className="h-24 w-24 rounded object-cover" />
+                    <img src={mediaSrc(ref, "thumb")} alt="" className="h-24 w-24 rounded object-cover" />
                   </a>
                 ))}
               </div>

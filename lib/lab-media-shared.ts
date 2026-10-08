@@ -4,15 +4,17 @@
 // An image is stored as "lab-media:lab-ads/<owner user id>/<uuid>.<ext>":
 // the bytes live in file storage (see lib/lab-media.ts), never in the
 // database, and are viewed through /api/lab-media/<key>, which checks the
-// viewer may see them.
+// viewer may see them. Each image also has a small thumbnail (?size=thumb)
+// for lists and the AI.
 
 export const MEDIA_PREFIX = "lab-media:";
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const KEY = new RegExp(`^lab-ads/(${UUID})/${UUID}\\.(webp|jpg|png)$`);
 
-/** The largest image accepted (the browser shrinks them well below this). */
-export const MAX_MEDIA_BYTES = 600 * 1024;
+/** The largest image and thumbnail accepted (the browser shrinks them well below). */
+export const MAX_MEDIA_BYTES = 400 * 1024;
+export const MAX_THUMB_BYTES = 100 * 1024;
 
 export function mediaKey(ref: unknown): string | null {
   if (typeof ref !== "string" || !ref.startsWith(MEDIA_PREFIX)) return null;
@@ -30,33 +32,47 @@ export function mediaOwner(refOrKey: string): string | null {
   return KEY.exec(key)?.[1] ?? null;
 }
 
-/** Where the browser loads the image from. */
-export function mediaSrc(ref: string) {
+/** Where the browser loads the image (or its small thumbnail) from. */
+export function mediaSrc(ref: string, size: "full" | "thumb" = "full") {
   const key = mediaKey(ref);
-  return key ? `/api/lab-media/${key}` : "";
+  if (!key) return "";
+  return `/api/lab-media/${key}${size === "thumb" ? "?size=thumb" : ""}`;
 }
 
-/**
- * Shrinks an image in the browser before upload: at most 1080 px on the
- * longest side, WebP (JPEG where WebP isn't supported), small enough to
- * upload quickly on mobile data and cheap to store.
- */
-export async function shrinkImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1080 / Math.max(bitmap.width, bitmap.height));
+/** Draws the image at most `side` px on its longest side and encodes it under `max` bytes. */
+async function encodeImage(bitmap: ImageBitmap, side: number, max: number, qualities: number[]) {
+  const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(bitmap.width * scale));
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser can't prepare images.");
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
   const encode = (type: string, quality: number) =>
     new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
-  for (const quality of [0.82, 0.7, 0.55]) {
+  for (const quality of qualities) {
+    // WebP where the browser can make it, else JPEG.
     const webp = await encode("image/webp", quality);
     const blob = webp?.type === "image/webp" ? webp : await encode("image/jpeg", quality);
-    if (blob && blob.size <= MAX_MEDIA_BYTES) return blob;
+    if (blob && blob.size <= max) return blob;
   }
-  throw new Error("That image is too detailed to upload. Try a smaller one.");
+  throw new Error("That image is too detailed to upload. Try a simpler one.");
+}
+
+/**
+ * Shrinks an image in the browser before upload, to keep storage and
+ * downloads small: a full version (at most 1080 px, usually about 100 KB)
+ * and a thumbnail (512 px, about 25 KB).
+ */
+export async function shrinkImage(file: File): Promise<{ full: Blob; thumb: Blob }> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const full = await encodeImage(bitmap, 1080, MAX_MEDIA_BYTES, [0.78, 0.68, 0.55]);
+    const thumb = await encodeImage(bitmap, 512, MAX_THUMB_BYTES, [0.7, 0.55, 0.4]);
+    // Both must be the same type (the server checks).
+    if (full.type !== thumb.type) throw new Error("This browser can't prepare images.");
+    return { full, thumb };
+  } finally {
+    bitmap.close();
+  }
 }
