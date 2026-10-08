@@ -317,6 +317,16 @@ test("parsing drops bad file names and keeps server.js", () => {
 });
 
 test("the browser copies of the WebAssembly files match the installed packages", () => {
+  const sqlVersion = JSON.parse(readFileSync("node_modules/sql.js/package.json", "utf8")).version;
+  const quickjsVersion = JSON.parse(
+    readFileSync("node_modules/@jitl/quickjs-wasmfile-release-sync/package.json", "utf8"),
+  ).version;
+  // Browsers cache the files for a year by this version (in their URLs).
+  assert.match(
+    readFileSync("lib/backend-sim/browser-worker.ts", "utf8"),
+    new RegExp(`RUNTIME_VERSION = "sqljs-${sqlVersion}_quickjs-${quickjsVersion}"`),
+    "Update RUNTIME_VERSION in lib/backend-sim/browser-worker.ts",
+  );
   const hash = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
   assert.equal(
     hash("public/lab-runtime/sql-wasm.wasm"),

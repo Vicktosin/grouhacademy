@@ -157,7 +157,7 @@ export type BackendRun = {
 
 const MAX_STORED_RUNS = 100;
 /** Backend runs hold responses and logs, so fewer are kept. */
-const MAX_BACKEND_RUNS = 20;
+const MAX_BACKEND_RUNS = 10;
 /** Between backend submissions, so one intern can't keep the testers busy. */
 const BACKEND_SUBMIT_COOLDOWN_MS = 10_000;
 
@@ -285,6 +285,20 @@ async function linkedTask(
   });
 }
 
+/**
+ * The attempt columns attemptView needs. Reads and writes select only what
+ * they use: an attempt's files and simulator runs can be hundreds of KB,
+ * and every byte read counts towards database egress.
+ */
+const VIEW_FIELDS = {
+  status: true,
+  checkResults: true,
+  checksPassed: true,
+  checksTotal: true,
+  review: true,
+  submittedAt: true,
+} as const;
+
 function attemptView(
   attempt: {
     status: string;
@@ -361,7 +375,8 @@ export async function getLabForIntern(
       backend: publicBackendConfig(parseBackendConfig(scenario.config)),
       starterFiles,
       files: attempt ? parseBackendFiles(attempt.files, starterFiles) : starterFiles,
-      runs: publicBackendRuns(storedRuns<BackendRun>(attempt?.runs)),
+      // Only the last submission is shown, so only it is sent.
+      runs: publicBackendRuns(storedRuns<BackendRun>(attempt?.runs).slice(-1)),
     };
   }
 
@@ -431,6 +446,7 @@ export async function saveLabDraft(
     where: { userId_scenarioId: { userId, scenarioId } },
     create: { userId, scenarioId, files: work },
     update: { files: work },
+    select: { id: true },
   });
   return true;
 }
@@ -457,6 +473,7 @@ export async function runAdsCampaign(
     where: { userId_scenarioId: { userId, scenarioId } },
     create: { userId, scenarioId, files: campaign },
     update: { files: campaign },
+    select: { id: true, runs: true },
   });
   const runs = storedRuns(attempt.runs);
   if (runs.length >= config.maxRuns)
@@ -475,6 +492,7 @@ export async function runAdsCampaign(
   const run: AdsRun = { at: new Date().toISOString(), campaign, result, feedback };
   await prisma.labAttempt.update({
     where: { id: attempt.id },
+    select: { id: true },
     data: { runs: [...runs, run] as unknown as Prisma.InputJsonValue },
   });
   return { run, runsUsed: runs.length + 1 };
@@ -502,6 +520,7 @@ export async function runSocialWeek(
     where: { userId_scenarioId: { userId, scenarioId } },
     create: { userId, scenarioId, files: plan },
     update: { files: plan },
+    select: { id: true, runs: true },
   });
   const runs = storedRuns<SocialRun>(attempt.runs);
   if (runs.length >= config.maxRuns)
@@ -513,6 +532,7 @@ export async function runSocialWeek(
   const run = await simulateSocialRun(plan, config, `${attempt.id}:${runs.length}`);
   await prisma.labAttempt.update({
     where: { id: attempt.id },
+    select: { id: true },
     data: { runs: [...runs, run] as unknown as Prisma.InputJsonValue },
   });
   return { run, runsUsed: runs.length + 1 };
@@ -540,6 +560,7 @@ export async function runAutomationTest(
     where: { userId_scenarioId: { userId, scenarioId } },
     create: { userId, scenarioId, files: workflow },
     update: { files: workflow },
+    select: { id: true, runs: true },
   });
   const runs = storedRuns<AutomationRun>(attempt.runs);
   const tests = runs.filter((run) => !run.full).length;
@@ -557,6 +578,7 @@ export async function runAutomationTest(
   const run: AutomationRun = { at: new Date().toISOString(), workflow, full: false, result };
   await prisma.labAttempt.update({
     where: { id: attempt.id },
+    select: { id: true },
     data: {
       runs: [...runs, run].slice(-MAX_STORED_RUNS) as unknown as Prisma.InputJsonValue,
     },
@@ -632,6 +654,7 @@ export async function replyToSocialComments(
   runs[index] = graded;
   await prisma.labAttempt.update({
     where: { id: attempt.id },
+    select: { id: true },
     data: { runs: runs as unknown as Prisma.InputJsonValue },
   });
   return { run: graded };
@@ -929,6 +952,7 @@ export async function submitLab(
       where: { userId_scenarioId: { userId, scenarioId } },
       create: { userId, scenarioId, ...submitted },
       update: submitted,
+      select: { id: true, ...VIEW_FIELDS },
     });
     if (isLabReviewEnabled()) after(() => reviewAttempt(saved.id));
     const taskResult = task
@@ -974,6 +998,7 @@ export async function submitLab(
       where: { userId_scenarioId: { userId, scenarioId } },
       create: { userId, scenarioId, ...submitted },
       update: submitted,
+      select: { id: true, ...VIEW_FIELDS },
     });
     const taskResult = task
       ? await gradeLinkedTask(userId, task, automationSubmissionText(scenario, run), {
@@ -1009,6 +1034,7 @@ export async function submitLab(
     const goals: Array<{ label: string; met: boolean }> = chosen.result.goals;
     const saved = await prisma.labAttempt.update({
       where: { id: attempt.id },
+      select: VIEW_FIELDS,
       data: {
         status: "SUBMITTED",
         checkResults: goals.map((goal) => ({ label: goal.label, passed: goal.met })),
@@ -1061,6 +1087,7 @@ export async function submitLab(
       review: Prisma.DbNull,
       submittedAt: new Date(),
     },
+    select: { id: true, ...VIEW_FIELDS },
   });
   if (isLabReviewEnabled()) after(() => reviewAttempt(attempt.id));
 
@@ -1087,9 +1114,18 @@ export async function reviewAttempt(attemptId: string) {
   const prisma = getPrisma();
   const attempt = await prisma.labAttempt.findUnique({
     where: { id: attemptId },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      files: true,
+      checkResults: true,
+      review: true,
+      submittedAt: true,
       scenario: {
-        include: {
+        select: {
+          kind: true,
+          title: true,
+          brief: true,
           program: { select: { name: true } },
           level: { select: { name: true } },
         },
@@ -1116,8 +1152,10 @@ export async function reviewAttempt(attemptId: string) {
       backend && attempt.review && typeof attempt.review === "object"
         ? (attempt.review as Record<string, unknown>)
         : {};
-    await prisma.labAttempt.update({
-      where: { id: attempt.id },
+    // Only if it's still the same submission: one made while this review
+    // was being written gets its own review instead of this older one.
+    await prisma.labAttempt.updateMany({
+      where: { id: attempt.id, submittedAt: attempt.submittedAt },
       data: {
         review: {
           ...(typeof kept.submittedRun === "number" ? { submittedRun: kept.submittedRun } : {}),
@@ -1127,7 +1165,10 @@ export async function reviewAttempt(attemptId: string) {
       },
     });
   } catch (error) {
-    console.error(`Failed to review lab attempt ${attempt.id}.`, error);
+    console.error(
+      `Failed to review lab attempt ${attempt.id}:`,
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 
@@ -1135,6 +1176,7 @@ export async function reviewAttempt(attemptId: string) {
 export async function getLabAttempt(userId: string, scenarioId: string) {
   const attempt = await getPrisma().labAttempt.findUnique({
     where: { userId_scenarioId: { userId, scenarioId } },
+    select: VIEW_FIELDS,
   });
   return attemptView(attempt);
 }

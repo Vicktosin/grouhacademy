@@ -21,6 +21,13 @@ export type WorkerRequest =
   | { type: "tables" }
   | { type: "runTests"; files: BackendFiles; databaseSql: string; env: EnvVar[]; tests: ApiTest[] };
 
+/**
+ * The package versions the .wasm files come from. Browsers keep the files
+ * for a year (see next.config.ts), so the version is in the URL: an upgrade
+ * gets new files. A test checks it matches the installed packages.
+ */
+export const RUNTIME_VERSION = "sqljs-1.14.2_quickjs-0.32.0";
+
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 let modules: Promise<EngineModules> | null = null;
 let app: BackendApp | null = null;
@@ -34,8 +41,8 @@ async function bytes(url: string) {
 function load() {
   modules ??= (async () => {
     const [sqlWasm, quickjsWasm] = await Promise.all([
-      bytes("/lab-runtime/sql-wasm.wasm"),
-      bytes("/lab-runtime/quickjs.wasm"),
+      bytes(`/lab-runtime/sql-wasm.wasm?v=${RUNTIME_VERSION}`),
+      bytes(`/lab-runtime/quickjs.wasm?v=${RUNTIME_VERSION}`),
     ]);
     const [SQL, quickjs] = await Promise.all([
       initSqlJs({ wasmBinary: sqlWasm }),

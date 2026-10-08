@@ -1,6 +1,7 @@
 // Copies the Practice Lab backend simulator's WebAssembly files into
 // public/lab-runtime, where the browser loads them. Run after upgrading
-// sql.js or @jitl/quickjs-wasmfile-release-sync (a test checks they match).
+// sql.js or @jitl/quickjs-wasmfile-release-sync, and update RUNTIME_VERSION
+// in lib/backend-sim/browser-worker.ts (a test checks both).
 //
 //   npm run lab-runtime
 
