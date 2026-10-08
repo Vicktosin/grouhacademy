@@ -321,6 +321,10 @@ function attemptView(
       attempt.review && typeof (attempt.review as LabReview).summary === "string"
         ? (attempt.review as LabReview)
         : null,
+    // Every AI provider failed (e.g. free-tier limits): no review is coming.
+    reviewUnavailable: Boolean(
+      attempt.review && (attempt.review as { unavailable?: unknown }).unavailable === true,
+    ),
     submittedAt: attempt.submittedAt?.toISOString() ?? null,
   };
 }
@@ -1136,6 +1140,18 @@ export async function reviewAttempt(attemptId: string) {
   const kind = attempt.scenario.kind;
   const backend = kind === "BACKEND";
   if (!isCodeKind(kind) && !backend) return;
+  // Backend attempts keep their submitted run and score alongside.
+  const kept =
+    backend && attempt.review && typeof attempt.review === "object"
+      ? (attempt.review as Record<string, unknown>)
+      : {};
+  const keptFields = {
+    ...(typeof kept.submittedRun === "number" ? { submittedRun: kept.submittedRun } : {}),
+    ...(typeof kept.score === "number" ? { score: kept.score } : {}),
+  };
+  // Only if it's still the same submission: one made while this review was
+  // being written gets its own review instead of this older one.
+  const sameSubmission = { id: attempt.id, submittedAt: attempt.submittedAt };
   try {
     const review = await reviewLabCode({
       backend,
@@ -1147,28 +1163,19 @@ export async function reviewAttempt(attemptId: string) {
       files: isCodeKind(kind) ? normalizeFiles(kind, attempt.files) : parseBackendFiles(attempt.files),
       checkResults: (attempt.checkResults as LabCheckResult[] | null) ?? [],
     });
-    // Backend attempts keep their submitted run and score alongside.
-    const kept =
-      backend && attempt.review && typeof attempt.review === "object"
-        ? (attempt.review as Record<string, unknown>)
-        : {};
-    // Only if it's still the same submission: one made while this review
-    // was being written gets its own review instead of this older one.
     await prisma.labAttempt.updateMany({
-      where: { id: attempt.id, submittedAt: attempt.submittedAt },
-      data: {
-        review: {
-          ...(typeof kept.submittedRun === "number" ? { submittedRun: kept.submittedRun } : {}),
-          ...(typeof kept.score === "number" ? { score: kept.score } : {}),
-          ...review,
-        },
-      },
+      where: sameSubmission,
+      data: { review: { ...keptFields, ...review } },
     });
   } catch (error) {
     console.error(
       `Failed to review lab attempt ${attempt.id}:`,
       error instanceof Error ? error.message : String(error),
     );
+    // Tell the intern rather than leave them waiting (and their page polling).
+    await prisma.labAttempt
+      .updateMany({ where: sameSubmission, data: { review: { ...keptFields, unavailable: true } } })
+      .catch(() => {});
   }
 }
 

@@ -364,3 +364,13 @@ module.exports = app;`,
   assert.match(result.tests[1].error ?? "", /stopped/);
   assert.match(result.tests[2].error ?? "", /Not run/);
 });
+
+test("the lab preview's self-hosted React matches the installed version", async () => {
+  const { REACT_VERSION } = await import("../app/lab-preview/route");
+  const installed = JSON.parse(readFileSync("node_modules/react/package.json", "utf8")).version;
+  assert.equal(REACT_VERSION, installed, "Download that React version into public/lab-runtime (see app/lab-preview/route.ts)");
+  for (const file of ["react.mjs", "jsx-runtime.mjs", "react-dom.mjs", "react-dom-client.mjs"]) {
+    const code = readFileSync(`public/lab-runtime/react-${REACT_VERSION}/${file}`, "utf8");
+    assert.ok(code.includes(`react`) && !/from\s*"https?:/.test(code), `${file} must not load code from another site`);
+  }
+});
