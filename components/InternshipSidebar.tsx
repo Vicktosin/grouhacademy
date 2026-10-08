@@ -9,9 +9,11 @@ import {
   CheckSquare,
   Crown,
   FileText,
+  FlaskConical,
   Grid2X2,
   LogOut,
   MessageCircle,
+  Mic,
   Settings,
   ShieldCheck,
   Users,
@@ -38,6 +40,16 @@ const navItems = [
     icon: BookOpen,
   },
   { label: "Task", href: "/internship/dashboard/tasks", icon: CheckSquare },
+  {
+    label: "Practice Lab",
+    href: "/internship/dashboard/lab",
+    icon: FlaskConical,
+  },
+  {
+    label: "Interview",
+    href: "/internship/dashboard/interview",
+    icon: Mic,
+  },
   { label: "Grades", href: "/internship/dashboard/grades", icon: Award },
   {
     label: "Certificate",

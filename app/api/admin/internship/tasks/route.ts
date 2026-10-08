@@ -9,6 +9,10 @@ import {
   taskWindowState,
   type SchedulePoint,
 } from "@/lib/task-schedule";
+import {
+  DEFAULT_LAB_PASS_MARK,
+  parseLabPassMark,
+} from "@/lib/lab-task-grading";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 10_000;
@@ -44,6 +48,27 @@ async function parseTask(body: Record<string, unknown>) {
   });
   if (!cohort) return "The selected cohort was not found.";
 
+  // Optional Practice Lab exercise, from the cohort's own track.
+  const labScenarioId =
+    typeof body.labScenarioId === "string" && body.labScenarioId
+      ? body.labScenarioId
+      : null;
+  if (labScenarioId && kind === "GROUP")
+    return "Practice Lab exercises can only be linked to individual tasks.";
+  if (labScenarioId) {
+    const scenario = await getPrisma().labScenario.findUnique({
+      where: { id: labScenarioId },
+      select: { programId: true },
+    });
+    if (!scenario || scenario.programId !== cohort.programId)
+      return "Choose a Practice Lab exercise from this cohort's track.";
+  }
+  const labPassMark = labScenarioId
+    ? parseLabPassMark(body.labPassMark ?? DEFAULT_LAB_PASS_MARK)
+    : DEFAULT_LAB_PASS_MARK;
+  if (labPassMark === null)
+    return "Set the pass mark as a whole number from 1 to 100.";
+
   const opensAt = scheduleToDate(cohort.startDate, opens);
   const dueDate = scheduleToDate(cohort.startDate, due);
   if (dueDate <= opensAt) return "The due time must be after the opening time.";
@@ -63,6 +88,8 @@ async function parseTask(body: Record<string, unknown>) {
       dueTime: due.time,
       opensAt,
       dueDate,
+      labScenarioId,
+      labPassMark,
     } as const,
   };
 }
@@ -88,7 +115,7 @@ export async function GET() {
   if (adminId instanceof NextResponse) return adminId;
 
   const prisma = getPrisma();
-  const [cohorts, tasks] = await Promise.all([
+  const [cohorts, tasks, labScenarios] = await Promise.all([
     prisma.internshipCohort.findMany({
       orderBy: { startDate: "desc" },
       select: {
@@ -108,13 +135,31 @@ export async function GET() {
         submissions: { select: { status: true } },
       },
     }),
+    prisma.labScenario.findMany({
+      orderBy: { title: "asc" },
+      select: {
+        id: true,
+        title: true,
+        programId: true,
+        published: true,
+        level: { select: { name: true } },
+      },
+    }),
   ]);
 
   const now = new Date();
   return NextResponse.json({
+    labScenarios: labScenarios.map((scenario) => ({
+      id: scenario.id,
+      title: scenario.title,
+      programId: scenario.programId,
+      level: scenario.level.name,
+      published: scenario.published,
+    })),
     cohorts: cohorts.map((cohort) => ({
       id: cohort.id,
       name: cohort.name,
+      programId: cohort.program.id,
       programName: cohort.program.name,
       startDate: cohort.startDate.toISOString(),
       endDate: cohort.endDate.toISOString(),
@@ -136,6 +181,8 @@ export async function GET() {
       opensAt: task.opensAt.toISOString(),
       dueDate: task.dueDate.toISOString(),
       window: taskWindowState(task.opensAt, task.dueDate, now),
+      labScenarioId: task.labScenarioId,
+      labPassMark: task.labPassMark,
       submissionCount: task.submissions.length,
       acceptedCount: task.submissions.filter((s) => s.status === "ACCEPTED")
         .length,

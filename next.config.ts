@@ -30,15 +30,21 @@ const proveSource = {
   fonts: "https://fonts.bunny.net",
 };
 
-const contentSecurityPolicy = [
+/**
+ * The site's policy. `wasm` also lets pages compile WebAssembly (not run
+ * eval): only the Practice Lab, whose backend simulator runs interns' code
+ * in a WebAssembly sandbox in a Web Worker.
+ */
+const csp = ({ wasm = false } = {}) => [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script} ${metaPixel.script} ${proveSource.script}${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${googleAnalytics.script} ${metaPixel.script} ${proveSource.script}${isDev ? " 'unsafe-eval'" : ""}${wasm ? " 'wasm-unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline' ${proveSource.fonts}`,
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   `font-src 'self' data: ${proveSource.fonts}`,
   `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect} ${proveSource.connect}${isDev ? " ws:" : ""}`,
-  "frame-src https:",
+  // 'self' for the Practice Lab preview (served over http in development).
+  "frame-src 'self' https:",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -50,7 +56,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "Content-Security-Policy", value: csp() },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -65,6 +71,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // The backend simulator's worker thread reads these on submit (they're
+  // traced already; this makes sure they're always deployed).
+  outputFileTracingIncludes: {
+    "/api/internship/lab/[id]/submit": [
+      "./node_modules/sql.js/dist/sql-wasm.wasm",
+      "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/emscripten-module.wasm",
+    ],
+  },
   images: {
     remotePatterns: [
       {
@@ -94,6 +108,69 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
+      {
+        // Practice interviews run in an embedded Tavus (Daily) video room,
+        // which needs the camera and microphone. Allowed only here, only
+        // for this site and that room; every other page keeps them off.
+        // (A later header with the same key overrides the one above.)
+        source: "/internship/dashboard/interview/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: [
+              'camera=(self "https://tavus.daily.co")',
+              'microphone=(self "https://tavus.daily.co")',
+              'display-capture=(self "https://tavus.daily.co")',
+              'autoplay=(self "https://tavus.daily.co")',
+              "geolocation=()",
+              "payment=()",
+            ].join(", "),
+          },
+        ],
+      },
+      {
+        // Practice Lab preview (app/lab-preview): runs interns' code in a
+        // sandboxed iframe on this site only. It needs inline scripts and
+        // eval (the intern's code and the exercise checks) and React from
+        // esm.sh; it can only be framed by this site and has no access to
+        // the camera, microphone or anything else.
+        source: "/lab-preview",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'none'",
+              "script-src 'unsafe-inline' 'unsafe-eval' https://esm.sh",
+              "style-src 'unsafe-inline' https:",
+              "img-src data: blob: https:",
+              "font-src data: https:",
+              "media-src data: blob: https:",
+              "connect-src https://esm.sh",
+              "frame-ancestors 'self'",
+            ].join("; "),
+          },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
+          },
+        ],
+      },
+      {
+        // Practice Lab pages and the scripts their Web Workers run from
+        // (a worker follows its own script's policy) may compile
+        // WebAssembly; see csp().
+        source: "/internship/dashboard/lab/:path*",
+        headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+      },
+      {
+        source: "/admin/internship/lab/:path*",
+        headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+      },
       {
         // Always revalidate the service worker so updates reach users.
         source: "/sw.js",
