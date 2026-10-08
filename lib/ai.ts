@@ -16,6 +16,11 @@ import { z } from "zod";
 // GEMINI_MODEL, OPENROUTER_MODEL, GROQ_MODEL or XAI_MODEL. If every
 // provider fails, the call throws and the feature falls back to its own
 // rules (or skips the AI part).
+//
+// Requests can include images (ad creatives). Claude and Gemini read them;
+// OpenRouter's free router picks a model that can; Groq and xAI switch to
+// GROQ_VISION_MODEL / XAI_VISION_MODEL for those requests. If every
+// provider fails with images, the request is tried once more without them.
 
 type Effort = "low" | "medium";
 
@@ -24,7 +29,14 @@ type CompatibleProvider = {
   key: string | undefined;
   url: string;
   model: string;
+  /** The model for requests with images. */
+  visionModel: string;
+  /** The most images that model takes in one request. */
+  maxImages: number;
 };
+
+/** An image for the model to look at, with a line saying what it is. */
+export type AiImage = { label: string; mediaType: string; data: string };
 
 /** OpenAI-style chat APIs (Gemini, OpenRouter, Groq and xAI all offer one). */
 function compatibleProviders(): CompatibleProvider[] {
@@ -35,24 +47,33 @@ function compatibleProviders(): CompatibleProvider[] {
       key: env.GEMINI_API_KEY,
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       model: env.GEMINI_MODEL || "gemini-2.5-flash",
+      visionModel: env.GEMINI_MODEL || "gemini-2.5-flash",
+      maxImages: 8,
     },
     {
       name: "OpenRouter",
       key: env.OPENROUTER_API_KEY,
       url: "https://openrouter.ai/api/v1/chat/completions",
       model: env.OPENROUTER_MODEL || "openrouter/free",
+      visionModel: env.OPENROUTER_MODEL || "openrouter/free",
+      maxImages: 4,
     },
     {
       name: "Groq",
       key: env.GROQ_API_KEY,
       url: "https://api.groq.com/openai/v1/chat/completions",
       model: env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      // Groq's vision model (October 2026) takes up to 3 images.
+      visionModel: env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b",
+      maxImages: 3,
     },
     {
       name: "xAI",
       key: env.XAI_API_KEY,
       url: "https://api.x.ai/v1/chat/completions",
       model: env.XAI_MODEL || "grok-3-mini",
+      visionModel: env.XAI_VISION_MODEL || env.XAI_MODEL || "grok-3-mini",
+      maxImages: 4,
     },
   ];
 }
@@ -89,7 +110,25 @@ async function askAnthropic<S extends z.ZodType>(
     fallbacks: "default",
     output_config: { effort: options.effort, format: zodOutputFormat(options.schema) },
     system: options.system,
-    messages: [{ role: "user", content: options.prompt }],
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text" as const, text: options.prompt },
+          ...(options.images ?? []).flatMap((image) => [
+            { type: "text" as const, text: image.label },
+            {
+              type: "image" as const,
+              source: {
+                type: "base64" as const,
+                media_type: image.mediaType as "image/webp" | "image/jpeg" | "image/png",
+                data: image.data,
+              },
+            },
+          ]),
+        ],
+      },
+    ],
   });
   if (response.stop_reason === "refusal") throw new Error("declined");
   if (!response.parsed_output) throw new Error("unreadable answer");
@@ -97,7 +136,9 @@ async function askAnthropic<S extends z.ZodType>(
 }
 
 /** The JSON object in a reply (some models wrap it in ``` fences or text). */
-function extractJson(text: string): unknown {
+function extractJson(raw: string): unknown {
+  // Reasoning models may think out loud before answering.
+  const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
   const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text);
   const body = (fenced ? fenced[1] : text).trim();
   try {
@@ -115,6 +156,8 @@ async function askCompatible<S extends z.ZodType>(
   options: AskOptions<S>,
 ): Promise<z.infer<S>> {
   const schema = JSON.stringify(z.toJSONSchema(options.schema));
+  // Images are given most important first, so the extra ones are dropped.
+  const images = options.images?.slice(0, provider.maxImages) ?? [];
   const response = await fetch(provider.url, {
     method: "POST",
     headers: {
@@ -125,7 +168,7 @@ async function askCompatible<S extends z.ZodType>(
       "X-Title": "Grouh Academy",
     },
     body: JSON.stringify({
-      model: provider.model,
+      model: images.length ? provider.visionModel : provider.model,
       max_tokens: Math.min(options.maxTokens, 8000),
       temperature: 0.4,
       response_format: { type: "json_object" },
@@ -137,7 +180,18 @@ async function askCompatible<S extends z.ZodType>(
 Answer with one JSON object only (no other text) that matches this JSON Schema:
 ${schema}`,
         },
-        { role: "user", content: options.prompt },
+        {
+          role: "user",
+          content: images.length
+            ? [
+                { type: "text", text: options.prompt },
+                ...images.flatMap((image) => [
+                  { type: "text", text: image.label },
+                  { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.data}` } },
+                ]),
+              ]
+            : options.prompt,
+        },
       ],
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -165,6 +219,8 @@ type AskOptions<S extends z.ZodType> = {
   maxTokens: number;
   /** How hard Claude thinks; other providers ignore it. */
   effort: Effort;
+  /** Images to look at (keep it to a handful: each costs tokens). */
+  images?: AiImage[];
 };
 
 /**
@@ -192,5 +248,14 @@ export async function generateObject<S extends z.ZodType>(
       console.warn(`[ai] ${options.task}: ${attempt.name} failed, trying the next provider.`, message);
     }
   }
+  // Perhaps none could read the images: judge from the words alone.
+  if (options.images?.length)
+    return generateObject({
+      ...options,
+      images: undefined,
+      prompt: `${options.prompt}
+
+(The images couldn't be shown to you; judge them from their descriptions.)`,
+    });
   throw new AiUnavailableError(`Every AI provider failed (${failures.join("; ")}).`);
 }

@@ -3,42 +3,56 @@
 import {
   BarChart3,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
   ImageIcon,
+  ImagePlus,
   Loader2,
   Megaphone,
   Play,
+  Plus,
   Send,
   Sparkles,
   Target,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   audienceSize,
   BIDDING,
+  blankCreative,
   CALLS_TO_ACTION,
   campaignProblems,
+  DESTINATIONS,
   FORMATS,
   formatGoalValue,
   GOAL_METRICS,
   INTERESTS,
   LOCATIONS,
+  MAX_CARDS,
+  MAX_CREATIVES,
   OBJECTIVES,
   PLACEMENTS,
   type AdFormat,
   type Bidding,
   type Campaign,
+  type Creative,
+  type Destination,
   type Gender,
   type GoalTarget,
   type Objective,
   type Placement,
   type RunResult,
 } from "@/lib/ads-sim/model";
+import { mediaSrc, shrinkImage } from "@/lib/lab-media-shared";
 import type { AdFeedback } from "@/lib/ads-sim/evaluate";
 
 // The Ad Campaign Simulator screen: plan a campaign in three steps (with a
-// live ad preview), run it on the server, and read the results. Our own
+// live ad preview), run it on the server, and read the results. A campaign
+// can have several ads, like an ad set, with real uploaded images. Our own
 // design, deliberately not a copy of any real ad platform.
 
 export type SimRun = {
@@ -71,6 +85,7 @@ export default function AdsSimulator({
   onSubmit,
   submitLabel = "Submit this run",
   maxRuns,
+  mediaEnabled = false,
 }: {
   config: SimConfig;
   campaign: Campaign;
@@ -82,8 +97,11 @@ export default function AdsSimulator({
   submitLabel?: string;
   /** Omit for unlimited (admin test runs). */
   maxRuns?: number;
+  /** Whether images can be uploaded (file storage is set up). */
+  mediaEnabled?: boolean;
 }) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [activeAd, setActiveAd] = useState(0);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +116,8 @@ export default function AdsSimulator({
   const runsLeft = maxRuns === undefined ? null : Math.max(0, maxRuns - runs.length);
   const shownIndex = selected ?? runs.length - 1;
   const shown = runs[shownIndex];
+  const adIndex = Math.min(activeAd, campaign.creatives.length - 1);
+  const ad = campaign.creatives[adIndex];
 
   async function run() {
     setRunning(true);
@@ -111,7 +131,7 @@ export default function AdsSimulator({
   const steps = [
     { label: "1. Campaign", icon: Megaphone },
     { label: "2. Audience", icon: Users },
-    { label: "3. Ad", icon: ImageIcon },
+    { label: `3. Ads (${campaign.creatives.length})`, icon: ImageIcon },
   ];
 
   return (
@@ -141,7 +161,7 @@ export default function AdsSimulator({
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <section className="rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+        <section className="min-w-0 rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
           <div className="flex flex-wrap gap-2">
             {steps.map((item, index) => {
               const Icon = item.icon;
@@ -179,6 +199,14 @@ export default function AdsSimulator({
                   ))}
                 </div>
               </div>
+              <Field label="Where the ad sends people">
+                <select value={campaign.destination} onChange={(e) => set({ destination: e.target.value as Destination })} className={inputClass}>
+                  {(Object.keys(DESTINATIONS) as Destination[]).map((key) => (
+                    <option key={key} value={key}>{DESTINATIONS[key].label}</option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[10px] text-slate-500">{DESTINATIONS[campaign.destination].help}</span>
+              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Daily budget (₦)">
                   <input type="number" min={1000} step={500} value={campaign.dailyBudget} onChange={(e) => set({ dailyBudget: Number(e.target.value) })} className={inputClass} />
@@ -256,42 +284,21 @@ export default function AdsSimulator({
           )}
 
           {step === 2 && (
-            <div className="mt-5 space-y-4">
-              <Field label="Format">
-                <select value={campaign.format} onChange={(e) => set({ format: e.target.value as AdFormat })} className={inputClass}>
-                  {(Object.keys(FORMATS) as AdFormat[]).map((key) => (
-                    <option key={key} value={key}>{FORMATS[key]}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={`Primary text (${campaign.primaryText.length}/600)`}>
-                <textarea value={campaign.primaryText} rows={4} maxLength={600} onChange={(e) => set({ primaryText: e.target.value })} placeholder="What you'd say to the customer: the benefit, the offer, why now." className={inputClass} />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={`Headline (${campaign.headline.length}/80)`}>
-                  <input value={campaign.headline} maxLength={80} onChange={(e) => set({ headline: e.target.value })} className={inputClass} />
-                </Field>
-                <Field label="Button">
-                  <select value={campaign.cta} onChange={(e) => set({ cta: e.target.value })} className={inputClass}>
-                    {CALLS_TO_ACTION.map((cta) => (
-                      <option key={cta} value={cta}>{cta}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <Field label="Description (optional)">
-                <input value={campaign.description} maxLength={120} onChange={(e) => set({ description: e.target.value })} className={inputClass} />
-              </Field>
-              <Field label="Describe the image or video">
-                <textarea value={campaign.visual} rows={3} maxLength={400} onChange={(e) => set({ visual: e.target.value })} placeholder="e.g. Close-up of steaming jollof with plantain, our rider handing over a bag, bright Lagos street." className={inputClass} />
-              </Field>
-            </div>
+            <CreativesEditor
+              campaign={campaign}
+              onChange={(creatives) => set({ creatives })}
+              active={adIndex}
+              onActive={setActiveAd}
+              mediaEnabled={mediaEnabled}
+            />
           )}
         </section>
 
-        <aside className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Ad preview</p>
-          <AdPreview campaign={campaign} businessName={config.business.name} />
+        <aside className="min-w-0 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+            Preview · {ad.name}
+          </p>
+          <AdPreview ad={ad} businessName={config.business.name} />
         </aside>
       </div>
 
@@ -390,40 +397,375 @@ function Chips({
   );
 }
 
-/** A generic sponsored-post mock-up (not any real platform's design). */
-function AdPreview({ campaign, businessName }: { campaign: Campaign; businessName: string }) {
+// ---------------------------------------------------------------- the ads
+
+function CreativesEditor({
+  campaign,
+  onChange,
+  active,
+  onActive,
+  mediaEnabled,
+}: {
+  campaign: Campaign;
+  onChange: (creatives: Creative[]) => void;
+  active: number;
+  onActive: (index: number) => void;
+  mediaEnabled: boolean;
+}) {
+  const ads = campaign.creatives;
+  const ad = ads[active];
+  const setAd = (patch: Partial<Creative>) =>
+    onChange(ads.map((item, i) => (i === active ? { ...item, ...patch } : item)));
+  const letters = (list: Creative[]) =>
+    list.map((item, i) => (/^Ad [A-Z]$/.test(item.name) ? { ...item, name: `Ad ${String.fromCharCode(65 + i)}` } : item));
+
+  const add = (copy: boolean) => {
+    const fresh = blankCreative(ads.length, ad.format);
+    const next = copy ? { ...ad, id: fresh.id, name: fresh.name, cards: ad.cards.map((c) => ({ ...c })) } : fresh;
+    onChange([...ads, next]);
+    onActive(ads.length);
+  };
+  const remove = () => {
+    if (ads.length === 1 || !window.confirm(`Delete ${ad.name}?`)) return;
+    onChange(letters(ads.filter((_, i) => i !== active)));
+    onActive(Math.max(0, active - 1));
+  };
+  const changeFormat = (format: AdFormat) =>
+    setAd({
+      format,
+      cards:
+        format === "CAROUSEL"
+          ? ad.cards.length >= 2
+            ? ad.cards
+            : [{ image: ad.image, headline: ad.headline }, { image: "", headline: "" }]
+          : [],
+      image: format === "CAROUSEL" ? "" : ad.image || ad.cards[0]?.image || "",
+    });
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C1D52] text-xs font-bold text-white">
-          {businessName.slice(0, 1).toUpperCase()}
-        </span>
-        <div>
-          <p className="text-xs font-bold text-[#1C1D52]">{businessName}</p>
-          <p className="text-[10px] text-slate-400">Sponsored</p>
-        </div>
+    <div className="mt-5 space-y-4">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {ads.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onActive(index)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${index === active ? "bg-[#5FBB46] text-[#14204f]" : "bg-slate-100 text-slate-600"}`}
+          >
+            {item.name}
+          </button>
+        ))}
+        {ads.length < MAX_CREATIVES && (
+          <>
+            <button type="button" onClick={() => add(false)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#1C1D52] hover:bg-slate-100">
+              <Plus className="h-3.5 w-3.5" /> New ad
+            </button>
+            <button type="button" onClick={() => add(true)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#1C1D52] hover:bg-slate-100">
+              <Copy className="h-3.5 w-3.5" /> Duplicate
+            </button>
+          </>
+        )}
+        {ads.length > 1 && (
+          <button type="button" onClick={remove} className="ml-auto inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50">
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        )}
       </div>
-      <p className="whitespace-pre-line px-3 pb-2 text-xs leading-5 text-slate-700">
-        {campaign.primaryText || <span className="text-slate-300">Your primary text appears here.</span>}
+      <p className="text-[10px] leading-4 text-slate-500">
+        Up to {MAX_CREATIVES} ads. The platform tests each one, then spends more on the best. Make them
+        genuinely different (another image or angle), and remember each ad needs enough budget to be tested.
       </p>
-      <div className="relative flex aspect-square items-center justify-center bg-gradient-to-br from-[#1C1D52] to-[#5FBB46] p-5 text-center">
-        <span className="absolute left-2 top-2 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white">
-          {FORMATS[campaign.format]}
-        </span>
-        <p className="text-xs italic leading-5 text-white/90">
-          {campaign.visual || "Describe your image or video in step 3."}
-        </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Ad name (only you see it)">
+          <input value={ad.name} maxLength={40} onChange={(e) => setAd({ name: e.target.value })} className={inputClass} />
+        </Field>
+        <Field label="Format">
+          <select value={ad.format} onChange={(e) => changeFormat(e.target.value as AdFormat)} className={inputClass}>
+            {(Object.keys(FORMATS) as AdFormat[]).map((key) => (
+              <option key={key} value={key}>{FORMATS[key]}</option>
+            ))}
+          </select>
+        </Field>
       </div>
-      <div className="flex items-center justify-between gap-3 bg-slate-50 px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-bold text-[#1C1D52]">{campaign.headline || "Your headline"}</p>
-          {campaign.description && <p className="truncate text-[10px] text-slate-500">{campaign.description}</p>}
+
+      {ad.format === "CAROUSEL" ? (
+        <div>
+          <Label>Cards ({ad.cards.length} of {MAX_CARDS})</Label>
+          <div className="space-y-2">
+            {ad.cards.map((card, index) => (
+              <div key={index} className="flex gap-3 rounded-xl border border-slate-200 p-2.5">
+                <ImagePicker
+                  value={card.image}
+                  enabled={mediaEnabled}
+                  compact
+                  onChange={(image) => setAd({ cards: ad.cards.map((c, i) => (i === index ? { ...c, image } : c)) })}
+                />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <input
+                    value={card.headline}
+                    maxLength={60}
+                    onChange={(e) => setAd({ cards: ad.cards.map((c, i) => (i === index ? { ...c, headline: e.target.value } : c)) })}
+                    placeholder={`Card ${index + 1} headline`}
+                    className={inputClass}
+                  />
+                  {ad.cards.length > 2 && (
+                    <button type="button" onClick={() => setAd({ cards: ad.cards.filter((_, i) => i !== index) })} className="text-[10px] font-semibold text-red-600">
+                      Remove card
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {ad.cards.length < MAX_CARDS && (
+            <button type="button" onClick={() => setAd({ cards: [...ad.cards, { image: "", headline: "" }] })} className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1C1D52]">
+              <Plus className="h-3.5 w-3.5" /> Add card
+            </button>
+          )}
         </div>
-        <span className="shrink-0 rounded-md bg-[#1C1D52] px-3 py-1.5 text-[10px] font-bold text-white">{campaign.cta}</span>
+      ) : (
+        <div>
+          <Label>{ad.format === "VIDEO" ? "Cover image (the video's first frame)" : "Image"}</Label>
+          <ImagePicker value={ad.image} enabled={mediaEnabled} onChange={(image) => setAd({ image })} />
+        </div>
+      )}
+
+      <Field label={ad.image || ad.cards.some((c) => c.image) ? "What the visual shows (optional, helps reviewers)" : "Describe the visual"}>
+        <textarea value={ad.visual} rows={2} maxLength={400} onChange={(e) => setAd({ visual: e.target.value })} placeholder="e.g. Close-up of steaming jollof with plantain, our rider handing over a bag, bright Lagos street." className={inputClass} />
+      </Field>
+
+      {ad.format === "VIDEO" && (
+        <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+          <Field label={`Script / storyboard (${ad.script.length}/1200)`}>
+            <textarea
+              value={ad.script}
+              rows={5}
+              maxLength={1200}
+              onChange={(e) => setAd({ script: e.target.value })}
+              placeholder={"0–3s: hook (what stops the scroll)\n3–10s: show the product and the benefit\n10–15s: the offer and what to do next"}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Length (seconds)">
+            <input type="number" min={5} max={120} value={ad.seconds} onChange={(e) => setAd({ seconds: Number(e.target.value) })} className={inputClass} />
+          </Field>
+        </div>
+      )}
+
+      <Field label={`Primary text (${ad.primaryText.length}/600)`}>
+        <textarea value={ad.primaryText} rows={4} maxLength={600} onChange={(e) => setAd({ primaryText: e.target.value })} placeholder="What you'd say to the customer: the benefit, the offer, why now." className={inputClass} />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {ad.format !== "CAROUSEL" && (
+          <Field label={`Headline (${ad.headline.length}/80)`}>
+            <input value={ad.headline} maxLength={80} onChange={(e) => setAd({ headline: e.target.value })} className={inputClass} />
+          </Field>
+        )}
+        <Field label="Button">
+          <select value={ad.cta} onChange={(e) => setAd({ cta: e.target.value })} className={inputClass}>
+            {CALLS_TO_ACTION.map((cta) => (
+              <option key={cta} value={cta}>{cta}</option>
+            ))}
+          </select>
+        </Field>
       </div>
+      <Field label="Description (optional)">
+        <input value={ad.description} maxLength={120} onChange={(e) => setAd({ description: e.target.value })} className={inputClass} />
+      </Field>
     </div>
   );
 }
+
+/** Uploads an image (shrunk in the browser first) and shows it. */
+function ImagePicker({
+  value,
+  onChange,
+  enabled,
+  compact = false,
+}: {
+  value: string;
+  onChange: (ref: string) => void;
+  enabled: boolean;
+  compact?: boolean;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const box = compact ? "h-20 w-20" : "h-40 w-40";
+
+  async function upload(file: File) {
+    setBusy(true);
+    setError(null);
+    try {
+      const blob = await shrinkImage(file);
+      const response = await fetch("/api/internship/lab/media", {
+        method: "POST",
+        headers: { "Content-Type": blob.type },
+        body: blob,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Upload failed.");
+      onChange(body.ref as string);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!enabled && !value)
+    return (
+      <div className={`${box} flex shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 p-2 text-center text-[10px] text-slate-400`}>
+        Image uploads aren&apos;t available yet; describe it below.
+      </div>
+    );
+
+  return (
+    <div className="shrink-0">
+      <button
+        type="button"
+        onClick={() => input.current?.click()}
+        disabled={busy || !enabled}
+        className={`${box} relative flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-[#5FBB46]`}
+        aria-label={value ? "Replace image" : "Upload image"}
+      >
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={mediaSrc(value)} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex flex-col items-center gap-1 text-[10px] font-semibold">
+            <ImagePlus className="h-5 w-5" /> Upload
+          </span>
+        )}
+        {busy && (
+          <span className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <Loader2 className="h-5 w-5 animate-spin text-[#5FBB46]" />
+          </span>
+        )}
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void upload(file);
+        }}
+      />
+      {value && !compact && enabled && (
+        <button type="button" onClick={() => onChange("")} className="mt-1 block text-[10px] font-semibold text-red-600">
+          Remove image
+        </button>
+      )}
+      {error && <p className={`mt-1 text-[10px] text-red-600 ${compact ? "w-20" : "w-40"}`}>{error}</p>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- the preview
+
+/** A generic sponsored-post mock-up (not any real platform's design). */
+function AdPreview({ ad, businessName }: { ad: Creative; businessName: string }) {
+  const [view, setView] = useState<"feed" | "story">("feed");
+  const [card, setCard] = useState(0);
+  const cardIndex = Math.min(card, Math.max(0, ad.cards.length - 1));
+  const image = ad.format === "CAROUSEL" ? ad.cards[cardIndex]?.image : ad.image;
+
+  const visual = (shape: string) => (
+    <div className={`relative flex ${shape} items-center justify-center overflow-hidden bg-gradient-to-br from-[#1C1D52] to-[#5FBB46] text-center`}>
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={mediaSrc(image)} alt={ad.visual || "Ad image"} className="h-full w-full object-cover" />
+      ) : (
+        <p className="p-5 text-xs italic leading-5 text-white/90">{ad.visual || "Upload an image or describe it."}</p>
+      )}
+      {ad.format === "VIDEO" && (
+        <>
+          <span className="absolute flex h-12 w-12 items-center justify-center rounded-full bg-black/45 text-white">
+            <Play className="h-6 w-6 fill-white" />
+          </span>
+          <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            0:{String(ad.seconds % 60).padStart(2, "0")}
+          </span>
+        </>
+      )}
+      {ad.format === "CAROUSEL" && ad.cards.length > 1 && (
+        <>
+          <button type="button" aria-label="Previous card" onClick={() => setCard(Math.max(0, cardIndex - 1))} className="absolute left-1.5 rounded-full bg-white/80 p-1 text-[#1C1D52] disabled:opacity-30" disabled={cardIndex === 0}>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" aria-label="Next card" onClick={() => setCard(Math.min(ad.cards.length - 1, cardIndex + 1))} className="absolute right-1.5 rounded-full bg-white/80 p-1 text-[#1C1D52] disabled:opacity-30" disabled={cardIndex === ad.cards.length - 1}>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            {cardIndex + 1}/{ad.cards.length}
+          </span>
+        </>
+      )}
+    </div>
+  );
+  const headline = ad.format === "CAROUSEL" ? ad.cards[cardIndex]?.headline : ad.headline;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1">
+        {(["feed", "story"] as const).map((key) => (
+          <button key={key} type="button" onClick={() => setView(key)} className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${view === key ? "bg-[#1C1D52] text-white" : "bg-slate-100 text-slate-600"}`}>
+            {key === "feed" ? "Feed" : "Story / Reel"}
+          </button>
+        ))}
+      </div>
+      {view === "feed" ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C1D52] text-xs font-bold text-white">
+              {businessName.slice(0, 1).toUpperCase()}
+            </span>
+            <div>
+              <p className="text-xs font-bold text-[#1C1D52]">{businessName}</p>
+              <p className="text-[10px] text-slate-400">Sponsored</p>
+            </div>
+          </div>
+          <p className="whitespace-pre-line px-3 pb-2 text-xs leading-5 text-slate-700">
+            {ad.primaryText || <span className="text-slate-300">Your primary text appears here.</span>}
+          </p>
+          {visual("aspect-square")}
+          <div className="flex items-center justify-between gap-3 bg-slate-50 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold text-[#1C1D52]">{headline || "Your headline"}</p>
+              {ad.description && <p className="truncate text-[10px] text-slate-500">{ad.description}</p>}
+            </div>
+            <span className="shrink-0 rounded-md bg-[#1C1D52] px-3 py-1.5 text-[10px] font-bold text-white">{ad.cta}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="relative mx-auto w-[220px] overflow-hidden rounded-2xl bg-black shadow-sm">
+          {visual("aspect-[9/16]")}
+          <div className="absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/60 to-transparent px-3 py-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#1C1D52]">
+              {businessName.slice(0, 1).toUpperCase()}
+            </span>
+            <p className="text-[10px] font-bold text-white">{businessName} · Sponsored</p>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-3 pt-8">
+            <p className="line-clamp-2 text-[10px] leading-4 text-white">{ad.primaryText}</p>
+            <span className="mt-2 block rounded-full bg-white py-1.5 text-center text-[10px] font-bold text-[#1C1D52]">{ad.cta}</span>
+          </div>
+        </div>
+      )}
+      <p className="text-[10px] leading-4 text-slate-400">
+        {view === "story"
+          ? "Stories and Reels show your image tall (9:16): keep key details in the middle."
+          : "Feed shows it square. Check both if you use several placements."}
+      </p>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- the results
 
 function Results({
   runs,
@@ -514,6 +856,10 @@ function Results({
         ))}
       </dl>
 
+      {run.result.creatives && run.result.creatives.length > 0 && (
+        <AdBreakdown run={run} />
+      )}
+
       <div>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Day by day (clicks ▮ and conversions ▮)</p>
         <div className="flex h-36 items-end gap-1.5 overflow-x-auto rounded-xl bg-[#f8fbff] p-3">
@@ -546,12 +892,12 @@ function Results({
 
       <div className="grid gap-3 md:grid-cols-3">
         <Advice title="Targeting" items={run.feedback.targeting} />
-        <Advice title="The ad" items={run.feedback.creative} />
+        <Advice title="The ads" items={run.feedback.creative} />
         <Advice title="Budget & bidding" items={run.feedback.budget} />
       </div>
       <p className="flex items-center gap-1 text-[10px] text-slate-400">
         <Sparkles className="h-3 w-3" />
-        {ratings.source === "ai" ? "Plan judged by AI." : "Plan judged by simple rules."} Results come from a training simulation, not real ads.
+        {ratings.source === "ai" ? "Plan and images judged by AI." : "Plan judged by simple rules."} Results come from a training simulation, not real ads.
       </p>
 
       {onSubmit && (
@@ -566,6 +912,59 @@ function Results({
         </button>
       )}
     </section>
+  );
+}
+
+/** How each ad did: budget share, clicks, conversions and its own advice. */
+export function AdBreakdown({ run }: { run: SimRun }) {
+  const results = run.result.creatives ?? [];
+  const tips = new Map((run.feedback.ads ?? []).map((ad) => [ad.id, ad.tips]));
+  const top = Math.max(...results.map((r) => r.share));
+  // A clear winner only: ads that did about the same share the budget evenly.
+  const hasWinner = results.length > 1 && top - Math.min(...results.map((r) => r.share)) >= 0.05;
+  return (
+    <div>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Your ads</p>
+      <ul className="space-y-2">
+        {results.map((result) => {
+          const ad = run.campaign.creatives.find((c) => c.id === result.id);
+          const image = ad ? (ad.format === "CAROUSEL" ? ad.cards[0]?.image : ad.image) : "";
+          return (
+            <li key={result.id} className="flex flex-wrap gap-3 rounded-xl border border-slate-200 p-3">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-[#1C1D52] to-[#5FBB46]">
+                {image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaSrc(image)} alt="" className="h-full w-full object-cover" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-[#1C1D52]">
+                  {result.name} · {FORMATS[result.format]}
+                  {hasWinner && result.share === top && (
+                    <span className="ml-2 rounded-full bg-[#e8f7eb] px-2 py-0.5 text-[10px] text-[#397d3a]">Winner</span>
+                  )}
+                </p>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full rounded-full bg-[#5FBB46]" style={{ width: `${Math.round(result.share * 100)}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-600">
+                  {Math.round(result.share * 100)}% of budget ({naira(result.spend)}) · {count(result.impressions)} views · CTR {result.ctr}% ·{" "}
+                  {result.conversions} conversions{result.costPerConversion ? ` at ${naira(result.costPerConversion)}` : ""} · quality{" "}
+                  {Math.round(result.quality * 100)}%
+                </p>
+                {(tips.get(result.id) ?? []).length > 0 && (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-slate-600">
+                    {tips.get(result.id)!.map((tip, index) => (
+                      <li key={index}>{tip}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

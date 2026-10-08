@@ -3,6 +3,7 @@ import { requireAdminApi } from "@/lib/api-guards";
 import {
   campaignProblems,
   parseAdsConfig,
+  keepOwnMedia,
   parseCampaign,
   simulateCampaign,
 } from "@/lib/ads-sim/model";
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
   }
 
   const config = parseAdsConfig(body?.config);
-  const campaign = parseCampaign(body?.campaign);
+  const campaign = keepOwnMedia(parseCampaign(body?.campaign), adminId);
   const problems = campaignProblems(campaign, config);
   if (problems.length)
     return NextResponse.json({ error: problems.join(" ") }, { status: 400 });

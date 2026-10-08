@@ -25,9 +25,12 @@ const inputClass =
 export default function AdsConfigEditor({
   config,
   onChange,
+  mediaEnabled = false,
 }: {
   config: AdsConfig;
   onChange: (config: AdsConfig) => void;
+  /** Whether image uploads work (file storage is set up). */
+  mediaEnabled?: boolean;
 }) {
   const set = (patch: Partial<AdsConfig>) => onChange({ ...config, ...patch });
   const ideal = config.idealAudience;
@@ -370,13 +373,13 @@ export default function AdsConfigEditor({
         </div>
       </Card>
 
-      <TestRun config={config} />
+      <TestRun config={config} mediaEnabled={mediaEnabled} />
     </div>
   );
 }
 
 /** Try the exercise as an intern; nothing is saved and runs are unlimited. */
-function TestRun({ config }: { config: AdsConfig }) {
+function TestRun({ config, mediaEnabled }: { config: AdsConfig; mediaEnabled: boolean }) {
   const [campaign, setCampaign] = useState<Campaign>({
     ...BLANK_CAMPAIGN,
     name: "Test campaign",
@@ -394,6 +397,7 @@ function TestRun({ config }: { config: AdsConfig }) {
         </p>
       </div>
       <AdsSimulator
+        mediaEnabled={mediaEnabled}
         config={config}
         campaign={campaign}
         onCampaignChange={setCampaign}
