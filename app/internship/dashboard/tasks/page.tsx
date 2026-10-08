@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bell,
@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
+import { bringIntoView } from "@/lib/bring-into-view";
 import type {
   InternshipTaskItem,
   InternshipTaskListResponse,
@@ -45,6 +46,13 @@ export default function TasksPage() {
   const [taskFilter, setTaskFilter] = useState<"All" | "INDIVIDUAL" | "GROUP">(
     "All",
   );
+  const taskListRef = useRef<HTMLElement>(null);
+
+  // "View Tasks" filters the list below; on phones, scroll down to it.
+  const showTasks = (filter: "INDIVIDUAL" | "GROUP") => {
+    setTaskFilter(filter);
+    bringIntoView(taskListRef.current);
+  };
 
   const loadTasks = useCallback(async () => {
     const response = await fetch("/api/internship/tasks", {
@@ -127,7 +135,7 @@ export default function TasksPage() {
                   title="Individual Tasks"
                   text="You submit these yourself"
                   linkClass="text-[#1C1D52]"
-                  onView={() => setTaskFilter("INDIVIDUAL")}
+                  onView={() => showTasks("INDIVIDUAL")}
                 />
                 <SummaryCard
                   icon={<Users className="h-4 w-4" />}
@@ -137,7 +145,7 @@ export default function TasksPage() {
                   title="Group Tasks"
                   text="Your group leader submits these"
                   linkClass="text-[#5FBB46]"
-                  onView={() => setTaskFilter("GROUP")}
+                  onView={() => showTasks("GROUP")}
                 />
                 <div className="grid grid-cols-3 gap-3 sm:col-span-2">
                   {(
@@ -195,9 +203,18 @@ export default function TasksPage() {
               </section>
             </div>
 
-            <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
+            <section
+              ref={taskListRef}
+              className="scroll-mt-4 overflow-hidden rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6"
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold text-[#1C1D52]">All tasks</h2>
+                <h2 className="text-lg font-bold text-[#1C1D52]">
+                  {taskFilter === "INDIVIDUAL"
+                    ? "Individual tasks"
+                    : taskFilter === "GROUP"
+                      ? "Group tasks"
+                      : "All tasks"}
+                </h2>
                 <label className="self-start">
                   <span className="sr-only">Filter tasks</span>
                   <select

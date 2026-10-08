@@ -5,6 +5,7 @@ import { Search, Send } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { MentorPage } from "@/components/MentorPage";
+import { bringIntoView } from "@/lib/bring-into-view";
 
 type ConversationSummary = {
   internId: string;
@@ -47,6 +48,8 @@ function MentorMessages() {
   const [error, setError] = useState<string | null>(null);
   const lastFetchedAt = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // On phones the chat sits below the conversation list.
+  const chatRef = useRef<HTMLDivElement>(null);
 
   const active =
     conversations.find((conversation) => conversation.internId === activeId) ??
@@ -240,7 +243,10 @@ function MentorMessages() {
               <button
                 key={`${conversation.internId}-${conversation.programId}`}
                 type="button"
-                onClick={() => setActiveId(conversation.internId)}
+                onClick={() => {
+                  setActiveId(conversation.internId);
+                  bringIntoView(chatRef.current);
+                }}
                 className={`flex w-full items-center gap-3 p-4 text-left ${conversation.internId === activeId ? "bg-[#eef7f0]" : "hover:bg-slate-50"}`}
               >
                 <Image
@@ -270,7 +276,7 @@ function MentorMessages() {
             ))}
           </div>
         </aside>
-        <div className="flex min-h-[560px] flex-col">
+        <div ref={chatRef} className="flex min-h-[560px] scroll-mt-4 flex-col">
           {active ? (
             <>
               <header className="border-b border-slate-200 p-4">
