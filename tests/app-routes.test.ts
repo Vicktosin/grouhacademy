@@ -16,6 +16,8 @@ const PUBLIC_PAGES = new Set([
   "/internship",
   "/privacy-policy",
   "/terms-of-service",
+  // Public certificate check for employers.
+  "/verify",
 ]);
 
 function listPageRoutes(dir: string, route = ""): string[] {

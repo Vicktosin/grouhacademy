@@ -471,14 +471,35 @@ function TaskCard({
 
           {task.submission?.feedback && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-semibold">Mentor feedback</p>
+              <p className="font-semibold">Feedback</p>
               <p className="mt-1 whitespace-pre-wrap">
                 {task.submission.feedback}
               </p>
             </div>
           )}
 
-          {task.canSubmit ? (
+          {task.labScenarioId && (
+            <p className="mt-4 text-xs text-slate-500">
+              Done in the Practice Lab. Reach{" "}
+              <span className="font-semibold text-[#1C1D52]">
+                {task.labPassMark}%
+              </span>{" "}
+              there to pass this task. Submitting grades it straight away.
+            </p>
+          )}
+
+          {task.labScenarioId && (
+            <a
+              href={`/internship/dashboard/lab/${task.labScenarioId}?taskId=${task.id}`}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-bold text-white"
+            >
+              {task.canSubmit
+                ? "Open in Practice Lab and submit"
+                : "Open in Practice Lab"}
+            </a>
+          )}
+
+          {task.canSubmit && !task.labScenarioId ? (
             <form onSubmit={submit} className="mt-4 space-y-3">
               {leaderSubmits && group && (
                 <fieldset className="rounded-lg border border-slate-200 p-3">

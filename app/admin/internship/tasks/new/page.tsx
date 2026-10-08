@@ -15,6 +15,7 @@ import {
 type CohortOption = {
   id: string;
   name: string;
+  programId: string;
   programName: string;
   startDate: string;
   endDate: string;
@@ -31,7 +32,16 @@ type TaskRecord = {
   dueWeek: number;
   dueDay: number;
   dueTime: string;
+  labScenarioId: string | null;
+  labPassMark: number;
   submissionCount: number;
+};
+type LabOption = {
+  id: string;
+  title: string;
+  programId: string;
+  level: string;
+  published: boolean;
 };
 type Draft = Omit<TaskRecord, "id" | "submissionCount">;
 
@@ -46,6 +56,8 @@ const emptyDraft: Draft = {
   dueWeek: 1,
   dueDay: 7,
   dueTime: "23:59",
+  labScenarioId: null,
+  labPassMark: 70,
 };
 
 const inputClass =
@@ -55,6 +67,7 @@ export default function InternshipTaskFormPage() {
   const router = useRouter();
   const editId = useSearchParams().get("edit");
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [labScenarios, setLabScenarios] = useState<LabOption[]>([]);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [submissionCount, setSubmissionCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -70,6 +83,7 @@ export default function InternshipTaskFormPage() {
           throw new Error(payload?.error || "Task setup is unavailable.");
         const nextCohorts: CohortOption[] = payload.cohorts ?? [];
         setCohorts(nextCohorts);
+        setLabScenarios(payload.labScenarios ?? []);
         const task = editId
           ? (payload.tasks as TaskRecord[]).find((entry) => entry.id === editId)
           : null;
@@ -86,6 +100,8 @@ export default function InternshipTaskFormPage() {
             dueWeek: task.dueWeek,
             dueDay: task.dueDay,
             dueTime: task.dueTime,
+            labScenarioId: task.labScenarioId,
+            labPassMark: task.labPassMark,
           });
           setSubmissionCount(task.submissionCount);
         } else {
@@ -288,6 +304,61 @@ export default function InternshipTaskFormPage() {
                   </option>
                 </select>
               </label>
+              <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
+                Practice Lab exercise (optional)
+                <select
+                  value={draft.labScenarioId ?? ""}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      labScenarioId: event.target.value || null,
+                    })
+                  }
+                  className={inputClass}
+                >
+                  <option value="">None, interns submit text as usual</option>
+                  {labScenarios
+                    .filter((lab) => lab.programId === cohort?.programId)
+                    .map((lab) => (
+                      <option key={lab.id} value={lab.id}>
+                        {lab.title} · {lab.level}
+                        {lab.published ? "" : " (draft)"}
+                      </option>
+                    ))}
+                </select>
+                <span className="mt-1 block font-normal text-slate-400">
+                  Interns do the exercise in the Practice Lab. Submitting it
+                  grades this task: passed if they reach the pass mark, failed
+                  if not (they can improve and resubmit until it&apos;s due).
+                  Mentors can still change the grade.
+                </span>
+              </label>
+              {draft.labScenarioId && (
+                <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
+                  Pass mark (%)
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    inputMode="numeric"
+                    required
+                    value={Number.isNaN(draft.labPassMark) ? "" : draft.labPassMark}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        labPassMark: event.target.valueAsNumber,
+                      })
+                    }
+                    className={`${inputClass} max-w-[140px]`}
+                  />
+                  <span className="mt-1 block font-normal text-slate-400">
+                    Coding exercises: the share of checks passed. Ad and social
+                    simulators: the run&apos;s score out of 100. A new pass mark
+                    applies to submissions from now on.
+                  </span>
+                </label>
+              )}
               {locked && (
                 <p className="text-[10px] text-amber-700 md:col-span-2">
                   Interns have already submitted this task, so its cohort and

@@ -301,6 +301,8 @@ model User {
   internshipFollowUpsContacted InternshipFollowUp[]         @relation("FollowUpLastContactedBy")
   internshipFollowUpLogs       InternshipFollowUpLog[]      @relation("FollowUpLogAdmin")
   internshipFollowUpTemplates  InternshipFollowUpTemplate[] @relation("FollowUpTemplateEditor")
+  interviewSessions            InterviewSession[]
+  labAttempts                  LabAttempt[]
 
   @@index([status])
 }
@@ -389,6 +391,8 @@ model InternshipProgram {
   internResources         InternResourceTrack[]
   levelFees               InternshipLevelFee[]
   resourceRecommendations InternResourceRecommendation[]
+  interviewSetups         InterviewSetup[]
+  labScenarios            LabScenario[]
   progress                InternshipProgress[]
   mentorAssignments       MentorAssignment[]
   payments                Payment[]
@@ -472,6 +476,7 @@ model InternshipApplication {
   certificates InternshipCertificate[]
   followUp     InternshipFollowUp?
   followUpLogs InternshipFollowUpLog[]
+  interviews   InterviewSession[]
 
   // One application per track per level: moving up a level adds a new one.
   @@unique([studentId, programId, levelId])
@@ -1152,9 +1157,14 @@ model InternshipTask {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  module      InternshipModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  cohort      InternshipCohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  submissions TaskSubmission[]
+  module        InternshipModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  cohort        InternshipCohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  submissions   TaskSubmission[]
+  // Optional Practice Lab exercise the intern completes for this task.
+  labScenarioId String?
+  labScenario   LabScenario?     @relation(fields: [labScenarioId], references: [id], onDelete: SetNull)
+  // Lab percentage (checks passed, or the run score) needed to pass the task.
+  labPassMark   Int              @default(70)
 
   @@index([moduleId])
   @@index([cohortId, dueDate])
@@ -1580,6 +1590,8 @@ model InternshipLevel {
   resources       InternResource[]
   fees            InternshipLevelFee[]
   recommendations InternResourceRecommendation[]
+  interviewSetups InterviewSetup[]
+  labScenarios    LabScenario[]
 }
 
 // A track's acceptance fee at a level above Entry. Entry keeps using
@@ -1682,4 +1694,153 @@ model InternshipFollowUpTemplate {
   updatedAt   DateTime      @updatedAt
 
   updatedBy User? @relation("FollowUpTemplateEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+// Practice interviews for interns, run live by a Tavus AI interviewer (video
+// or voice only) and scored afterwards by Claude from the transcript.
+
+enum InterviewMode {
+  VIDEO
+  AUDIO
+}
+
+enum InterviewStatus {
+  STARTING
+  ACTIVE
+  ENDED
+  SCORED
+  FAILED
+}
+
+// What the interviewer covers for interns on a track at a level.
+model InterviewSetup {
+  id              String   @id @default(cuid())
+  programId       String
+  levelId         String
+  title           String
+  // Extra direction for the interviewer, e.g. the skills to probe.
+  instructions    String?
+  // Ordered list of questions (strings).
+  questions       Json     @default("[]")
+  durationMinutes Int      @default(15)
+  maxAttempts     Int      @default(3)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  program  InternshipProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level    InternshipLevel    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  sessions InterviewSession[]
+
+  @@unique([programId, levelId])
+}
+
+model InterviewSession {
+  id                  String          @id @default(cuid())
+  userId              String          @db.Uuid
+  setupId             String
+  applicationId       String?
+  mode                InterviewMode
+  status              InterviewStatus @default(STARTING)
+  tavusConversationId String?         @unique
+  conversationUrl     String?
+  startedAt           DateTime?
+  endedAt             DateTime?
+  shutdownReason      String?
+  // [{ role, content, seconds_from_start? }] from Tavus after the call.
+  transcript          Json?
+  recordingUri        String?
+  score               Int?
+  // { summary, strengths[], improvements[], questions[{question, score, feedback}] }
+  feedback            Json?
+  scoredAt            DateTime?
+  errorMessage        String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setup       InterviewSetup         @relation(fields: [setupId], references: [id], onDelete: Cascade)
+  application InternshipApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, setupId])
+  @@index([status])
+}
+
+// Practice Lab: hands-on exercises for a track and level, done in an
+// in-browser workspace (for now a front-end code editor: plain HTML/CSS/JS
+// or React). Automatic checks run in a sandboxed preview; Claude can review
+// the code. An exercise can be free practice or linked to a task.
+
+enum LabKind {
+  WEB
+  REACT
+  // Ad Campaign Simulator (digital marketing).
+  ADS
+  // Social media content planner simulator.
+  SOCIAL
+  // AI automation workflow builder.
+  AUTOMATION
+  // Backend API simulator (Node.js + Express + SQLite, sandboxed).
+  BACKEND
+}
+
+enum LabAttemptStatus {
+  DRAFT
+  SUBMITTED
+}
+
+model LabScenario {
+  id            String   @id @default(cuid())
+  programId     String
+  levelId       String
+  kind          LabKind
+  title         String
+  // What to build, shown to the intern (plain text with line breaks).
+  brief         String
+  // { [fileName]: contents } the intern starts from.
+  starterFiles  Json
+  // Optional model answer, admin-only, used to test the checks.
+  solutionFiles Json?
+  // [{ label, code }]: JS run in the preview; return true to pass.
+  checks        Json     @default("[]")
+  // Simulator exercises: the brief's settings (see lib/ads-sim,
+  // lib/social-sim, lib/automation-sim and lib/backend-sim). Backend API
+  // exercises also keep their starter and model answer files above.
+  config        Json?
+  published     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  program  InternshipProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level    InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  attempts LabAttempt[]
+  tasks    InternshipTask[]
+
+  @@index([programId, levelId, published])
+}
+
+// One saved workspace per intern per exercise; autosaved, resubmittable.
+model LabAttempt {
+  id           String           @id @default(cuid())
+  userId       String           @db.Uuid
+  scenarioId   String
+  files        Json
+  status       LabAttemptStatus @default(DRAFT)
+  checksPassed Int?
+  checksTotal  Int?
+  // [{ label, passed, error? }] from the last submitted run.
+  checkResults Json?
+  // AI code review: { rating 0-10, summary, strengths[], improvements[] }
+  review       Json?
+  // Ad campaign exercises: every simulated run [{ at, campaign, result }].
+  runs         Json?
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario LabScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioId])
+  @@index([scenarioId])
 }

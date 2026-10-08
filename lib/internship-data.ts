@@ -46,6 +46,10 @@ export type InternshipTaskItem = {
   blockedReason: string | null;
   /** Present for group tasks when the intern is in a group. */
   group: InternshipTaskGroupInfo | null;
+  /** Practice Lab exercise this task is done in, if any. */
+  labScenarioId: string | null;
+  /** Lab percentage needed to pass, for Practice Lab tasks. */
+  labPassMark: number;
 };
 
 export type InternshipAlert = {
