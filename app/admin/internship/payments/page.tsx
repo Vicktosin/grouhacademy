@@ -230,6 +230,12 @@ export default function InternshipPaymentsPage() {
               Monitor internship acceptance fees, tiered access payments, and
               the live internship status of each applicant.
             </p>
+            <Link
+              href="/admin/internship/payments/unmatched"
+              className="mt-3 inline-flex items-center rounded-lg bg-[#1C1D52] px-3 py-2 text-[11px] font-semibold text-white"
+            >
+              Check for unmatched Paystack payments
+            </Link>
           </div>
           <div className="rounded-xl bg-[#edf3ff] px-3 py-2 text-right text-[#1C1D52]">
             <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#1C1D52]/70">
