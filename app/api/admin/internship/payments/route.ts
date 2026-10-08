@@ -78,8 +78,10 @@ export async function GET() {
 
   const prisma = getPrisma();
 
+  // Latest activity first: someone who first tried days ago and paid (or
+  // tried again) today belongs at the top.
   const payments = await prisma.internshipPayment.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: { updatedAt: "desc" },
     include: {
       application: {
         include: {

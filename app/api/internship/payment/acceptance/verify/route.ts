@@ -57,10 +57,16 @@ export async function GET(request: Request) {
     // the authority for settling the payment; browser authentication must not
     // leave a successful payment pending.
     //
-    // Metadata alone must never settle a different or superseded payment
-    // reference, so require the reference stored on the application payment.
+    // Metadata alone must never settle a different application's payment, so
+    // the reference must be the one stored on this application's payment, or
+    // an earlier attempt for this same application: each new attempt replaces
+    // the stored reference, but an earlier one can still complete (e.g. a
+    // bank transfer made after tapping Pay again). Our references embed the
+    // application id; the amount check below still applies.
     const application = await prisma.internshipApplication.findFirst({
-      where: { id: applicationId, payment: { is: { reference } } },
+      where: reference.startsWith(`acceptance_${applicationId}_`)
+        ? { id: applicationId, payment: { isNot: null } }
+        : { id: applicationId, payment: { is: { reference } } },
       include: { program: true, payment: true },
     });
     if (!application) {
@@ -101,10 +107,13 @@ export async function GET(request: Request) {
       );
     }
 
-    await prisma.internshipPayment.update({
-      where: { applicationId },
-      data: { status: "PAID", paidAt: new Date() },
-    });
+    // Store the reference that was actually paid. If it's already paid (e.g.
+    // the webhook got there first), keep the original paid time.
+    if (application.payment?.status !== "PAID")
+      await prisma.internshipPayment.update({
+        where: { applicationId },
+        data: { status: "PAID", paidAt: new Date(), reference },
+      });
 
     await assignApplicationCohort(prisma as unknown as CohortDb, application);
     // A paid move up to the next level becomes the intern's current level.
