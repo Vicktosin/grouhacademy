@@ -172,6 +172,14 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
       },
       {
+        // The backend simulator's WebAssembly files (1.2 MB): browsers keep
+        // them for a year instead of checking for changes on every visit.
+        // Their URLs carry the package versions, so upgrades still reach
+        // everyone (see lib/backend-sim/browser-worker.ts).
+        source: "/lab-runtime/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Always revalidate the service worker so updates reach users.
         source: "/sw.js",
         headers: [
