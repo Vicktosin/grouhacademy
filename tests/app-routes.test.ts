@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { isAppRoute } from "../lib/app-routes";
+import { isAppRoute, isPwaRoute } from "../lib/app-routes";
 
 // Pages that make up the public marketing site and keep the site header and
 // footer. Every other page is treated as part of the app.
@@ -47,4 +47,26 @@ test("matches whole path segments only", () => {
   assert.equal(isAppRoute("/internship/onboarding"), true);
   assert.equal(isAppRoute("/reset-password"), true);
   assert.equal(isAppRoute("/auth/mfa/setup"), true);
+});
+
+test("the installable app covers app pages, not the public site", () => {
+  for (const route of ["/app", "/login", "/admin", "/internship/dashboard", "/student", "/mentor/messages"])
+    assert.equal(isPwaRoute(route), true, `${route} should be part of the app`);
+  for (const route of ["/", "/about", "/courses", "/internship", "/landingpage", "/ad-redirect", "/verify"])
+    assert.equal(isPwaRoute(route), false, `${route} should stay on the public website`);
+});
+
+test("the service worker's app sections match isPwaRoute", () => {
+  const source = readFileSync(path.join(process.cwd(), "public/sw.js"), "utf8");
+  const sections = JSON.parse(
+    source
+      .match(/const APP_SECTIONS = (\[[\s\S]*?\])/)![1]
+      .replace(/'/g, '"')
+      .replace(/,\s*\]$/, "]"),
+  ) as string[];
+  const isAppPath = (p: string) =>
+    p.startsWith("/internship/") ||
+    sections.some((s) => p === s || p.startsWith(`${s}/`));
+  for (const route of listPageRoutes(path.join(process.cwd(), "app")))
+    assert.equal(isAppPath(route), isPwaRoute(route), `${route}: sw.js and lib/app-routes.ts disagree`);
 });

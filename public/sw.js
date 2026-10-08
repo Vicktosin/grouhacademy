@@ -1,4 +1,17 @@
-const CACHE_NAME = 'grouh-academy-v2'
+const CACHE_NAME = 'grouh-academy-v3'
+
+// The installable app covers app pages only, never the public website.
+// Keep in step with isPwaRoute() in lib/app-routes.ts.
+const APP_SECTIONS = [
+  '/app', '/admin', '/instructor', '/mentor', '/student', '/auth', '/dev',
+  '/login', '/register', '/courses/login', '/courses/register', '/welcome',
+  '/forgot-password', '/otp', '/reset-password', '/reset-password-success',
+  '/offline',
+]
+function isAppPath(pathname) {
+  if (pathname.startsWith('/internship/')) return true
+  return APP_SECTIONS.some((section) => pathname === section || pathname.startsWith(section + '/'))
+}
 const APP_SHELL = [
   '/offline',
   '/icons/icon-192.png',
@@ -27,7 +40,10 @@ self.addEventListener('fetch', (event) => {
   // Never cache API responses or personalized pages. When offline, a page
   // navigation gets a purpose-built fallback instead of stale account data.
   if (request.mode === 'navigate') {
-    if (url.origin === self.location.origin && url.pathname === '/offline') {
+    // Public website pages load normally, with no offline handling.
+    if (url.origin !== self.location.origin || !isAppPath(url.pathname)) return
+
+    if (url.pathname === '/offline') {
       event.respondWith(fetch(request).catch(() => caches.match('/offline')))
       return
     }
@@ -37,9 +53,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request).catch(() => {
         const offlineUrl = new URL('/offline', self.location.origin)
-        if (url.origin === self.location.origin) {
-          offlineUrl.searchParams.set('from', url.pathname + url.search)
-        }
+        offlineUrl.searchParams.set('from', url.pathname + url.search)
         return Response.redirect(offlineUrl.href, 302)
       }),
     )

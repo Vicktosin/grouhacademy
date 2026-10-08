@@ -3,7 +3,13 @@
  * rather than the public marketing site. The public header and footer are
  * hidden on these routes and everything nested beneath them.
  */
+/** Marketing pages that hide the site header but aren't part of the app. */
+const MARKETING_LANDING_PAGES = ["/landingpage", "/ad-redirect"];
+
 const APP_ROUTE_SECTIONS = [
+  // Installed-app start page: sends people to their workspace or login.
+  "/app",
+
   // Workspaces
   "/admin",
   "/instructor",
@@ -27,8 +33,7 @@ const APP_ROUTE_SECTIONS = [
   "/offline",
 
   // Standalone landing pages that render their own header and footer
-  "/landingpage",
-  "/ad-redirect",
+  ...MARKETING_LANDING_PAGES,
 ];
 
 export function isAppRoute(pathname: string): boolean {
@@ -41,4 +46,19 @@ export function isAppRoute(pathname: string): boolean {
   return APP_ROUTE_SECTIONS.some(
     (section) => pathname === section || pathname.startsWith(`${section}/`),
   );
+}
+
+/**
+ * Pages that belong to the installable app (PWA): every app route except the
+ * marketing landing pages. Public website pages are never part of the
+ * installed app; inside it they open in the browser instead.
+ */
+export function isPwaRoute(pathname: string): boolean {
+  if (
+    MARKETING_LANDING_PAGES.some(
+      (page) => pathname === page || pathname.startsWith(`${page}/`),
+    )
+  )
+    return false;
+  return isAppRoute(pathname);
 }
