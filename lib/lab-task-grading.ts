@@ -28,8 +28,51 @@ export function scoreCodeChecks(
   return { percent, missed };
 }
 
+/** Code without comments or spacing, to compare with the starter. */
+function essence(code: string) {
+  return code
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:"'`])\/\/[^\n]*/g, "$1")
+    .replace(/\s+/g, "");
+}
+
+/**
+ * Code exercises' checks run in the intern's browser, so a passing result
+ * could be faked. These are signs a pass needs a mentor's look (empty when
+ * nothing looks wrong): the code is still the starter code, or the results
+ * sent don't match the exercise's checks (edited by hand). Cheap: uses only
+ * what the submission already contains.
+ */
+export function codeSubmissionFlags({
+  starter,
+  files,
+  checkLabels,
+  results,
+}: {
+  starter: Record<string, string>;
+  files: Record<string, string>;
+  checkLabels: string[];
+  results: Array<{ label: string }>;
+}) {
+  const flags: string[] = [];
+  const names = Object.keys(starter);
+  if (names.length && names.every((name) => essence(files[name] ?? "") === essence(starter[name] ?? "")))
+    flags.push("The submitted code is the same as the starter code, yet the checks were reported as passing.");
+  const known = new Set(checkLabels);
+  const seen = new Set<string>();
+  const tampered = results.some((result) => {
+    const bad = !known.has(result.label) || seen.has(result.label);
+    seen.add(result.label);
+    return bad;
+  });
+  if (tampered || results.length > checkLabels.length)
+    flags.push("The check results sent don't match this exercise's checks, so they may have been edited.");
+  return flags;
+}
+
 export type LabTaskGrade = {
-  status: "ACCEPTED" | "REJECTED";
+  status: "ACCEPTED" | "REJECTED" | "UNDER_REVIEW";
   passed: boolean;
   percent: number;
   score: number;
@@ -42,6 +85,7 @@ export function gradeLabTask({
   maxScore,
   missed,
   missedLabel,
+  needsReview = false,
 }: {
   percent: number;
   passMark: number;
@@ -50,11 +94,16 @@ export function gradeLabTask({
   missed: string[];
   /** "checks" or "goals", for the feedback. */
   missedLabel: string;
+  /** A pass that a mentor should confirm (see codeSubmissionFlags). */
+  needsReview?: boolean;
 }): LabTaskGrade {
   const safe = Math.max(0, Math.min(100, Math.round(percent)));
   const passed = safe >= passMark;
+  const pending = passed && needsReview;
   const lines = [
-    passed
+    pending
+      ? `Practice Lab result: ${safe}% (pass mark ${passMark}%). A mentor will confirm it shortly.`
+      : passed
       ? `Passed in the Practice Lab: ${safe}% (pass mark ${passMark}%).`
       : `Not passed yet: ${safe}% in the Practice Lab, and the pass mark is ${passMark}%. Improve your work in the Practice Lab and submit again before the deadline.`,
   ];
@@ -65,7 +114,7 @@ export function gradeLabTask({
       ...missed.map((label) => `• ${label}`),
     );
   return {
-    status: passed ? "ACCEPTED" : "REJECTED",
+    status: pending ? "UNDER_REVIEW" : passed ? "ACCEPTED" : "REJECTED",
     passed,
     percent: safe,
     score: Math.round((safe / 100) * maxScore),

@@ -16,6 +16,7 @@ type SummaryRow = {
   submittedScore: number | null;
   runCount: number;
   bestScore: number | null;
+  flagCount: number;
   submittedAt: Date | null;
   updatedAt: Date;
 };
@@ -43,6 +44,8 @@ export async function GET(
            COALESCE(jsonb_array_length(a."runs"), 0)::int AS "runCount",
            (SELECT MAX((r->'result'->>'score')::int)
               FROM jsonb_array_elements(COALESCE(a."runs", '[]'::jsonb)) r) AS "bestScore",
+           (CASE WHEN jsonb_typeof(a."review"->'flags') = 'array'
+                 THEN jsonb_array_length(a."review"->'flags') ELSE 0 END)::int AS "flagCount",
            a."submittedAt", a."updatedAt"
     FROM "LabAttempt" a
     JOIN "User" u ON u."id" = a."userId"
@@ -67,6 +70,7 @@ export async function GET(
       submittedScore: row.submittedScore,
       runCount: row.runCount,
       bestScore: row.bestScore,
+      flagCount: row.flagCount,
       submittedAt: row.submittedAt?.toISOString() ?? null,
       updatedAt: row.updatedAt.toISOString(),
     })),

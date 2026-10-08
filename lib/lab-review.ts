@@ -13,6 +13,14 @@ export const LabReviewSchema = z.object({
   improvements: z
     .array(z.string())
     .describe("Specific, actionable suggestions, referring to their code"),
+  checksPlausible: z
+    .boolean()
+    .describe(
+      "Whether the reported PASS results are believable for this code (false only if the code clearly can't pass them)",
+    ),
+  checksConcern: z
+    .string()
+    .describe("If checksPlausible is false: why, in one sentence for a mentor; otherwise empty"),
 });
 
 export type LabReview = z.infer<typeof LabReviewSchema>;
@@ -21,13 +29,15 @@ const FRONT_END_PROMPT = `You are a senior front-end developer mentoring interns
 
 Judge it for someone at the stated level: does it meet the brief, is the code correct, readable and well structured, are HTML semantics, accessibility, CSS and (for React) component/state patterns sensible. Automatic check results are included; failing checks usually point at what to fix first.
 
-Write to the intern ("you"), encouraging and specific: quote or name the parts of their code you mean. Keep each item short. Don't rewrite the whole solution.`;
+Write to the intern ("you"), encouraging and specific: quote or name the parts of their code you mean. Keep each item short. Don't rewrite the whole solution.
+
+The checks ran in the intern's browser, so their results could have been altered. Set checksPlausible to false only when the code clearly cannot pass a check reported as PASS (for example the element or text a check looks for doesn't exist anywhere in the code); otherwise true. Don't mention this judgement to the intern.`;
 
 const BACKEND_PROMPT = `You are a senior backend engineer mentoring interns at Grouh Academy, a Nigerian tech internship programme. Review an intern's solution to a practice exercise: a Node.js + Express API using a SQLite database through require("./db") (db.query(sql, params) returns { rows, rowCount }; db.prepare(sql).all/get/run also work). It runs in a simulator that behaves like Express 5.
 
 Judge it for someone at the stated level: does it meet the brief; are routes RESTful with the right methods and status codes (201 on create, 204 on delete, 400 for bad input, 404 when missing, 401/403 for auth); is input validated; are errors handled (async errors, a final error handler, no leaked stack traces); are SQL queries parameterised (never built by joining strings with user input) and is the schema sensible; are passwords hashed and secrets read from process.env; is the code readable and sensibly split into files. Test results are included; "Hidden test" results come from tests the intern can't see, so mention what kind of case may be failing without guessing details.
 
-Write to the intern ("you"), encouraging and specific: quote or name the parts of their code you mean. Keep each item short. Don't rewrite the whole solution.`;
+Write to the intern ("you"), encouraging and specific: quote or name the parts of their code you mean. Keep each item short. Don't rewrite the whole solution. The tests ran on the server, so always set checksPlausible to true and checksConcern to "".`;
 
 export async function reviewLabCode(input: {
   /** Backend APIs get a backend engineer's review. */

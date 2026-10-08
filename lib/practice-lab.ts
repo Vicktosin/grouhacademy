@@ -10,6 +10,7 @@ import {
 } from "@/lib/task-submission";
 import { recomputeInternProgress } from "@/lib/internship-progress";
 import {
+  codeSubmissionFlags,
   gradeLabTask,
   scoreCodeChecks,
   type LabTaskGrade,
@@ -319,7 +320,12 @@ function attemptView(
     // Simulators also keep their submitted run here; only an AI review counts.
     review:
       attempt.review && typeof (attempt.review as LabReview).summary === "string"
-        ? (attempt.review as LabReview)
+        ? (({ rating, summary, strengths, improvements }: LabReview) => ({
+            rating,
+            summary,
+            strengths,
+            improvements,
+          }))(attempt.review as LabReview)
         : null,
     // Every AI provider failed (e.g. free-tier limits): no review is coming.
     reviewUnavailable: Boolean(
@@ -816,6 +822,8 @@ export type LabTaskResult =
       taskId: string;
       graded: true;
       passed: boolean;
+      /** A pass waiting for a mentor to confirm it (flagged, see below). */
+      pending: boolean;
       percent: number;
       passMark: number;
     }
@@ -830,7 +838,7 @@ async function gradeLinkedTask(
   userId: string,
   task: LinkedTask,
   content: string,
-  result: { percent: number; missed: string[]; missedLabel: string },
+  result: { percent: number; missed: string[]; missedLabel: string; needsReview?: boolean },
 ): Promise<LabTaskResult> {
   const prisma = getPrisma();
   if (task.kind !== "INDIVIDUAL")
@@ -853,6 +861,7 @@ async function gradeLinkedTask(
     maxScore: task.maxScore,
     missed: result.missed,
     missedLabel: result.missedLabel,
+    needsReview: result.needsReview,
   });
   const now = new Date();
   const data = {
@@ -876,6 +885,7 @@ async function gradeLinkedTask(
     taskId: task.id,
     graded: true,
     passed: grade.passed,
+    pending: grade.status === "UNDER_REVIEW",
     percent: grade.percent,
     passMark: task.labPassMark,
   };
@@ -1069,6 +1079,17 @@ export async function submitLab(
   const files = normalizeFiles(scenario.kind, input.files);
   const results = parseResults(input.checkResults);
   const passed = results.filter((result) => result.passed).length;
+  // Stored results keep labels to 200 characters.
+  const checkLabels = normalizeChecks(scenario.checks).map((check) => check.label.slice(0, 200));
+  // The checks ran in the intern's browser: signs a pass may be faked send
+  // it to a mentor instead of accepting it (admins see why).
+  const flags = codeSubmissionFlags({
+    starter: normalizeFiles(scenario.kind, scenario.starterFiles),
+    files,
+    checkLabels,
+    results,
+  });
+  const flagged = flags.length ? { flags } : Prisma.DbNull;
   const attempt = await prisma.labAttempt.upsert({
     where: { userId_scenarioId: { userId, scenarioId } },
     create: {
@@ -1079,6 +1100,7 @@ export async function submitLab(
       checkResults: results,
       checksPassed: passed,
       checksTotal: results.length,
+      review: flagged,
       submittedAt: new Date(),
     },
     update: {
@@ -1088,7 +1110,7 @@ export async function submitLab(
       checksPassed: passed,
       checksTotal: results.length,
       // A new submission gets a fresh review.
-      review: Prisma.DbNull,
+      review: flagged,
       submittedAt: new Date(),
     },
     select: { id: true, ...VIEW_FIELDS },
@@ -1100,14 +1122,13 @@ export async function submitLab(
     ? await gradeLinkedTask(
         userId,
         task,
-        codeSubmissionText(scenario, files, results),
+        flags.length
+          ? `Note for the mentor: please confirm this result. ${flags.join(" ")}\n\n${codeSubmissionText(scenario, files, results)}`
+          : codeSubmissionText(scenario, files, results),
         {
-          ...scoreCodeChecks(
-            // Stored results keep labels to 200 characters.
-            normalizeChecks(scenario.checks).map((check) => check.label.slice(0, 200)),
-            results,
-          ),
+          ...scoreCodeChecks(checkLabels, results),
           missedLabel: "checks",
+          needsReview: flags.length > 0,
         },
       )
     : null;
@@ -1125,6 +1146,8 @@ export async function reviewAttempt(attemptId: string) {
       checkResults: true,
       review: true,
       submittedAt: true,
+      userId: true,
+      scenarioId: true,
       scenario: {
         select: {
           kind: true,
@@ -1140,14 +1163,17 @@ export async function reviewAttempt(attemptId: string) {
   const kind = attempt.scenario.kind;
   const backend = kind === "BACKEND";
   if (!isCodeKind(kind) && !backend) return;
-  // Backend attempts keep their submitted run and score alongside.
+  // Backend attempts keep their submitted run and score alongside; code
+  // attempts keep any flags.
   const kept =
-    backend && attempt.review && typeof attempt.review === "object"
+    attempt.review && typeof attempt.review === "object"
       ? (attempt.review as Record<string, unknown>)
       : {};
+  const flags = Array.isArray(kept.flags) ? (kept.flags as string[]) : [];
   const keptFields = {
     ...(typeof kept.submittedRun === "number" ? { submittedRun: kept.submittedRun } : {}),
     ...(typeof kept.score === "number" ? { score: kept.score } : {}),
+    ...(flags.length ? { flags } : {}),
   };
   // Only if it's still the same submission: one made while this review was
   // being written gets its own review instead of this older one.
@@ -1163,10 +1189,23 @@ export async function reviewAttempt(attemptId: string) {
       files: isCodeKind(kind) ? normalizeFiles(kind, attempt.files) : parseBackendFiles(attempt.files),
       checkResults: (attempt.checkResults as LabCheckResult[] | null) ?? [],
     });
-    await prisma.labAttempt.updateMany({
+    // Code exercises: the reviewer also judges whether the passing checks
+    // are believable for this code. If not, the pass goes to a mentor.
+    const doubt =
+      isCodeKind(kind) && review.checksPlausible === false
+        ? `The AI reviewer doubts these check results: ${review.checksConcern || "the code doesn't seem to do what the checks need."}`
+        : null;
+    const saved = await prisma.labAttempt.updateMany({
       where: sameSubmission,
-      data: { review: { ...keptFields, ...review } },
+      data: {
+        review: {
+          ...keptFields,
+          ...review,
+          ...(doubt ? { flags: [...flags, doubt] } : {}),
+        },
+      },
     });
+    if (doubt && saved.count) await sendPassToMentor(attempt, doubt);
   } catch (error) {
     console.error(
       `Failed to review lab attempt ${attempt.id}:`,
@@ -1177,6 +1216,42 @@ export async function reviewAttempt(attemptId: string) {
       .updateMany({ where: sameSubmission, data: { review: { ...keptFields, unavailable: true } } })
       .catch(() => {});
   }
+}
+
+/**
+ * Moves the task this code submission passed back to a mentor (when the
+ * review raised a doubt after it was accepted) and updates progress.
+ */
+async function sendPassToMentor(
+  attempt: { userId: string; scenarioId: string; submittedAt: Date | null },
+  reason: string,
+) {
+  if (!attempt.submittedAt) return;
+  const prisma = getPrisma();
+  const submission = await prisma.taskSubmission.findFirst({
+    where: {
+      userId: attempt.userId,
+      groupId: null,
+      status: "ACCEPTED",
+      task: { labScenarioId: attempt.scenarioId },
+      // Graded by this submission, a moment after it was saved.
+      reviewedAt: { gte: attempt.submittedAt },
+    },
+    select: { id: true, content: true, task: { select: { module: { select: { programId: true } } } } },
+  });
+  if (!submission) return;
+  await prisma.taskSubmission.update({
+    where: { id: submission.id },
+    select: { id: true },
+    data: {
+      status: "UNDER_REVIEW",
+      feedback: "Your Practice Lab result is waiting for a mentor to confirm it.",
+      content: `Note for the mentor: please confirm this result. ${reason}\n\n${submission.content}`.slice(0, MAX_SUBMISSION_LENGTH),
+    },
+  });
+  await recomputeInternProgress(attempt.userId, submission.task.module.programId).catch((error) =>
+    console.error("[practice-lab] Progress update failed.", error instanceof Error ? error.message : error),
+  );
 }
 
 /** The intern's attempt status (polled while waiting for the review). */
