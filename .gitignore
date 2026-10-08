@@ -51,5 +51,5 @@ image-backup-*.json
 # Local backups of learner roles (user ids); never commit them
 learner-roles-backup-*.json
 
-# Practice Lab images in local development (no R2 configured)
+# Practice Lab images in local development without Supabase Storage
 .lab-media/

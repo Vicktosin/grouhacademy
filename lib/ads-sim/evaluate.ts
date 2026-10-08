@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateObject, isAiEnabled, type AiImage } from "@/lib/ai";
-import { readLabImage } from "@/lib/lab-media";
+import { readLabThumb } from "@/lib/lab-media";
 import {
   BIDDING,
   DESTINATIONS,
@@ -116,7 +116,8 @@ async function imagesFor(campaign: Campaign): Promise<AiImage[]> {
     });
   const loaded = await Promise.all(
     wanted.slice(0, MAX_AI_IMAGES).map(async ({ ref, label }): Promise<AiImage | null> => {
-      const image = await readLabImage(ref).catch(() => null);
+      // Thumbnails: enough for judging, a quarter of the download.
+      const image = await readLabThumb(ref).catch(() => null);
       return image
         ? { label, mediaType: image.contentType, data: Buffer.from(image.bytes).toString("base64") }
         : null;

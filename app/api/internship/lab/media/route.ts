@@ -3,12 +3,13 @@ import { RoleName } from "@/generated/prisma/client";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
 import { userHasRole } from "@/lib/rbac";
-import { MAX_MEDIA_BYTES, mediaSrc } from "@/lib/lab-media-shared";
+import { MAX_MEDIA_BYTES, MAX_THUMB_BYTES, mediaSrc } from "@/lib/lab-media-shared";
 import { MediaError, saveLabImage } from "@/lib/lab-media";
 
 /**
  * Uploads an ad image for the Practice Lab (interns, and admins trying
- * exercises). Body: the image itself, already shrunk by the browser.
+ * exercises). Body: form data with "image" and "thumb", both already
+ * shrunk by the browser.
  * Returns { ref, src }: the reference to save and the URL to show it.
  */
 export async function POST(request: Request) {
@@ -22,11 +23,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "The Practice Lab is for admitted interns." }, { status: 403 });
 
   const declared = Number(request.headers.get("content-length") ?? 0);
-  if (declared > MAX_MEDIA_BYTES)
-    return NextResponse.json({ error: "Images must be under 600 KB." }, { status: 413 });
-  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (declared > MAX_MEDIA_BYTES + MAX_THUMB_BYTES + 4096)
+    return NextResponse.json({ error: "That image is too big." }, { status: 413 });
+  const form = await request.formData().catch(() => null);
+  const image = form?.get("image");
+  const thumb = form?.get("thumb");
+  if (!(image instanceof Blob) || !(thumb instanceof Blob))
+    return NextResponse.json({ error: "No image was sent." }, { status: 400 });
   try {
-    const ref = await saveLabImage(userId, bytes);
+    const ref = await saveLabImage(
+      userId,
+      new Uint8Array(await image.arrayBuffer()),
+      new Uint8Array(await thumb.arrayBuffer()),
+    );
     return NextResponse.json({ ref, src: mediaSrc(ref) });
   } catch (error) {
     if (error instanceof MediaError)

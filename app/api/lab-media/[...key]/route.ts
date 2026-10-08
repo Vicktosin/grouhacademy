@@ -6,12 +6,12 @@ import { mediaOwner } from "@/lib/lab-media-shared";
 import { labImageResponse } from "@/lib/lab-media";
 
 /**
- * Shows a Practice Lab image to the intern who uploaded it, admins, and
- * mentors assigned to that intern. Redirects to a short-lived link to the
- * private bucket, so the image's bytes don't pass through this server.
+ * Shows a Practice Lab image (?size=thumb for its thumbnail) to the intern
+ * who uploaded it, admins, and mentors assigned to that intern. Browsers
+ * keep it, so each viewer downloads it once.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string[] }> },
 ) {
   const key = (await params).key.join("/");
@@ -24,5 +24,5 @@ export async function GET(
     (await userHasRole(userId, RoleName.ADMIN)) ||
     ((await userHasRole(userId, RoleName.MENTOR)) && (await isAssignedIntern(userId, owner)));
   if (!allowed) return new Response("Not allowed.", { status: 403 });
-  return labImageResponse(key);
+  return labImageResponse(key, new URL(request.url).searchParams.get("size") === "thumb");
 }

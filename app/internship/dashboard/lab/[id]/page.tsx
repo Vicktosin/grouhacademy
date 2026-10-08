@@ -39,7 +39,8 @@ const REVIEW_POLL_MS = 5000;
 const REVIEW_POLL_LIMIT_MS = 4 * 60 * 1000;
 
 type Attempt = NonNullable<InternLab["attempt"]>;
-type SaveState = "saved" | "saving" | "unsaved";
+/** "pending": changed, saved in a moment; "unsaved": the save failed. */
+type SaveState = "saved" | "pending" | "saving" | "unsaved";
 type Message = { text: string; error: boolean } | null;
 type ExerciseProps<L> = {
   lab: L;
@@ -125,7 +126,7 @@ export default function LabExercisePage({
                   )}
                 </div>
                 <span className="text-[10px] text-slate-400">
-                  {saveState === "saving"
+                  {saveState === "saving" || saveState === "pending"
                     ? "Saving…"
                     : saveState === "unsaved"
                       ? "Not saved, check your connection"
@@ -300,7 +301,7 @@ function AdsExercise({
         campaign={campaign}
         onCampaignChange={(next) => {
           dirty.current = true;
-          onSaveState("unsaved");
+          onSaveState("pending");
           setCampaign(next);
         }}
         runs={runs}
@@ -362,7 +363,7 @@ function AutomationExercise({
         workflow={workflow}
         onWorkflowChange={(next) => {
           dirty.current = true;
-          onSaveState("unsaved");
+          onSaveState("pending");
           setWorkflow(next);
         }}
         runs={runs}
@@ -429,7 +430,7 @@ function SocialExercise({
         plan={plan}
         onPlanChange={(next) => {
           dirty.current = true;
-          onSaveState("unsaved");
+          onSaveState("pending");
           setPlan(next);
         }}
         runs={runs}
@@ -501,7 +502,7 @@ function BackendExercise({
         files={files}
         onFilesChange={(next) => {
           dirty.current = true;
-          onSaveState("unsaved");
+          onSaveState("pending");
           setFiles(next);
         }}
         databaseSql={lab.backend.databaseSql}
@@ -528,7 +529,7 @@ function BackendExercise({
             onClick={() => {
               if (!window.confirm("Replace your code with the starter files?")) return;
               dirty.current = true;
-              onSaveState("unsaved");
+              onSaveState("pending");
               setFiles(lab.starterFiles);
             }}
             className="inline-flex items-center gap-1 rounded-lg px-3 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100"
@@ -579,7 +580,7 @@ function CodeExercise({
         files={files}
         onFilesChange={(next) => {
           dirty.current = true;
-          onSaveState("unsaved");
+          onSaveState("pending");
           setFiles(next);
         }}
         checks={lab.checks}
