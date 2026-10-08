@@ -132,20 +132,20 @@ const nextConfig: NextConfig = {
         // Practice Lab preview (app/lab-preview): runs interns' code in a
         // sandboxed iframe on this site only. It needs inline scripts and
         // eval (the intern's code and the exercise checks) and React from
-        // esm.sh; it can only be framed by this site and has no access to
-        // the camera, microphone or anything else.
+        // this site; it can only be framed by this site and has no access
+        // to the camera, microphone or anything else.
         source: "/lab-preview",
         headers: [
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'none'",
-              "script-src 'unsafe-inline' 'unsafe-eval' https://esm.sh",
+              "script-src 'unsafe-inline' 'unsafe-eval' 'self'",
               "style-src 'unsafe-inline' https:",
               "img-src data: blob: https:",
               "font-src data: https:",
               "media-src data: blob: https:",
-              "connect-src https://esm.sh",
+              "connect-src 'none'",
               "frame-ancestors 'self'",
             ].join("; "),
           },
@@ -178,6 +178,16 @@ const nextConfig: NextConfig = {
         // everyone (see lib/backend-sim/browser-worker.ts).
         source: "/lab-runtime/:file*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // React for the lab preview. The preview is a sandboxed frame with
+        // no origin of its own, so loading these ES modules is a
+        // cross-origin request. The folder name carries the version.
+        source: "/lab-runtime/react-:version/:file*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
       },
       {
         // Always revalidate the service worker so updates reach users.

@@ -35,6 +35,8 @@ import type {
 /** Save this long after the intern stops typing. */
 const AUTOSAVE_MS = 2500;
 const REVIEW_POLL_MS = 5000;
+/** Stop checking for a review after this long (it's normally under a minute). */
+const REVIEW_POLL_LIMIT_MS = 4 * 60 * 1000;
 
 type Attempt = NonNullable<InternLab["attempt"]>;
 type SaveState = "saved" | "saving" | "unsaved";
@@ -606,16 +608,25 @@ function useReviewPolling(
   setAttempt: (attempt: Attempt) => void,
 ) {
   const waitingForReview = Boolean(
-    reviewEnabled && attempt?.status === "SUBMITTED" && !attempt.review,
+    reviewEnabled &&
+      attempt?.status === "SUBMITTED" &&
+      !attempt.review &&
+      !attempt.reviewUnavailable,
   );
   useEffect(() => {
     if (!waitingForReview) return;
+    const started = Date.now();
     const timer = window.setInterval(async () => {
+      if (Date.now() - started > REVIEW_POLL_LIMIT_MS) {
+        window.clearInterval(timer);
+        return;
+      }
       const response = await fetch(`/api/internship/lab/${id}/attempt`, {
         cache: "no-store",
       }).catch(() => null);
       const body = await response?.json().catch(() => null);
-      if (body?.attempt?.review) setAttempt(body.attempt as Attempt);
+      if (body?.attempt?.review || body?.attempt?.reviewUnavailable)
+        setAttempt(body.attempt as Attempt);
     }, REVIEW_POLL_MS);
     return () => window.clearInterval(timer);
   }, [waitingForReview, id, setAttempt]);
@@ -656,6 +667,12 @@ function CodeReview({
                 />
               </div>
             </div>
+          ) : reviewEnabled && attempt.reviewUnavailable ? (
+            <p className="mt-2 text-xs text-slate-500">
+              The AI reviewer is busy right now, so there&apos;s no written
+              review for this submission. Your result still counts; submit
+              again later if you&apos;d like a review.
+            </p>
           ) : reviewEnabled ? (
             <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin text-[#5FBB46]" />

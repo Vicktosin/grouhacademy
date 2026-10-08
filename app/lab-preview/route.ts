@@ -2,10 +2,15 @@
 // (opaque origin, so interns' code can't reach this site's cookies, storage
 // or APIs), that renders the code the workspace posts to it, reports console
 // output and errors, and runs the exercise's checks. Its relaxed security
-// headers (esm.sh for React, inline/eval for the intern's code and checks)
-// are set for this path only in next.config.ts.
+// headers (inline/eval for the intern's code and checks) are set for this
+// path only in next.config.ts.
+//
+// React comes from this site (public/lab-runtime/react-<version>, production
+// ES module builds), not a CDN, so previews don't depend on another service.
+// A test checks the files match the installed React version.
 
-const REACT_VERSION = "19.2.8";
+export const REACT_VERSION = "19.2.8";
+const REACT = `/lab-runtime/react-${REACT_VERSION}`;
 
 const HARNESS = `<!doctype html>
 <html>
@@ -15,10 +20,10 @@ const HARNESS = `<!doctype html>
 <script type="importmap">
 ${JSON.stringify({
   imports: {
-    react: `https://esm.sh/react@${REACT_VERSION}`,
-    "react/jsx-runtime": `https://esm.sh/react@${REACT_VERSION}/jsx-runtime`,
-    "react-dom": `https://esm.sh/react-dom@${REACT_VERSION}?deps=react@${REACT_VERSION}`,
-    "react-dom/client": `https://esm.sh/react-dom@${REACT_VERSION}/client?deps=react@${REACT_VERSION}`,
+    react: `${REACT}/react.mjs`,
+    "react/jsx-runtime": `${REACT}/jsx-runtime.mjs`,
+    "react-dom": `${REACT}/react-dom.mjs`,
+    "react-dom/client": `${REACT}/react-dom-client.mjs`,
   },
 })}
 </script>
