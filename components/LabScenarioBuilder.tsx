@@ -579,6 +579,8 @@ type AttemptRow = {
   submittedScore: number | null;
   runCount: number;
   bestScore: number | null;
+  /** Signs a code submission's passing checks may be faked. */
+  flagCount: number;
   submittedAt: string | null;
   updatedAt: string;
 };
@@ -586,7 +588,7 @@ type AttemptRow = {
 type AttemptDetail = {
   files: Record<string, string>;
   runs: Array<SimRun | SocialRun | AutomationRun | BackendRun>;
-  review: { summary?: string } | null;
+  review: { summary?: string; flags?: string[] } | null;
 };
 
 function attemptSummary(attempt: AttemptRow, kind: AnyLabKind) {
@@ -678,6 +680,11 @@ function Attempts({
                     <span className="ml-2 text-slate-400">{attempt.email}</span>
                   </span>
                   <span className="flex items-center gap-3 text-slate-500">
+                    {attempt.flagCount > 0 && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        ⚠ Check this
+                      </span>
+                    )}
                     {attemptSummary(attempt, kind)}
                     {open === attempt.id ? (
                       <ChevronDown className="h-4 w-4" />
@@ -694,6 +701,14 @@ function Attempts({
                       <p className="text-xs text-red-600">Unable to load this intern&apos;s work.</p>
                     ) : (
                       <>
+                        {(detail.review?.flags ?? []).map((flag) => (
+                          <p
+                            key={flag}
+                            className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                          >
+                            ⚠ {flag} If this was for a task, the result went to a mentor to confirm.
+                          </p>
+                        ))}
                         {detail.review?.summary && (
                           <p className="text-xs text-slate-600">{detail.review.summary}</p>
                         )}

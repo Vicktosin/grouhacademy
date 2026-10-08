@@ -249,7 +249,12 @@ async function sendSubmission(
     attempt,
     run,
     backendRun,
-    message: task.passed
+    message: task.pending
+      ? {
+          text: `You scored ${task.percent}% (pass mark ${task.passMark}%). A mentor will confirm your result shortly.`,
+          error: false,
+        }
+      : task.passed
       ? {
           text: `Task passed with ${task.percent}% (pass mark ${task.passMark}%). Nice work!`,
           error: false,
