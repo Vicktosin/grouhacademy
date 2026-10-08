@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import { memberContacts } from "@/lib/member-contact";
 
 export async function GET(request: Request) {
   const userId = await getCurrentUserId();
@@ -78,6 +79,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Member not found." }, { status: 404 });
     }
 
+    // Only the group leader gets teammates' phone numbers (even when the
+    // rest of the profile is hidden), to organise group work.
+    const viewerIsLeader = group?.leaderId === userId && targetUserId !== userId;
+    const contact = viewerIsLeader
+      ? ((await memberContacts([targetUserId], application.programId)).get(
+          targetUserId,
+        ) ?? null)
+      : undefined;
+
     const profileVisible = targetSettings?.profileVisible ?? true;
 
     if (!profileVisible) {
@@ -85,6 +95,7 @@ export async function GET(request: Request) {
         visible: false,
         name: targetUser.name ?? "Member",
         isLeader: group?.leaderId === targetUserId,
+        contact,
       });
     }
 
@@ -98,6 +109,7 @@ export async function GET(request: Request) {
       progressPercent: targetProgress?.progressPercent ?? 0,
       completedTasks: targetProgress?.completedTasks ?? 0,
       totalTasks: targetProgress?.totalTasks ?? 0,
+      contact,
     });
   } catch (error) {
     console.error("Failed to load teammate profile:", error);

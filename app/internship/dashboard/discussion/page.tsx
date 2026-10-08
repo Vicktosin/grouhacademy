@@ -2,14 +2,25 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { CalendarDays, ClipboardList, Send, X } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  MessageCircle,
+  Phone,
+  Send,
+  X,
+} from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
 
+/** A teammate's number; sent only to the group leader. */
+type Contact = { phone: string; whatsapp: string | null };
 type Member = {
   userId: string;
   name: string;
   isLeader: boolean;
   isMe: boolean;
+  /** Present (possibly null) only when you're the group leader. */
+  contact?: Contact | null;
 };
 type Message = {
   id: string;
@@ -17,6 +28,8 @@ type Message = {
   content: string;
   createdAt: string;
   isMine: boolean;
+  /** Posted by the academy team (an admin), not a group member. */
+  fromTeam?: boolean;
 };
 type Meeting = {
   title: string;
@@ -33,6 +46,7 @@ type MemberProfile = {
   progressPercent?: number;
   completedTasks?: number;
   totalTasks?: number;
+  contact?: Contact | null;
 };
 
 const POLL_INTERVAL_MS = 4000;
@@ -258,6 +272,11 @@ export default function DiscussionPage() {
                   <span className="mt-1 block text-xs text-slate-500">
                     {member.isLeader ? "Group Leader" : "Intern"}
                   </span>
+                  {member.contact && (
+                    <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-[#1C1D52]">
+                      <Phone className="h-3 w-3" /> {member.contact.phone}
+                    </span>
+                  )}
                 </span>
               </button>
             ))}
@@ -347,8 +366,17 @@ export default function DiscussionPage() {
                         : "max-w-[88%]"
                     }
                   >
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#1C1D52]">
-                      {sender?.name ?? "Member"}
+                    <div className={`flex items-center gap-2 text-xs font-bold text-[#1C1D52] ${message.isMine ? "justify-end" : ""}`}>
+                      {message.fromTeam ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          Grouh Academy team
+                          <span className="rounded-full bg-[#1C1D52] px-2 py-0.5 text-[9px] font-semibold text-white">
+                            Admin
+                          </span>
+                        </span>
+                      ) : (
+                        (sender?.name ?? "Member")
+                      )}
                       <span className="font-normal text-slate-400">
                         {new Date(message.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -357,7 +385,7 @@ export default function DiscussionPage() {
                       </span>
                     </div>
                     <p
-                      className={`mt-2 rounded-xl px-3 py-3 text-left text-sm leading-5 ${message.isMine ? "bg-[#e8f7eb]" : "bg-[#f3f6fb]"} text-[#1C1D52]`}
+                      className={`mt-2 whitespace-pre-line rounded-xl px-3 py-3 text-left text-sm leading-5 ${message.isMine ? "bg-[#e8f7eb]" : message.fromTeam ? "border border-[#c9d8ff] bg-[#eef3ff]" : "bg-[#f3f6fb]"} text-[#1C1D52]`}
                     >
                       {message.content}
                     </p>
@@ -408,9 +436,12 @@ export default function DiscussionPage() {
             {loadingProfile ? (
               <p className="mt-4 text-xs text-slate-400">Loading profile...</p>
             ) : memberProfile?.visible === false ? (
-              <p className="mt-4 text-xs text-slate-500">
-                This member has kept their profile private.
-              </p>
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-slate-500">
+                  This member has kept their profile private.
+                </p>
+                <ContactBlock contact={memberProfile.contact} />
+              </div>
             ) : memberProfile ? (
               <div className="mt-4 space-y-3 text-xs text-slate-600">
                 {memberProfile.isLeader && (
@@ -440,6 +471,7 @@ export default function DiscussionPage() {
                     tasks completed
                   </p>
                 </div>
+                <ContactBlock contact={memberProfile.contact} />
               </div>
             ) : (
               <p className="mt-4 text-xs text-slate-400">
@@ -450,5 +482,45 @@ export default function DiscussionPage() {
         </div>
       )}
     </InternshipShell>
+  );
+}
+
+/** A teammate's phone with call and WhatsApp buttons (group leaders only). */
+function ContactBlock({ contact }: { contact: Contact | null | undefined }) {
+  // Undefined: you aren't the group leader, so nothing is shown.
+  if (contact === undefined) return null;
+  return (
+    <div className="border-t border-slate-100 pt-3 text-xs">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+        Phone (visible to you as group leader)
+      </p>
+      {contact ? (
+        <>
+          <p className="mt-1 text-sm font-semibold text-[#1C1D52]">
+            {contact.phone}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <a
+              href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1C1D52] px-3 py-2 text-xs font-semibold text-white"
+            >
+              <Phone className="h-3.5 w-3.5" /> Call
+            </a>
+            {contact.whatsapp && (
+              <a
+                href={`https://wa.me/${contact.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-semibold text-white"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </a>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="mt-1 text-slate-500">No phone number on record.</p>
+      )}
+    </div>
   );
 }

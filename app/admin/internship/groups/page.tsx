@@ -1,8 +1,18 @@
 "use client";
 
-import { Crown, Plus, Save, Trash2, UserMinus, UsersRound } from "lucide-react";
+import {
+  Crown,
+  Megaphone,
+  MessageCircle,
+  Plus,
+  Save,
+  Trash2,
+  UserMinus,
+  UsersRound,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { BroadcastDialog, GroupChatDialog } from "@/components/AdminGroupChat";
 
 type CohortOption = {
   id: string;
@@ -60,6 +70,8 @@ export default function InternshipGroupsPage() {
   const [newCapacity, setNewCapacity] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [chatGroup, setChatGroup] = useState<GroupRecord | null>(null);
+  const [broadcasting, setBroadcasting] = useState(false);
 
   const load = useCallback(async (cohortId?: string | null) => {
     setLoading(true);
@@ -279,6 +291,16 @@ export default function InternshipGroupsPage() {
               Leave capacity empty to use the platform default (
               {data?.defaultCapacity ?? 12}).
             </p>
+            {groups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setBroadcasting(true)}
+                className="ml-auto inline-flex items-center gap-2 rounded-xl bg-[#1C1D52] px-4 py-2.5 text-xs font-semibold text-white"
+              >
+                <Megaphone className="h-4 w-4" />
+                Message groups
+              </button>
+            )}
           </form>
         )}
 
@@ -314,6 +336,7 @@ export default function InternshipGroupsPage() {
                   onAct={(payload) => void act(payload)}
                   onRemove={(member) => removeMember(group, member)}
                   onDelete={() => deleteGroup(group)}
+                  onOpenChat={() => setChatGroup(group)}
                 />
               ))}
             </section>
@@ -373,6 +396,23 @@ export default function InternshipGroupsPage() {
           </div>
         )}
       </div>
+      {chatGroup && (
+        <GroupChatDialog group={chatGroup} onClose={() => setChatGroup(null)} />
+      )}
+      {broadcasting && (
+        <BroadcastDialog
+          groups={groups}
+          cohortName={
+            data?.cohorts.find((cohort) => cohort.id === selected)?.name ?? "This cohort"
+          }
+          onClose={() => setBroadcasting(false)}
+          onSent={(message) => {
+            setBroadcasting(false);
+            setError(null);
+            setSuccess(message);
+          }}
+        />
+      )}
     </AdminShell>
   );
 }
@@ -385,6 +425,7 @@ function GroupCard({
   onAct,
   onRemove,
   onDelete,
+  onOpenChat,
 }: {
   group: GroupRecord;
   isLegacy: boolean;
@@ -393,6 +434,7 @@ function GroupCard({
   onAct: (payload: GroupAction) => void;
   onRemove: (member: GroupMember) => void;
   onDelete: () => void;
+  onOpenChat: () => void;
 }) {
   const [capacity, setCapacity] = useState(String(group.capacity));
   const isFull = group.members.length >= group.capacity;
@@ -416,6 +458,13 @@ function GroupCard({
             {group.members.length} / {group.capacity} members
             {isFull ? " · full" : ""}
           </p>
+          <button
+            type="button"
+            onClick={onOpenChat}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#eef3ff] px-3 py-1.5 text-[11px] font-semibold text-[#1C1D52]"
+          >
+            <MessageCircle className="h-3.5 w-3.5" /> Chat with group
+          </button>
         </div>
         <form
           onSubmit={(event) => {

@@ -51,7 +51,7 @@ function formatNaira(amount: number | null) {
  * Onboarding question ids holding the WhatsApp number and the alternative
  * phone number, found by their wording so renamed questions still work.
  */
-async function phoneQuestionIds() {
+export async function phoneQuestionIds() {
   const questions = await getPrisma().internshipOnboardingQuestion.findMany({
     select: { id: true, prompt: true },
   });
@@ -64,7 +64,7 @@ async function phoneQuestionIds() {
   return { whatsapp, phone };
 }
 
-function firstAnswer(answers: Record<string, unknown>, ids: string[]) {
+export function firstAnswer(answers: Record<string, unknown>, ids: string[]) {
   for (const id of ids) {
     const value = answers[id];
     if (typeof value === "string" && value.trim()) return value.trim();
