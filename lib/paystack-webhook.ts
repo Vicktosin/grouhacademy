@@ -112,12 +112,25 @@ export async function settleSuccessfulPaystackPayment(
     purpose === "internship_acceptance_fee" ||
     reference.startsWith("acceptance_")
   ) {
-    const internshipPayment = await prisma.internshipPayment
-      .findUnique({
-        where: { reference },
-        include: { application: { include: { program: true } } },
-      })
-      .catch(() => null);
+    const include = { application: { include: { program: true } } };
+    // Each new payment attempt replaces the reference stored on the
+    // application's payment, but an earlier attempt can still complete (a
+    // bank transfer made after the applicant tapped Pay again). Our references
+    // embed the application id, so an earlier one is matched to that
+    // application's payment; the amount check below still applies.
+    const supersededFor =
+      applicationId && reference.startsWith(`acceptance_${applicationId}_`)
+        ? applicationId
+        : null;
+    const internshipPayment =
+      (await prisma.internshipPayment
+        .findUnique({ where: { reference }, include })
+        .catch(() => null)) ??
+      (supersededFor
+        ? await prisma.internshipPayment
+            .findUnique({ where: { applicationId: supersededFor }, include })
+            .catch(() => null)
+        : null);
 
     if (
       internshipPayment &&
@@ -134,9 +147,10 @@ export async function settleSuccessfulPaystackPayment(
         };
       }
 
+      // Store the reference that was actually paid.
       await prisma.internshipPayment.update({
         where: { id: internshipPayment.id },
-        data: { status: "PAID", paidAt: new Date() },
+        data: { status: "PAID", paidAt: new Date(), reference },
       });
 
       updatedInternshipPayment = true;
