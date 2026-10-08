@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { resolveLessonMedia } from "@/lib/video-embed";
+import { bringIntoView } from "@/lib/bring-into-view";
 
 export type LearnLessonResource = {
   id: string;
@@ -110,6 +111,7 @@ export default function CourseLearningPlayer({
 
   const playerRef = useRef<HTMLIFrameElement>(null);
   const mediaContainerRef = useRef<HTMLDivElement>(null);
+  const lessonRef = useRef<HTMLElement>(null);
   const currentTimeRef = useRef(0);
 
   const modules = course.modules;
@@ -226,6 +228,7 @@ export default function CourseLearningPlayer({
     setPlayingMedia("");
     setIsPaused(false);
     setSidebarOpen(false);
+    bringIntoView(lessonRef.current);
   };
 
   const selectLesson = (lessonIndex: number) => {
@@ -233,6 +236,8 @@ export default function CourseLearningPlayer({
     setPlayingMedia("");
     setIsPaused(false);
     setSidebarOpen(false);
+    // On phones the outline closes above the lesson; take them to it.
+    bringIntoView(lessonRef.current);
   };
 
   const goNext = () => {
@@ -412,7 +417,7 @@ export default function CourseLearningPlayer({
           </div>
         </aside>
 
-        <main className="min-w-0 bg-white">
+        <main ref={lessonRef} className="min-w-0 scroll-mt-4 bg-white">
           <div className="mx-auto max-w-[850px] px-5 py-6 sm:px-8 sm:py-8">
             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-slate-500">
               <span>Module {selectedModule + 1}</span>
