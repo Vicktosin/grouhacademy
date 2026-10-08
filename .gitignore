@@ -47,3 +47,6 @@ CLAUDE.md
 
 # Local backups from scripts/move-images-to-storage.ts
 image-backup-*.json
+
+# Local backups of learner roles (user ids); never commit them
+learner-roles-backup-*.json
