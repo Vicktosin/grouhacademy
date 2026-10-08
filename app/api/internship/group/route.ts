@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { ensureGroupMembership } from "@/lib/internship-groups";
+import { memberContacts } from "@/lib/member-contact";
+import { serializeGroupMessages } from "@/lib/group-chat";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-US", {
@@ -79,13 +81,7 @@ export async function GET(request: Request) {
       });
 
       return NextResponse.json({
-        messages: newMessages.map((m) => ({
-          id: m.id,
-          senderId: m.senderId,
-          content: m.content,
-          createdAt: m.createdAt.toISOString(),
-          isMine: m.senderId === userId,
-        })),
+        messages: await serializeGroupMessages(newMessages, userId),
       });
     }
 
@@ -113,22 +109,26 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    // The group leader sees teammates' phone numbers to organise group work.
+    const isLeader = group.leaderId === userId;
+    const contacts = isLeader
+      ? await memberContacts(
+          members.filter((m) => m.userId !== userId).map((m) => m.userId),
+          group.programId,
+        )
+      : null;
+
     return NextResponse.json({
       groupNumber: group.number,
-      isLeader: group.leaderId === userId,
+      isLeader,
       members: members.map((m) => ({
         userId: m.userId,
         name: m.user.name ?? "Member",
         isLeader: m.userId === group.leaderId,
         isMe: m.userId === userId,
+        ...(contacts ? { contact: contacts.get(m.userId) ?? null } : {}),
       })),
-      messages: messages.reverse().map((m) => ({
-        id: m.id,
-        senderId: m.senderId,
-        content: m.content,
-        createdAt: m.createdAt.toISOString(),
-        isMine: m.senderId === userId,
-      })),
+      messages: await serializeGroupMessages(messages.reverse(), userId),
       meeting: meeting
         ? {
             title: meeting.title,
