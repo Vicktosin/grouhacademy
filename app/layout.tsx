@@ -4,7 +4,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import HeaderGuard from "../components/HeaderGuard";
 import FooterGuard from "@/components/FooterGuard";
-import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import PwaManager from "@/components/PwaManager";
 import { getSiteUrl } from "@/lib/site-url";
 import MetaPixel from "@/components/MetaPixel";
 
@@ -85,7 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`h-full antialiased ${lato.variable}`}>
       <body className="min-h-full flex flex-col">
-        <ServiceWorkerRegistration />
+        <PwaManager />
         <HeaderGuard />
          <MetaPixel />
         {children}
