@@ -69,6 +69,7 @@ export default function CohortPicker({
   extras = [],
   label = "Cohort",
   hideLabel = false,
+  compact = false,
   disabled = false,
 }: {
   cohorts: PickerCohort[];
@@ -80,6 +81,8 @@ export default function CohortPicker({
   label?: string;
   /** For filter bars where the button speaks for itself. */
   hideLabel?: boolean;
+  /** A smaller button, to sit in a row of filters. */
+  compact?: boolean;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -174,7 +177,7 @@ export default function CohortPicker({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         data-cohort-picker
-        className={`${hideLabel ? "" : "mt-1 "}flex w-full min-w-[280px] items-center justify-between gap-3 rounded-xl border border-[#14204f]/15 bg-white px-3 py-2.5 text-left text-xs text-[#1C1D52] disabled:opacity-60 sm:w-auto`}
+        className={`${hideLabel ? "" : "mt-1 "}flex w-full ${compact ? "min-w-[220px] py-1.5" : "min-w-[280px] py-2.5"} items-center justify-between gap-3 rounded-xl border border-[#14204f]/15 bg-white px-3 text-left text-xs text-[#1C1D52] disabled:opacity-60 sm:w-auto`}
       >
         <span className="min-w-0">
           {current ? (
@@ -205,7 +208,9 @@ export default function CohortPicker({
               </button>
             ))}
           </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className={`mt-2 grid gap-2 ${tracks.length > 1 ? "sm:grid-cols-2" : ""}`}>
+            {/* One track (e.g. already narrowed outside): no need to choose. */}
+            {tracks.length > 1 && (
             <select
               value={activeTrack}
               onChange={(e) => setFilters({ track: e.target.value })}
@@ -219,6 +224,7 @@ export default function CohortPicker({
                 </option>
               ))}
             </select>
+            )}
             <label className="relative">
               <span className="sr-only">Search cohorts</span>
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />

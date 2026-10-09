@@ -37,7 +37,7 @@ export const internshipCertificateSelect = {
   program: { select: { name: true } },
   application: {
     select: {
-      cohort: { select: { name: true, startDate: true, endDate: true } },
+      cohort: { select: { id: true, name: true, startDate: true, endDate: true } },
       level: { select: { name: true, rank: true } },
     },
   },

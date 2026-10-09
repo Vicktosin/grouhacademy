@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { listCohortOptions } from "@/lib/admin-cohort-options";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import {
@@ -14,6 +15,12 @@ export async function GET() {
     select: internshipCertificateSelect,
   });
   return NextResponse.json({
-    certificates: certificates.map(serializeInternshipCertificate),
+    certificates: certificates.map((certificate) => ({
+      ...serializeInternshipCertificate(certificate),
+      // For the track and cohort filter.
+      trackName: certificate.program.name,
+      cohortId: certificate.application?.cohort?.id ?? null,
+    })),
+    cohorts: await listCohortOptions(),
   });
 }

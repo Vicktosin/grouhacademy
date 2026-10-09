@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { InternshipPaymentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { listCohortOptions } from "@/lib/admin-cohort-options";
 import { loadAcceptanceFees } from "@/lib/internship-levels";
 
 function formatTier(value: string | null | undefined) {
@@ -156,6 +157,9 @@ export async function GET() {
         email: application.student.email,
         name: studentName,
         track: application.program.name,
+        // For the track and cohort filter.
+        trackName: application.program.name,
+        cohortId: application.cohortId,
         course: application.program.name,
         tier: formatTier(application.premiumTier),
         amount: payment.amount,
@@ -180,5 +184,6 @@ export async function GET() {
         latestAssessmentPercent: application.attempts[0]?.scorePercent ?? null,
       };
     }),
+    cohorts: await listCohortOptions(),
   });
 }

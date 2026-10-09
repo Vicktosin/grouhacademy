@@ -10,18 +10,22 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import CohortTrackFilter, { matchesCohortTrack, useCohortTrackFilter } from "@/components/admin/CohortTrackFilter";
+import type { PickerCohort } from "@/components/admin/CohortPicker";
 import { internshipCertificateContent } from "@/components/certificate/content";
 import { certificateFileName } from "@/components/certificate/download-certificate";
 import { useCertificatePdf } from "@/components/certificate/useCertificatePdf";
 import type { InternshipCertificateView } from "@/lib/internship-certificates";
 
-type Certificate = InternshipCertificateView;
+type Certificate = InternshipCertificateView & { trackName: string; cohortId: string | null };
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
 export default function AdminInternshipCertificatesPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [cohorts, setCohorts] = useState<PickerCohort[]>([]);
+  const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-certificates");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const pdf = useCertificatePdf();
@@ -33,6 +37,7 @@ export default function AdminInternshipCertificatesPage() {
         if (!response.ok)
           throw new Error(data?.error ?? "Unable to load certificates.");
         setCertificates(data.certificates);
+        setCohorts(data.cohorts ?? []);
       })
       .catch((reason: unknown) =>
         setError(
@@ -48,12 +53,13 @@ export default function AdminInternshipCertificatesPage() {
     const term = query.trim().toLowerCase();
     return certificates.filter(
       (certificate) =>
-        !term ||
+        matchesCohortTrack(cohortTrack, certificate) &&
+        (!term ||
         `${certificate.certificateNumber} ${certificate.studentName} ${certificate.email} ${certificate.programName} ${certificate.cohortName ?? ""}`
           .toLowerCase()
-          .includes(term),
+          .includes(term)),
     );
-  }, [certificates, query]);
+  }, [certificates, cohortTrack, query]);
 
   function show(next: { error?: string; message?: string }) {
     setError(next.error ?? null);
@@ -182,16 +188,25 @@ export default function AdminInternshipCertificatesPage() {
         )}
 
         <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
-          <label className="flex max-w-sm items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2.5 text-xs text-slate-400">
-            <Search className="h-3.5 w-3.5" />
-            <span className="sr-only">Search certificates</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="w-full bg-transparent text-[#1C1D52] outline-none"
-              placeholder="Search certificate, intern, track or cohort"
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex w-full max-w-sm items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2.5 text-xs text-slate-400">
+              <Search className="h-3.5 w-3.5" />
+              <span className="sr-only">Search certificates</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="w-full bg-transparent text-[#1C1D52] outline-none"
+                placeholder="Search certificate, intern, track or cohort"
+              />
+            </label>
+            <CohortTrackFilter
+              cohorts={cohorts}
+              tracks={certificates.map((certificate) => certificate.trackName)}
+              value={cohortTrack}
+              onChange={setCohortTrack}
+              storageKey="admin-certificates"
             />
-          </label>
+          </div>
 
           {loading ? (
             <p className="py-10 text-center text-xs text-slate-500">

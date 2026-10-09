@@ -6,6 +6,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { listCohortOptions } from "@/lib/admin-cohort-options";
 
 function formatDate(date: Date | null | undefined) {
   if (!date) return "Not available";
@@ -108,6 +109,9 @@ export async function GET() {
         "Unnamed enrollee",
       email: student.email,
       track: `${application.program.name} · ${application.level.name}`,
+      // For the track and cohort filter.
+      trackName: application.program.name,
+      cohortId: application.cohortId,
       examScore: latestAttempt?.scorePercent ?? null,
       attempts: application.attempts.length,
       cohort: application.cohort?.name ?? "Unassigned",
@@ -121,5 +125,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ enrolleeRows });
+  return NextResponse.json({ enrolleeRows, cohorts: await listCohortOptions() });
 }
