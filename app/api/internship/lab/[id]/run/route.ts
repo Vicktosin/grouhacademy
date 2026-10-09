@@ -2,17 +2,19 @@ import { NextResponse } from "next/server";
 import { requireInternApi } from "@/lib/lab-api";
 import {
   runAdsCampaign,
+  runContent,
   runAutomationTest,
   runSocialWeek,
 } from "@/lib/practice-lab";
 
-// Judging with Claude plus the simulation can take a few seconds.
-export const maxDuration = 60;
+// Judging plus the simulation takes seconds; AI content runs (an AI
+// writes, then another judges, on free models) can take a minute or two.
+export const maxDuration = 300;
 
 /**
  * Runs a simulator exercise. Body: { campaign } for an ad campaign,
- * { plan } for a social media week, or { workflow } to test an automation
- * on the sample records.
+ * { plan } for a social media week, { workflow } to test an automation
+ * on the sample records, or { work } to mark AI content.
  */
 export async function POST(
   request: Request,
@@ -24,11 +26,14 @@ export async function POST(
     campaign?: unknown;
     plan?: unknown;
     workflow?: unknown;
+    work?: unknown;
   } | null;
   const id = (await params).id;
-  if (!body?.campaign && !body?.plan && !body?.workflow)
+  if (!body?.campaign && !body?.plan && !body?.workflow && !body?.work)
     return NextResponse.json({ error: "Nothing to run." }, { status: 400 });
-  const result = body.workflow
+  const result = body.work
+    ? await runContent(userId, id, body.work)
+    : body.workflow
     ? await runAutomationTest(userId, id, body.workflow)
     : body.plan
       ? await runSocialWeek(userId, id, body.plan)
