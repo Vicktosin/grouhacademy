@@ -31,7 +31,7 @@ export const CERT_HEIGHT = 816;
 
 // Where employers can check a certificate (the public /verify page).
 const VERIFY_HOST = (
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://grouhacademy.space"
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://grouhacademy.com"
 )
   .replace(/^https?:\/\//, "")
   .replace(/\/$/, "");
