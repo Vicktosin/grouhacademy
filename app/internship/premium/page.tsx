@@ -37,6 +37,7 @@ const PLANS: {
     features: [
       "1-on-1 mentor assigned to you",
       "Direct mentor messaging",
+      "AI practice interviews with scored feedback",
       "Priority feedback on tasks",
     ],
   },

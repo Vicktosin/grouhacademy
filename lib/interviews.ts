@@ -127,6 +127,8 @@ export async function getInterviewOverview(userId: string) {
   return {
     track: application.program.name,
     level: application.level.name,
+    // Practice interviews are a Premium feature (either tier).
+    premium: application.premiumTier !== "NONE",
     configured: tavusConfig() !== null,
     freePlan: isTavusFreePlan(),
     gradingEnabled: isGradingEnabled(),
@@ -173,6 +175,12 @@ export async function startInterview(
     };
 
   const context = await internContext(userId);
+  // Premium only: each interview costs video and AI time.
+  if (context && context.application.premiumTier === "NONE")
+    return {
+      error: "Practice interviews are a Premium feature. Upgrade to unlock them.",
+      status: 403,
+    };
   if (!context?.setup)
     return {
       error: "There's no practice interview for your track and level yet.",

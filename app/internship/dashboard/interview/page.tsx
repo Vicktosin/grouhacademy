@@ -3,6 +3,7 @@
 import {
   ChevronRight,
   Clock3,
+  Crown,
   Loader2,
   Mic,
   RotateCcw,
@@ -17,6 +18,8 @@ import type { InterviewSessionView } from "@/lib/interviews";
 type Overview = {
   track: string;
   level: string;
+  /** Interviews are a Premium feature. */
+  premium: boolean;
   configured: boolean;
   setup: {
     title: string;
@@ -111,7 +114,24 @@ export default function InterviewPage() {
           <div className="flex justify-center rounded-2xl bg-white p-10 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
             <Loader2 className="h-6 w-6 animate-spin text-[#5FBB46]" />
           </div>
-        ) : !data ? null : !data.setup ? (
+        ) : !data ? null : !data.premium ? (
+          <section className="flex flex-col items-center rounded-2xl bg-white p-8 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+            <Crown className="h-10 w-10 text-[#5FBB46]" />
+            <h2 className="mt-4 text-lg font-bold text-[#1C1D52]">
+              Practice interviews are a Premium feature
+            </h2>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">
+              Upgrade to rehearse real job interviews with our AI interviewer
+              by video or voice, and get a score and tips after each one.
+            </p>
+            <Link
+              href="/internship/premium"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-5 py-2.5 text-xs font-bold text-[#14204f]"
+            >
+              View Premium Plans
+            </Link>
+          </section>
+        ) : !data.setup ? (
           <Notice
             text={`There's no practice interview for ${data.track} at ${data.level} level yet. Check back soon.`}
           />

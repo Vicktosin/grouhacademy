@@ -52,6 +52,16 @@ export async function getInternshipAccessStatus(
   };
 }
 
+/** Whether the intern has paid for Premium (either tier). */
+export async function isPremiumIntern(userId: string) {
+  const application = await getPrisma().internshipApplication.findFirst({
+    where: { studentId: userId },
+    orderBy: { createdAt: "desc" },
+    select: { premiumTier: true },
+  });
+  return Boolean(application && application.premiumTier !== "NONE");
+}
+
 export async function hasInternshipWorkspaceAccess(
   userId: string,
 ): Promise<boolean> {
