@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -125,6 +127,7 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
 
   const handleSignOut = async () => {
     await createSupabaseBrowserClient().auth.signOut();
+    clearCachedJson();
     setSignedInEmail(null);
   };
 

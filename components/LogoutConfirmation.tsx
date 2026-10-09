@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -22,6 +24,7 @@ export default function LogoutConfirmation({
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signOut();
+    clearCachedJson();
 
     if (error) {
       console.error("Logout failed:", error.message);

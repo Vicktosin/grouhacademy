@@ -14,11 +14,33 @@
 type Entry = { at: number; value: Promise<unknown> };
 const entries = new Map<string, Entry>();
 
+// Logging out and in again doesn't reload the page, so the cache is
+// emptied whenever the signed-in user changes (in this tab or another):
+// the next person must never see the last one's name or photo.
+let watchingAuth = false;
+function watchAuth() {
+  if (watchingAuth || typeof window === "undefined") return;
+  watchingAuth = true;
+  void import("@/lib/supabase/client")
+    .then(({ createSupabaseBrowserClient }) => {
+      let userId: string | null | undefined;
+      createSupabaseBrowserClient().auth.onAuthStateChange((_event, session) => {
+        const next = session?.user.id ?? null;
+        if (userId !== undefined && next !== userId) clearCachedJson();
+        userId = next;
+      });
+    })
+    .catch(() => {
+      // Without Supabase there's no login to change.
+    });
+}
+
 /**
  * The JSON at `url`, fetched at most once per `maxAgeMs`. A failed request
  * isn't kept, and resolves to null.
  */
 export function cachedJson<T>(url: string, maxAgeMs: number): Promise<T | null> {
+  watchAuth();
   const now = Date.now();
   const entry = entries.get(url);
   if (entry && now - entry.at < maxAgeMs) return entry.value as Promise<T | null>;
