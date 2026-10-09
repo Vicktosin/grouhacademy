@@ -1645,6 +1645,8 @@ enum FollowUpStatus {
 enum FollowUpStage {
   PASSED_UNPAID
   FAILED
+  // Started paying but has no exam result for their level yet.
+  NO_EXAM
 }
 
 enum FollowUpChannel {

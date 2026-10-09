@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import {
   FollowUpChannel,
-  FollowUpStage,
   FollowUpStatus,
 } from "@/generated/prisma/client";
 import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
+import { isFollowUpStage } from "@/lib/internship-follow-ups";
 
 type Params = { params: Promise<{ applicationId: string }> };
 
 /**
  * Records that an admin started a WhatsApp message or call.
- * Body: { channel: "WHATSAPP" | "CALL", stage: "PASSED_UNPAID" | "FAILED" }.
+ * Body: { channel: "WHATSAPP" | "CALL", stage: "PASSED_UNPAID" | "FAILED" | "NO_EXAM" }.
  */
 export async function POST(request: Request, { params }: Params) {
   const adminId = await requireAdminApi();
@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: Params) {
   if (
     (channel !== FollowUpChannel.WHATSAPP &&
       channel !== FollowUpChannel.CALL) ||
-    (stage !== FollowUpStage.PASSED_UNPAID && stage !== FollowUpStage.FAILED)
+    !isFollowUpStage(stage)
   )
     return NextResponse.json({ error: "Invalid contact." }, { status: 400 });
 

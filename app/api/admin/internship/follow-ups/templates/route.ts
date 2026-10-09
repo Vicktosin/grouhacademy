@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { FollowUpStage } from "@/generated/prisma/client";
 import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
-import { getFollowUpTemplates } from "@/lib/internship-follow-ups";
+import { getFollowUpTemplates, isFollowUpStage } from "@/lib/internship-follow-ups";
 
 /**
  * Saves a stage's message. Body: { stage, body }; an empty body restores
@@ -17,7 +16,7 @@ export async function PUT(request: Request) {
     body?: unknown;
   } | null;
   const stage = payload?.stage;
-  if (stage !== FollowUpStage.PASSED_UNPAID && stage !== FollowUpStage.FAILED)
+  if (!isFollowUpStage(stage))
     return NextResponse.json({ error: "Unknown message." }, { status: 400 });
   const body = typeof payload?.body === "string" ? payload.body.trim() : "";
   if (body.length > 4000)

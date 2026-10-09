@@ -51,9 +51,22 @@ const STATUSES: Array<{ value: string; label: string; tone: string }> = [
 const statusInfo = (value: string) =>
   STATUSES.find((status) => status.value === value) ?? STATUSES[0];
 
+const PAYMENT_LABEL: Record<string, string> = {
+  PENDING: "Payment pending",
+  FAILED: "Payment failed",
+  CANCELLED: "Payment cancelled",
+  NONE: "Never started paying",
+};
+const PAYMENT_TONE: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-800",
+  FAILED: "bg-red-100 text-red-700",
+  CANCELLED: "bg-slate-100 text-slate-600",
+};
+
 const STAGES: Array<{ key: FollowUpStageKey; label: string }> = [
   { key: "PASSED_UNPAID", label: "Passed, not paid" },
   { key: "FAILED", label: "Failed exam" },
+  { key: "NO_EXAM", label: "Started paying, no exam" },
 ];
 
 function daysAgo(iso: string | null) {
@@ -94,7 +107,8 @@ export default function FollowUpsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [dueOnly, setDueOnly] = useState(false);
-  const [triedToPayOnly, setTriedToPayOnly] = useState(false);
+  /** "All", "PENDING", "FAILED", "CANCELLED" or "NONE" (never started paying). */
+  const [payment, setPayment] = useState("All");
   const [whatsAppOnly, setWhatsAppOnly] = useState(false);
   const [sort, setSort] = useState("newest");
 
@@ -150,7 +164,8 @@ export default function FollowUpsPage() {
         (!dueOnly ||
           (row.followUp.nextFollowUpAt !== null &&
             new Date(row.followUp.nextFollowUpAt).getTime() <= due)) &&
-        (!triedToPayOnly || row.triedToPay) &&
+        (payment === "All" ||
+          (payment === "NONE" ? row.paymentStatus === null : row.paymentStatus === payment)) &&
         (!whatsAppOnly || row.whatsappNumber !== null)
       );
     });
@@ -174,7 +189,7 @@ export default function FollowUpsPage() {
     from,
     to,
     dueOnly,
-    triedToPayOnly,
+    payment,
     whatsAppOnly,
     sort,
   ]);
@@ -187,7 +202,7 @@ export default function FollowUpsPage() {
     setFrom("");
     setTo("");
     setDueOnly(false);
-    setTriedToPayOnly(false);
+    setPayment("All");
     setWhatsAppOnly(false);
     setSort("newest");
   };
@@ -259,7 +274,7 @@ export default function FollowUpsPage() {
                 type="button"
                 onClick={() => {
                   setStage(item.key);
-                  setTriedToPayOnly(false);
+                  setPayment("All");
                 }}
                 className={`rounded-lg px-4 py-2.5 text-xs font-semibold ${
                   stage === item.key
@@ -312,8 +327,15 @@ export default function FollowUpsPage() {
               options={STATUSES.map((item) => item.value)}
               labelFor={(value) => statusInfo(value).label}
             />
+            <FilterSelect
+              label="Payment"
+              value={payment}
+              onChange={setPayment}
+              options={stage === "NO_EXAM" ? ["PENDING", "FAILED", "CANCELLED"] : ["PENDING", "FAILED", "CANCELLED", "NONE"]}
+              labelFor={(value) => PAYMENT_LABEL[value] ?? value}
+            />
             <label className="text-[10px] font-semibold text-slate-500">
-              {stage === "PASSED_UNPAID" ? "Passed from" : "Failed from"}
+              {stage === "PASSED_UNPAID" ? "Passed from" : stage === "FAILED" ? "Failed from" : "Started paying from"}
               <input
                 type="date"
                 value={from}
@@ -352,13 +374,6 @@ export default function FollowUpsPage() {
               onChange={setDueOnly}
               label="Follow-up due today"
             />
-            {stage === "PASSED_UNPAID" && (
-              <Check
-                checked={triedToPayOnly}
-                onChange={setTriedToPayOnly}
-                label="Tried to pay"
-              />
-            )}
             <Check
               checked={whatsAppOnly}
               onChange={setWhatsAppOnly}
@@ -403,9 +418,11 @@ export default function FollowUpsPage() {
                         <p className="text-[10px] text-slate-400">
                           {row.email}
                         </p>
-                        {row.triedToPay && (
-                          <span className="mt-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-semibold text-violet-700">
-                            Tried to pay
+                        {row.paymentStatus && (
+                          <span
+                            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold ${PAYMENT_TONE[row.paymentStatus]}`}
+                          >
+                            {PAYMENT_LABEL[row.paymentStatus]}
                           </span>
                         )}
                       </td>
@@ -414,7 +431,11 @@ export default function FollowUpsPage() {
                       </td>
                       <td className="px-3 py-3">
                         <p className="font-semibold">
-                          {row.score !== null ? `${row.score}%` : "—"}
+                          {row.stage === "NO_EXAM"
+                            ? "No exam yet"
+                            : row.score !== null
+                              ? `${row.score}%`
+                              : "—"}
                           {row.stage === "FAILED" && row.attempts > 1 && (
                             <span className="font-normal text-slate-400">
                               {" "}
@@ -778,7 +799,9 @@ function FollowUpPanel({
               {row.track} · {row.level} ·{" "}
               {row.stage === "PASSED_UNPAID"
                 ? `passed with ${row.score ?? "—"}%`
-                : `scored ${row.score ?? "—"}% (pass mark ${row.passMark ?? "—"}%)`}{" "}
+                : row.stage === "NO_EXAM"
+                  ? "started paying, no exam yet"
+                  : `scored ${row.score ?? "—"}% (pass mark ${row.passMark ?? "—"}%)`}{" "}
               · {daysAgo(row.examDate).toLowerCase()}
             </p>
           </div>

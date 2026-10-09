@@ -1,7 +1,7 @@
 // Follow-up message templates and phone numbers for the admin follow-up
 // page. Safe to import in the browser (no database access).
 
-export type FollowUpStageKey = "PASSED_UNPAID" | "FAILED";
+export type FollowUpStageKey = "PASSED_UNPAID" | "FAILED" | "NO_EXAM";
 
 /** Values a template can use, already formatted for a message. */
 export type FollowUpValues = {
@@ -51,6 +51,14 @@ Thank you for taking the {track} ({level} level) entrance assessment. You scored
 You can retake it any time: log in at {loginLink} and choose "Retry assessment". You can also apply at a lower level instead.
 
 Want tips to prepare? Reply here and we'll help.
+— Grouh Academy`,
+  NO_EXAM: `Hi {firstName},
+
+Thank you for starting your payment for the {track} internship ({level} level)!
+
+The next step is the entrance assessment. Log in at {loginLink} to take it; once you pass, you can complete your payment and join {nextCohort}, starting {nextCohortDate}.
+
+Any questions? Reply here and we'll help.
 — Grouh Academy`,
 };
 
