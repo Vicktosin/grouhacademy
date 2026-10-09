@@ -18,6 +18,8 @@ import SocialSimulator from "@/components/SocialSimulator";
 import AutomationSimulator from "@/components/AutomationSimulator";
 import BackendSimulator from "@/components/BackendSimulator";
 import WordPressLab from "@/components/WordPressLab";
+import ContentSimulator from "@/components/ContentSimulator";
+import type { ContentWork } from "@/lib/content-sim/model";
 import type { BackendFiles } from "@/lib/backend-sim/model";
 import type { Workflow } from "@/lib/automation-sim/model";
 import type { SocialPlan } from "@/lib/social-sim/model";
@@ -29,6 +31,7 @@ import type {
   InternBackendLab,
   InternSocialLab,
   InternWordPressLab,
+  InternContentLab,
   InternCodeLab,
   InternLab,
   LabTaskResult,
@@ -152,6 +155,13 @@ export default function LabExercisePage({
               />
             ) : lab.kind === "BACKEND" ? (
               <BackendExercise
+                lab={lab}
+                id={id}
+                taskId={taskId}
+                onSaveState={setSaveState}
+              />
+            ) : lab.kind === "CONTENT" ? (
+              <ContentExercise
                 lab={lab}
                 id={id}
                 taskId={taskId}
@@ -552,6 +562,63 @@ function BackendExercise({
       />
       <StatusMessage message={message} />
       <CodeReview attempt={attempt} reviewEnabled={lab.reviewEnabled} />
+    </>
+  );
+}
+
+function ContentExercise({
+  lab,
+  id,
+  taskId,
+  onSaveState,
+}: ExerciseProps<InternContentLab>) {
+  const [work, setWork] = useState<ContentWork>(lab.work);
+  const [runs, setRuns] = useState(lab.runs);
+  const [submitted, setSubmitted] = useState(lab.attempt?.status === "SUBMITTED");
+  const [message, setMessage] = useState<Message>(null);
+  const dirty = useRef(false);
+  useAutosave(id, work, dirty, onSaveState);
+
+  return (
+    <>
+      <ContentSimulator
+        config={lab.content}
+        work={work}
+        onWorkChange={(next) => {
+          dirty.current = true;
+          onSaveState("pending");
+          setWork(next);
+        }}
+        runs={runs}
+        aiEnabled={lab.aiEnabled}
+        onRun={async (next) => {
+          const response = await fetch(`/api/internship/lab/${id}/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ work: next }),
+          }).catch(() => null);
+          const body = await response?.json().catch(() => ({}));
+          if (!response?.ok) return body?.error ?? "Unable to mark your work.";
+          // Running also saves the work.
+          dirty.current = false;
+          onSaveState("saved");
+          setRuns((current) => [...current, body.run]);
+          return null;
+        }}
+        onSubmit={async (runIndex) => {
+          setMessage(null);
+          const result = await sendSubmission(id, { runIndex, taskId });
+          if (result.attempt) setSubmitted(true);
+          setMessage(result.message);
+        }}
+        submitLabel={lab.task ? "Submit to task" : "Submit"}
+      />
+      <StatusMessage message={message} />
+      {submitted && !message && (
+        <p className="rounded-lg bg-[#e8f7eb] px-4 py-3 text-xs font-semibold text-[#397d3a]">
+          You&apos;ve submitted this exercise. You can still submit a different run if you get a better one.
+        </p>
+      )}
     </>
   );
 }

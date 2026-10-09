@@ -15,6 +15,7 @@ import {
   parseBackendFiles,
 } from "@/lib/backend-sim/model";
 import { parseWpConfig, wpConfigProblems } from "@/lib/wp-sim/model";
+import { contentConfigProblems, parseContentConfig } from "@/lib/content-sim/model";
 
 /** Validates an admin exercise create/update body. */
 export async function parseScenarioInput(body: unknown) {
@@ -29,7 +30,8 @@ export async function parseScenarioInput(body: unknown) {
     kind !== LabKind.SOCIAL &&
     kind !== LabKind.AUTOMATION &&
     kind !== LabKind.BACKEND &&
-    kind !== LabKind.WORDPRESS
+    kind !== LabKind.WORDPRESS &&
+    kind !== LabKind.CONTENT
   )
     return { error: "Choose the kind of exercise." } as const;
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
@@ -113,6 +115,18 @@ export async function parseScenarioInput(body: unknown) {
         checks: [],
         config,
       },
+    } as const;
+  }
+
+  // AI content: the brief, rules, criteria (or the draft and its planted
+  // errors) all live in config.
+  if (kind === LabKind.CONTENT) {
+    const config = parseContentConfig(raw.config);
+    const problems = contentConfigProblems(config);
+    if (problems.length)
+      return { error: `Fix the exercise first: ${problems.slice(0, 3).join(" ")}` } as const;
+    return {
+      data: { ...common, starterFiles: {}, solutionFiles: Prisma.DbNull, checks: [], config },
     } as const;
   }
 

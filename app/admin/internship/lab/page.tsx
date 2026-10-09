@@ -8,7 +8,7 @@ import AdminShell from "@/components/AdminShell";
 type Scenario = {
   id: string;
   title: string;
-  kind: "WEB" | "REACT" | "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND" | "WORDPRESS";
+  kind: "WEB" | "REACT" | "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND" | "WORDPRESS" | "CONTENT";
   kindLabel: string;
   track: string;
   level: string;

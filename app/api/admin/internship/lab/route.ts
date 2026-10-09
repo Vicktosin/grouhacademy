@@ -11,6 +11,7 @@ import { parseSocialConfig } from "@/lib/social-sim/model";
 import { parseAutomationConfig } from "@/lib/automation-sim/model";
 import { parseBackendConfig } from "@/lib/backend-sim/model";
 import { parseWpConfig } from "@/lib/wp-sim/model";
+import { parseContentConfig } from "@/lib/content-sim/model";
 
 /** Every exercise, plus tracks and levels for the builder. */
 export async function GET() {
@@ -54,6 +55,13 @@ export async function GET() {
           ? parseBackendConfig(scenario.config).tests.length
           : scenario.kind === "WORDPRESS"
           ? parseWpConfig(scenario.config).checks.length
+          : scenario.kind === "CONTENT"
+          ? (({ mode, errors, pieces, rubric }) =>
+              mode === "FACTCHECK"
+                ? errors.length
+                : pieces.reduce((sum, piece) => sum + piece.rules.length + rubric.length, 0))(
+              parseContentConfig(scenario.config),
+            )
           : scenario.kind === "AUTOMATION"
           ? parseAutomationConfig(scenario.config).records.length
           : scenario.kind === "SOCIAL"

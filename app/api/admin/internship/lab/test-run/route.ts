@@ -22,8 +22,15 @@ import {
   workflowProblems,
 } from "@/lib/automation-sim/model";
 import { aiLabelsFor } from "@/lib/automation-sim/evaluate";
+import {
+  contentConfigProblems,
+  parseContentConfig,
+  parseContentWork,
+  workProblems,
+} from "@/lib/content-sim/model";
+import { evaluateContent, NoAiError } from "@/lib/content-sim/evaluate";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Tries a simulator exercise with its settings as currently edited, without
@@ -31,6 +38,7 @@ export const maxDuration = 60;
  *   ads:    { config, campaign }
  *   social: { kind: "SOCIAL", config, plan }
  *           { kind: "SOCIAL", config, run, replies }  (grade replies)
+ *   content: { kind: "CONTENT", config, work }  (mark AI content)
  *   automation: { kind: "AUTOMATION", config }
  *                 (what the model workflow does for every record)
  *               { kind: "AUTOMATION", config, workflow }
@@ -47,7 +55,22 @@ export async function POST(request: Request) {
     run?: unknown;
     replies?: unknown;
     workflow?: unknown;
+    work?: unknown;
   } | null;
+
+  if (body?.kind === "CONTENT") {
+    const config = parseContentConfig(body.config);
+    const problems = [...contentConfigProblems(config), ...workProblems(parseContentWork(body.work, config), config)];
+    if (problems.length) return NextResponse.json({ error: problems.slice(0, 3).join(" ") }, { status: 400 });
+    const work = parseContentWork(body.work, config);
+    try {
+      return NextResponse.json({ run: { at: new Date().toISOString(), work, result: await evaluateContent(config, work) } });
+    } catch (error) {
+      if (error instanceof NoAiError)
+        return NextResponse.json({ error: "No AI provider answered. Check the AI keys, then try again." }, { status: 503 });
+      throw error;
+    }
+  }
 
   if (body?.kind === "AUTOMATION") {
     // Answers are worked out fresh from the settings as edited.
