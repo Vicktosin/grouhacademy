@@ -14,6 +14,8 @@ import type { InterviewSessionView } from "@/lib/interviews";
 
 /** How often to check for the call ending and for feedback. */
 const POLL_MS = 5000;
+/** During the call nothing changes until it ends, so check less often. */
+const IN_CALL_POLL_MS = 20_000;
 
 export default function InterviewSessionPage({
   params,
@@ -40,8 +42,13 @@ export default function InterviewSessionPage({
   useEffect(() => {
     let timer: number | undefined;
     let stopped = false;
-    const tick = () =>
-      load()
+    const tick = (): void => {
+      // Not while the tab is hidden: check again once it's shown.
+      if (document.hidden) {
+        document.addEventListener("visibilitychange", tick, { once: true });
+        return;
+      }
+      void load()
         .then((next) => {
           // Nothing more will change once scored or failed, or once the
           // transcript is saved while automatic scoring is off.
@@ -49,7 +56,8 @@ export default function InterviewSessionPage({
             next.status === "SCORED" ||
             next.status === "FAILED" ||
             (next.hasTranscript && !next.gradingEnabled);
-          if (!stopped && !done) timer = window.setTimeout(tick, POLL_MS);
+          if (!stopped && !done)
+            timer = window.setTimeout(tick, next.status === "ACTIVE" ? IN_CALL_POLL_MS : POLL_MS);
         })
         .catch((loadError: unknown) => {
           setError(
@@ -57,10 +65,12 @@ export default function InterviewSessionPage({
           );
           if (!stopped) timer = window.setTimeout(tick, POLL_MS * 3);
         });
-    void tick();
+    };
+    tick();
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", tick);
     };
   }, [load]);
 

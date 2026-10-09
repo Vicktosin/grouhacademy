@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { MentorPage } from "@/components/MentorPage";
 import { bringIntoView } from "@/lib/bring-into-view";
+import { useChatPolling } from "@/lib/use-chat-polling";
 
 type ConversationSummary = {
   internId: string;
@@ -24,8 +25,10 @@ type Message = {
   isMine: boolean;
 };
 
-const THREAD_POLL_MS = 4000;
-const LIST_POLL_MS = 15000;
+// The open thread is checked like other chats (see useChatPolling); the
+// list of conversations less often.
+const LIST_POLL_FAST_MS = 30_000;
+const LIST_POLL_SLOW_MS = 120_000;
 
 function formatTime(iso: string) {
   const date = new Date(iso);
@@ -47,6 +50,8 @@ function MentorMessages() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastFetchedAt = useRef<string | null>(null);
+  // What the list looked like last time, to tell when something changed.
+  const listSignature = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   // On phones the chat sits below the conversation list.
   const chatRef = useRef<HTMLDivElement>(null);
@@ -65,6 +70,9 @@ function MentorMessages() {
         throw new Error(body?.error ?? "Unable to load conversations.");
       const rows = body.conversations as ConversationSummary[];
       setConversations(rows);
+      const signature = rows.map((row) => `${row.internId}:${row.unread}:${row.lastMessage?.createdAt ?? ""}`).join("|");
+      const changed = Boolean(listSignature.current) && signature !== listSignature.current;
+      listSignature.current = signature;
       setActiveId(
         (current) =>
           current ??
@@ -72,6 +80,7 @@ function MentorMessages() {
             ? requestedIntern
             : (rows[0]?.internId ?? null)),
       );
+      return changed;
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Unable to load conversations.",
@@ -110,6 +119,7 @@ function MentorMessages() {
         setConversations((current) =>
           current.map((c) => (c.internId === internId ? { ...c, unread: 0 } : c)),
         );
+        return !initial && incoming.length > 0;
       } finally {
         if (initial) setLoadingThread(false);
       }
@@ -119,18 +129,9 @@ function MentorMessages() {
 
   useEffect(() => {
     const first = window.setTimeout(() => void loadConversations(), 0);
-    const interval = window.setInterval(
-      () => {
-        // Don't poll while the tab is in the background.
-        if (!document.hidden) void loadConversations();
-      },
-      LIST_POLL_MS,
-    );
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(interval);
-    };
+    return () => window.clearTimeout(first);
   }, [loadConversations]);
+  useChatPolling(loadConversations, { fastMs: LIST_POLL_FAST_MS, slowMs: LIST_POLL_SLOW_MS });
 
   const activeProgramId = active?.programId ?? null;
   useEffect(() => {
@@ -142,17 +143,13 @@ function MentorMessages() {
       setError(null);
       void loadThread(activeId, activeProgramId, true);
     }, 0);
-    const interval = window.setInterval(
-      () => {
-        if (!document.hidden) void loadThread(activeId, activeProgramId, false);
-      },
-      THREAD_POLL_MS,
-    );
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(interval);
-    };
+    return () => window.clearTimeout(first);
   }, [activeId, activeProgramId, loadThread]);
+  // The open conversation: often while you're chatting, rarely when quiet.
+  const bumpThreadPolling = useChatPolling(
+    async () => (activeId && activeProgramId ? loadThread(activeId, activeProgramId, false) : false),
+    { enabled: Boolean(activeId && activeProgramId), resetKey: activeId },
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -180,6 +177,8 @@ function MentorMessages() {
       if (!response.ok) throw new Error(body?.error ?? "Unable to send message.");
       setMessages((current) => [...current, body as Message]);
       lastFetchedAt.current = body.createdAt;
+      // The intern may reply soon: check often again.
+      bumpThreadPolling();
       setConversations((current) =>
         current.map((c) =>
           c.internId === active.internId
