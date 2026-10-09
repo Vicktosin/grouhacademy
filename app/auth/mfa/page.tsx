@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -41,6 +43,7 @@ function MfaChallengeForm() {
 
   async function signOut() {
     await createSupabaseBrowserClient().auth.signOut();
+    clearCachedJson();
     router.replace("/login");
     router.refresh();
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { ArrowLeft, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +26,7 @@ export default function FlowExitBar({
 
   async function signOut() {
     await createSupabaseBrowserClient().auth.signOut();
+    clearCachedJson();
     router.replace("/login");
     router.refresh();
   }
