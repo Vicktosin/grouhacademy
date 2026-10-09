@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { chatTopic } from "@/lib/realtime";
 import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 import { adminGroupMessages, postTeamMessage } from "@/lib/group-chat";
@@ -22,6 +23,8 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid time." }, { status: 400 });
   return NextResponse.json({
     messages: await adminGroupMessages(groupId, since),
+    // Where to listen for new messages (see lib/realtime).
+    realtimeTopic: chatTopic({ kind: "group", groupId }),
   });
 }
 

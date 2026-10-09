@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireMentorApi } from "@/lib/api-guards";
 import { getMentorInterns } from "@/lib/mentor-data";
 import { getPrisma } from "@/lib/prisma";
+import { chatTopic } from "@/lib/realtime";
 
 /** One entry per assigned intern, most recent conversation first. */
 export async function GET() {
@@ -64,7 +65,11 @@ export async function GET() {
         (a.lastMessage ? Date.parse(a.lastMessage.createdAt) : 0),
     );
 
-    return NextResponse.json({ conversations: rows });
+    return NextResponse.json({
+      conversations: rows,
+      // Pinged whenever one of this mentor's interns writes (see lib/realtime).
+      realtimeTopic: chatTopic({ kind: "mentor-inbox", mentorId }),
+    });
   } catch (error) {
     console.error("Failed to load mentor conversations:", error);
     return NextResponse.json(

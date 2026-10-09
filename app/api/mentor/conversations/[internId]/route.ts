@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { chatTopic, notifyChats } from "@/lib/realtime";
 
 import { requireMentorApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
@@ -89,6 +90,8 @@ export async function GET(request: Request, { params }: Context) {
     });
 
     return NextResponse.json({
+      // Where to listen for new messages (see lib/realtime).
+      realtimeTopic: chatTopic({ kind: "mentor-chat", internId, programId: conversation.programId }),
       messages: messages.map((message) => ({
         id: message.id,
         content: message.content,
@@ -138,6 +141,11 @@ export async function POST(request: Request, { params }: Context) {
     const message = await getPrisma().message.create({
       data: { conversationId: conversation.id, senderId: mentorId, content },
     });
+    notifyChats([
+      { kind: "mentor-chat", internId, programId: conversation.programId },
+      // The mentor's other open tabs.
+      { kind: "mentor-inbox", mentorId },
+    ]);
 
     return NextResponse.json({
       id: message.id,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { chatTopic, notifyChats } from "@/lib/realtime";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 
@@ -73,6 +74,8 @@ export async function GET(request: Request) {
       conversationId: conversation.id,
       mentorId: assignment.mentorId,
       mentorName: assignment.mentor.name,
+      // Where to listen for new messages (see lib/realtime).
+      realtimeTopic: chatTopic({ kind: "mentor-chat", internId: userId, programId: assignment.programId }),
       messages: messages.map((m) => ({
         id: m.id,
         senderId: m.senderId,
@@ -145,6 +148,10 @@ export async function POST(request: Request) {
     const message = await prisma.message.create({
       data: { conversationId: conversation.id, senderId: userId, content },
     });
+    notifyChats([
+      { kind: "mentor-chat", internId: userId, programId: assignment.programId },
+      { kind: "mentor-inbox", mentorId: assignment.mentorId },
+    ]);
 
     return NextResponse.json({
       id: message.id,
