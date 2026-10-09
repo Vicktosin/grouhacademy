@@ -20,6 +20,13 @@ import {
 } from "@/lib/lab-task-grading";
 import { reviewLabCode, type LabReview } from "@/lib/lab-review";
 import {
+  describeWpWork,
+  parseWpConfig,
+  parseWpResults,
+  parseWpWork,
+  publicWpConfig,
+} from "@/lib/wp-sim/model";
+import {
   isCodeKind,
   LAB_KIND_LABEL,
   normalizeChecks,
@@ -122,6 +129,12 @@ import { BusyError, runBackendTestsIsolated } from "@/lib/backend-sim/server";
 // worker thread (lib/backend-sim/server), never in this process; interns
 // see hidden tests as passed or failed with the admin's hint. Submissions
 // also get an AI code review when an AI key is set (see lib/ai.ts).
+//
+// WordPress exercises (WORDPRESS): a real WordPress site runs in the
+// intern's browser (WordPress Playground) and is saved there, never here.
+// The checks run inside that site; submitting sends their results with a
+// summary of the site and the files the intern wrote. Results that don't
+// match the exercise's checks send a pass to a mentor instead.
 
 export function isLabReviewEnabled() {
   return isAiEnabled();
@@ -176,6 +189,7 @@ function storedRuns<T = AdsRun>(value: unknown): T[] {
 function goalCount(kind: string, config: unknown) {
   if (kind === "AUTOMATION") return parseAutomationConfig(config).records.length;
   if (kind === "BACKEND") return parseBackendConfig(config).tests.length;
+  if (kind === "WORDPRESS") return parseWpConfig(config).checks.length;
   return kind === "SOCIAL"
     ? parseSocialConfig(config).goals.length
     : parseAdsConfig(config).goals.length;
@@ -402,6 +416,16 @@ export async function getLabForIntern(
     };
   }
 
+  if (scenario.kind === "WORDPRESS") {
+    return {
+      ...common,
+      kind: "WORDPRESS" as const,
+      wp: publicWpConfig(parseWpConfig(scenario.config)),
+      // What was last submitted (the site itself is in their browser).
+      work: attempt?.files ? parseWpWork(attempt.files) : null,
+    };
+  }
+
   if (scenario.kind === "AUTOMATION") {
     const config = parseAutomationConfig(scenario.config);
     const expected = await expectedResults(config);
@@ -446,6 +470,7 @@ export type InternAdsLab = Extract<InternLab, { kind: "ADS" }>;
 export type InternSocialLab = Extract<InternLab, { kind: "SOCIAL" }>;
 export type InternAutomationLab = Extract<InternLab, { kind: "AUTOMATION" }>;
 export type InternBackendLab = Extract<InternLab, { kind: "BACKEND" }>;
+export type InternWordPressLab = Extract<InternLab, { kind: "WORDPRESS" }>;
 
 /** Autosaves the intern's work (keeps a submitted attempt's results). */
 export async function saveLabDraft(
@@ -455,6 +480,8 @@ export async function saveLabDraft(
 ) {
   const scenario = await scenarioForIntern(userId, scenarioId);
   if (!scenario) return false;
+  // WordPress sites are saved in the intern's browser.
+  if (scenario.kind === "WORDPRESS") return true;
   const work = isCodeKind(scenario.kind)
     ? normalizeFiles(scenario.kind, files)
     : scenario.kind === "SOCIAL"
@@ -842,6 +869,20 @@ ${sortedFileNames(files)
   .join("\n")}`);
 }
 
+/** Task submission text for a WordPress site: checks, site summary, files. */
+function wordPressSubmissionText(
+  scenario: Pick<LabScenario, "title">,
+  work: ReturnType<typeof parseWpWork>,
+  results: LabCheckResult[],
+) {
+  const passed = results.filter((result) => result.passed).length;
+  return fit(`WordPress: ${scenario.title}
+Automatic checks: ${passed} of ${results.length} passed
+${results.map((result) => `${result.passed ? "✓" : "✗"} ${result.label}`).join("\n")}
+
+${describeWpWork(work)}`);
+}
+
 type LinkedTask = NonNullable<Awaited<ReturnType<typeof linkedTask>>>;
 
 /** What happened to the linked task when the exercise was submitted. */
@@ -1009,6 +1050,47 @@ export async function submitLab(
       taskResult,
       backendRun: { ...run, result: publicBackendResult(run.result) },
     };
+  }
+
+  // WordPress: the checks ran inside the intern's site, in their browser.
+  if (scenario.kind === "WORDPRESS") {
+    const config = parseWpConfig(scenario.config);
+    const work = parseWpWork(input.files);
+    const results = parseWpResults(input.checkResults);
+    const checkLabels = config.checks.map((check) => check.label.slice(0, 200));
+    const passed = results.filter((result) => result.passed).length;
+    // Results whose labels don't match this exercise's checks may have been
+    // edited: a pass goes to a mentor.
+    const flags = codeSubmissionFlags({ starter: {}, files: {}, checkLabels, results });
+    const submitted = {
+      files: work as unknown as Prisma.InputJsonValue,
+      status: "SUBMITTED" as const,
+      checkResults: results,
+      checksPassed: passed,
+      checksTotal: checkLabels.length,
+      review: flags.length ? { flags } : Prisma.DbNull,
+      submittedAt: new Date(),
+    };
+    const saved = await prisma.labAttempt.upsert({
+      where: { userId_scenarioId: { userId, scenarioId } },
+      create: { userId, scenarioId, ...submitted },
+      update: submitted,
+      select: VIEW_FIELDS,
+    });
+    const text = wordPressSubmissionText(scenario, work, results);
+    const taskResult = task
+      ? await gradeLinkedTask(
+          userId,
+          task,
+          flags.length ? `Note for the mentor: please confirm this result. ${flags.join(" ")}\n\n${text}` : text,
+          {
+            ...scoreCodeChecks(checkLabels, results),
+            missedLabel: "checks",
+            needsReview: flags.length > 0,
+          },
+        )
+      : null;
+    return { attempt: attemptView({ ...saved, review: null }), taskResult };
   }
 
   // Automations: the current workflow is run on every record, hidden ones

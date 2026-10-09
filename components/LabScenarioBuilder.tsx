@@ -16,6 +16,8 @@ import AdsConfigEditor from "@/components/AdsConfigEditor";
 import SocialConfigEditor from "@/components/SocialConfigEditor";
 import AutomationConfigEditor from "@/components/AutomationConfigEditor";
 import BackendConfigEditor from "@/components/BackendConfigEditor";
+import WordPressConfigEditor from "@/components/WordPressConfigEditor";
+import { DEFAULT_WP_CONFIG, parseWpConfig, parseWpWork, type WpConfig, type WpWork } from "@/lib/wp-sim/model";
 import { TestResultsList } from "@/components/BackendSimulator";
 import { RunResult } from "@/components/AutomationSimulator";
 import { AdBreakdown } from "@/components/AdsSimulator";
@@ -77,7 +79,7 @@ type Draft = {
   starterFiles: LabFiles;
   solutionFiles: LabFiles | null;
   checks: LabCheck[];
-  config?: AdsConfig | SocialConfig | AutomationConfig | BackendConfig;
+  config?: AdsConfig | SocialConfig | AutomationConfig | BackendConfig | WpConfig;
   published: boolean;
 };
 
@@ -169,6 +171,11 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
         solutionFiles: DEFAULT_BACKEND_SOLUTION,
         checks: [],
       });
+      return;
+    }
+    // WordPress: the example site and checks.
+    if (kind === "WORDPRESS") {
+      change({ kind, config: DEFAULT_WP_CONFIG, starterFiles: {}, solutionFiles: null, checks: [] });
       return;
     }
     // Simulators: start from that simulator's example settings.
@@ -384,6 +391,11 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
           config={parseAutomationConfig(draft.config ?? DEFAULT_AUTOMATION_CONFIG)}
           onChange={(config) => change({ config })}
         />
+      ) : draft.kind === "WORDPRESS" ? (
+        <WordPressConfigEditor
+          config={parseWpConfig(draft.config ?? DEFAULT_WP_CONFIG)}
+          onChange={(config) => change({ config })}
+        />
       ) : draft.kind === "SOCIAL" ? (
         <SocialConfigEditor
           config={parseSocialConfig(draft.config ?? DEFAULT_SOCIAL_CONFIG)}
@@ -596,6 +608,7 @@ type AttemptDetail = {
   files: Record<string, string>;
   runs: Array<SimRun | SocialRun | AutomationRun | BackendRun>;
   review: { summary?: string; flags?: string[] } | null;
+  checkResults?: Array<{ label: string; passed: boolean; detail?: string }> | null;
 };
 
 function attemptSummary(attempt: AttemptRow, kind: AnyLabKind) {
@@ -768,9 +781,13 @@ function Attempts({
                                 </div>
                               </details>
                             ))}
+                        {kind === "WORDPRESS" && (
+                          <WordPressWork work={parseWpWork(detail.files)} results={detail.checkResults ?? []} />
+                        )}
                         {kind !== "ADS" &&
                           kind !== "SOCIAL" &&
                           kind !== "AUTOMATION" &&
+                          kind !== "WORDPRESS" &&
                           Object.entries(detail.files ?? {}).map(([name, contents]) => (
                             <div key={name}>
                               <p className="text-[10px] font-bold text-slate-500">{name}</p>
@@ -789,6 +806,55 @@ function Attempts({
         </ul>
       )}
     </section>
+  );
+}
+
+/** A submitted WordPress site: check results, a summary and their files. */
+function WordPressWork({ work, results }: { work: WpWork; results: Array<{ label: string; passed: boolean; detail?: string }> }) {
+  const s = work.summary;
+  return (
+    <div className="space-y-2 text-[11px] leading-5 text-slate-600">
+      {results.length > 0 && (
+        <ul className="space-y-0.5">
+          {results.map((result) => (
+            <li key={result.label}>
+              {result.passed ? "✓" : "✗"} {result.label}
+              {result.detail && <span className="text-slate-400"> · {result.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {s ? (
+        <div className="rounded-lg bg-[#f8fbff] p-3">
+          <p>
+            <strong className="text-[#1C1D52]">{s.title || "(no title)"}</strong>
+            {s.tagline && ` · ${s.tagline}`}
+          </p>
+          <p>
+            Theme: {s.theme || "unknown"}
+            {s.plugins.length > 0 && ` · Plugins: ${s.plugins.join(", ")}`}
+          </p>
+          <p>
+            Pages: {s.pages.join(", ") || "none"} · Posts: {s.posts}
+          </p>
+          {s.menus.map((menu) => (
+            <p key={menu.name}>
+              Menu “{menu.name}”: {menu.items.join(", ") || "(empty)"}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="text-slate-500">No site summary (not submitted yet).</p>
+      )}
+      {Object.entries(work.files).map(([path, contents]) => (
+        <div key={path}>
+          <p className="text-[10px] font-bold text-slate-500">wp-content/{path}</p>
+          <pre className="mt-1 max-h-64 overflow-auto rounded-lg bg-[#101426] p-3 text-[11px] leading-5 text-white/90">
+            {contents}
+          </pre>
+        </div>
+      ))}
+    </div>
   );
 }
 
