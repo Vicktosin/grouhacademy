@@ -9,10 +9,12 @@ import {
   INDUSTRY_PRESETS,
   INTERESTS,
   LOCATIONS,
+  SPECIAL_CATEGORIES,
   type AdsConfig,
   type Campaign,
   type Gender,
   type GoalMetric,
+  type SpecialCategory,
 } from "@/lib/ads-sim/model";
 
 // Admin settings for an Ad Campaign Simulator exercise (the client, the
@@ -73,6 +75,32 @@ export default function AdsConfigEditor({
               <option value="LEADS">A lead (sign-up, enquiry)</option>
             </select>
           </Field>
+          <Field label="Special ad category (hidden from interns)">
+            <select
+              value={config.specialCategory}
+              onChange={(e) => set({ specialCategory: e.target.value as SpecialCategory })}
+              className={inputClass}
+            >
+              {(Object.keys(SPECIAL_CATEGORIES) as SpecialCategory[]).map((key) => (
+                <option key={key} value={key}>
+                  {SPECIAL_CATEGORIES[key].label}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+              If the business is in one (e.g. a real-estate agency: Housing), interns must declare it on the campaign or
+              their ads are rejected, as on real platforms.
+            </span>
+          </Field>
+          <label className="flex items-center gap-2 self-end text-xs text-[#1C1D52]">
+            <input
+              type="checkbox"
+              className="accent-[#5FBB46]"
+              checked={config.hasApp}
+              onChange={(e) => set({ hasApp: e.target.checked })}
+            />
+            The business has an app (allows app promotion)
+          </label>
           <div className="md:col-span-2">
             <Field label="About the business">
               <textarea
