@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import Pagination from "@/components/Pagination";
 
 type EnrolleeRow = {
   id: string;
@@ -232,41 +233,7 @@ export default function InternshipEnrolleesPage() {
                 {Math.min(page * pageSize, filteredRows.length)} of{" "}
                 {filteredRows.length} enrollees
               </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  disabled={page === 1}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-2 shadow-[inset_0_0_0_1px_#d8dee8] disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-3 w-3" />
-                  Previous
-                </button>
-                {Array.from(
-                  { length: totalPages },
-                  (_, index) => index + 1,
-                ).map((number) => (
-                  <button
-                    key={number}
-                    type="button"
-                    onClick={() => setPage(number)}
-                    className={`h-8 w-8 rounded-lg text-[10px] ${page === number ? "bg-[#1C1D52] text-white" : "shadow-[inset_0_0_0_1px_#d8dee8]"}`}
-                  >
-                    {number}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
-                  }
-                  disabled={page === totalPages}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-2 shadow-[inset_0_0_0_1px_#d8dee8] disabled:opacity-40"
-                >
-                  Next
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              </div>
+              <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </div>
           </section>
         )}
