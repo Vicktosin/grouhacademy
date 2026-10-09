@@ -10,6 +10,8 @@ import {
   parseAutomationConfig,
 } from "@/lib/automation-sim/model";
 import { parseBackendConfig, parseBackendFiles } from "@/lib/backend-sim/model";
+import { parseWpConfig } from "@/lib/wp-sim/model";
+import { parseContentConfig } from "@/lib/content-sim/model";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -42,6 +44,20 @@ export async function GET(_request: Request, { params }: Params) {
       published: scenario.published,
     });
   }
+  if (scenario.kind === "WORDPRESS" || scenario.kind === "CONTENT")
+    return NextResponse.json({
+      id: scenario.id,
+      programId: scenario.programId,
+      levelId: scenario.levelId,
+      kind: scenario.kind,
+      title: scenario.title,
+      brief: scenario.brief,
+      config: scenario.kind === "CONTENT" ? parseContentConfig(scenario.config) : parseWpConfig(scenario.config),
+      starterFiles: {},
+      solutionFiles: null,
+      checks: [],
+      published: scenario.published,
+    });
   if (!isCodeKind(scenario.kind))
     return NextResponse.json({
       id: scenario.id,
