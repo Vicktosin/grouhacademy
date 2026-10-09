@@ -10,6 +10,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import Pagination from "@/components/Pagination";
+import CohortTrackFilter, { matchesCohortTrack, useCohortTrackFilter } from "@/components/admin/CohortTrackFilter";
+import type { PickerCohort } from "@/components/admin/CohortPicker";
 
 type PaymentRecord = {
   id: string;
@@ -18,6 +20,8 @@ type PaymentRecord = {
   email: string;
   name: string;
   track: string;
+  trackName: string;
+  cohortId: string | null;
   course: string;
   tier: string;
   amount: number;
@@ -55,9 +59,11 @@ export default function InternshipPaymentsPage() {
   const [internshipStatus, setInternshipStatus] = useState("All");
   const [course, setCourse] = useState("All");
   const [tier, setTier] = useState("All");
-  const [track, setTrack] = useState("All");
+  const [cohorts, setCohorts] = useState<PickerCohort[]>([]);
+  const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-payments");
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -74,8 +80,11 @@ export default function InternshipPaymentsPage() {
           throw new Error(`Payments request failed (${response.status}).`);
         const payload = (await response.json()) as {
           payments?: PaymentRecord[];
+          cohorts?: PickerCohort[];
         };
         setPayments(payload.payments ?? []);
+        setCohorts(payload.cohorts ?? []);
+        setLoaded(true);
       })
       .catch((reason) => {
         setError(
@@ -90,14 +99,11 @@ export default function InternshipPaymentsPage() {
     const allCourses = Array.from(
       new Set(payments.map((item) => item.course)),
     ).sort();
-    const allTracks = Array.from(
-      new Set(payments.map((item) => item.track)),
-    ).sort();
     const allTiers = Array.from(
       new Set(payments.map((item) => item.tier)),
     ).sort();
 
-    return { allCourses, allTracks, allTiers };
+    return { allCourses, allTiers };
   }, [payments]);
 
   const filteredPayments = useMemo(() => {
@@ -116,7 +122,7 @@ export default function InternshipPaymentsPage() {
         item.internshipStatus === internshipStatus;
       const matchesCourse = course === "All" || item.course === course;
       const matchesTier = tier === "All" || item.tier === tier;
-      const matchesTrack = track === "All" || item.track === track;
+      const matchesTrack = matchesCohortTrack(cohortTrack, item);
 
       return (
         matchesQuery &&
@@ -127,7 +133,7 @@ export default function InternshipPaymentsPage() {
         matchesTrack
       );
     });
-  }, [course, internshipStatus, paymentStatus, payments, query, tier, track]);
+  }, [cohortTrack, course, internshipStatus, paymentStatus, payments, query, tier]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -283,7 +289,7 @@ export default function InternshipPaymentsPage() {
         )}
         {!error && !payments.length && (
           <p className="rounded-xl bg-white px-4 py-3 text-xs text-slate-500">
-            Loading payment records…
+            {loaded ? "No payments yet." : "Loading payment records…"}
           </p>
         )}
         {updateMessage && (
@@ -359,11 +365,12 @@ export default function InternshipPaymentsPage() {
                   onChange={setTier}
                   options={["All", ...filters.allTiers]}
                 />
-                <FilterSelect
-                  label="Track"
-                  value={track}
-                  onChange={setTrack}
-                  options={["All", ...filters.allTracks]}
+                <CohortTrackFilter
+                  cohorts={cohorts}
+                  tracks={payments.map((item) => item.trackName)}
+                  value={cohortTrack}
+                  onChange={setCohortTrack}
+                  storageKey="admin-payments"
                 />
                 <FilterSelect
                   label="Payment status"

@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import Pagination from "@/components/Pagination";
+import CohortTrackFilter, { matchesCohortTrack, useCohortTrackFilter } from "@/components/admin/CohortTrackFilter";
 import ManageInternDialog, {
   type InternOptions,
   type ManagedIntern,
@@ -37,11 +38,11 @@ const pageSize = 8;
 export default function InternshipInternsPage() {
   const [interns, setInterns] = useState<InternRow[]>([]);
   const [query, setQuery] = useState("");
-  const [track, setTrack] = useState("All");
-  const [cohort, setCohort] = useState("All");
+  const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-interns");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("Active");
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [options, setOptions] = useState<InternOptions | null>(null);
   const [managing, setManaging] = useState<InternRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export default function InternshipInternsPage() {
           };
           setInterns(payload.interns ?? []);
           setOptions(payload.options ?? null);
+          setLoaded(true);
         })
         .catch((reason) => {
           setError(
@@ -75,15 +77,10 @@ export default function InternshipInternsPage() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [query, track, cohort, statusFilter]);
 
   const filteredInterns = useMemo(() => {
     const searchQuery = query.trim().toLowerCase();
     return interns.filter((intern) => {
-      const matchesTrack = track === "All" || intern.track === track;
-      const matchesCohort = cohort === "All" || intern.cohort === cohort;
       const isRemoved = intern.status === "REMOVED";
       const matchesStatus =
         statusFilter === "All" ||
@@ -91,13 +88,24 @@ export default function InternshipInternsPage() {
       const searchValue =
         `${intern.name} ${intern.email} ${intern.track} ${intern.cohort} ${intern.status}`.toLowerCase();
       return (
-        matchesTrack &&
-        matchesCohort &&
+        matchesCohortTrack(cohortTrack, { cohortId: intern.cohortId, trackName: intern.track }) &&
         matchesStatus &&
         (!searchQuery || searchValue.includes(searchQuery))
       );
     });
-  }, [cohort, interns, query, statusFilter, track]);
+  }, [cohortTrack, interns, query, statusFilter]);
+
+  // Cohorts with their track names, for the filter.
+  const cohortOptions = useMemo(() => {
+    const trackNames = new Map((options?.tracks ?? []).map((t) => [t.id, t.name]));
+    return (options?.cohorts ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      programName: trackNames.get(c.programId) ?? "Other",
+      startDate: c.startDate,
+      endDate: c.endDate,
+    }));
+  }, [options]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInterns.length / pageSize));
   const visibleInterns = filteredInterns.slice(
@@ -180,7 +188,7 @@ export default function InternshipInternsPage() {
         )}
         {!error && !interns.length && (
           <p className="rounded-xl bg-white px-4 py-3 text-xs text-slate-500">
-            Loading intern roster…
+            {loaded ? "No interns yet." : "Loading intern roster…"}
           </p>
         )}
 
@@ -208,36 +216,34 @@ export default function InternshipInternsPage() {
                 <Search className="h-3.5 w-3.5" />
                 <input
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setPage(1);
+                  }}
                   className="w-full bg-transparent outline-none placeholder:text-slate-400"
                   placeholder="Search by name, email, or track"
                 />
               </label>
 
               <div className="flex flex-wrap gap-2">
-                <FilterSelect
-                  label="Track"
-                  value={track}
-                  onChange={setTrack}
-                  options={[
-                    "All",
-                    ...new Set(interns.map((intern) => intern.track)),
-                  ]}
+                <CohortTrackFilter
+                  cohorts={cohortOptions}
+                  tracks={interns.map((intern) => intern.track)}
+                  value={cohortTrack}
+                  onChange={(next) => {
+                    setCohortTrack(next);
+                    setPage(1);
+                  }}
+                  storageKey="admin-interns"
                 />
                 <FilterSelect
                   label="Status"
                   value={statusFilter}
-                  onChange={setStatusFilter}
+                  onChange={(next) => {
+                    setStatusFilter(next);
+                    setPage(1);
+                  }}
                   options={["Active", "Removed", "All"]}
-                />
-                <FilterSelect
-                  label="Cohort"
-                  value={cohort}
-                  onChange={setCohort}
-                  options={[
-                    "All",
-                    ...new Set(interns.map((intern) => intern.cohort)),
-                  ]}
                 />
               </div>
             </div>

@@ -1,8 +1,10 @@
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import CohortTrackFilter, { matchesCohortTrack, useCohortTrackFilter } from "@/components/admin/CohortTrackFilter";
+import type { PickerCohort } from "@/components/admin/CohortPicker";
 import AdminShell from "@/components/AdminShell";
 import Pagination from "@/components/Pagination";
 
@@ -12,6 +14,8 @@ type EnrolleeRow = {
   name: string;
   email: string;
   track: string;
+  trackName: string;
+  cohortId: string | null;
   examScore: number | null;
   attempts: number;
   cohort: string;
@@ -25,10 +29,11 @@ const pageSize = 8;
 export default function InternshipEnrolleesPage() {
   const [rows, setRows] = useState<EnrolleeRow[]>([]);
   const [query, setQuery] = useState("");
-  const [track, setTrack] = useState("All");
-  const [cohort, setCohort] = useState("All");
+  const [cohorts, setCohorts] = useState<PickerCohort[]>([]);
+  const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-enrollees");
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/internship/enrollees", { cache: "no-store" })
@@ -39,8 +44,11 @@ export default function InternshipEnrolleesPage() {
           );
         const payload = (await response.json()) as {
           enrolleeRows?: EnrolleeRow[];
+          cohorts?: PickerCohort[];
         };
         setRows(payload.enrolleeRows ?? []);
+        setCohorts(payload.cohorts ?? []);
+        setLoaded(true);
       })
       .catch((reason) => {
         setError(
@@ -54,17 +62,14 @@ export default function InternshipEnrolleesPage() {
   const filteredRows = useMemo(() => {
     const searchQuery = query.trim().toLowerCase();
     return rows.filter((row) => {
-      const matchesTrack = track === "All" || row.track === track;
-      const matchesCohort = cohort === "All" || row.cohort === cohort;
       const searchable =
         `${row.name} ${row.email} ${row.track} ${row.cohort}`.toLowerCase();
       return (
-        matchesTrack &&
-        matchesCohort &&
+        matchesCohortTrack(cohortTrack, row) &&
         (!searchQuery || searchable.includes(searchQuery))
       );
     });
-  }, [cohort, query, rows, track]);
+  }, [cohortTrack, query, rows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const visibleRows = filteredRows.slice(
@@ -106,7 +111,9 @@ export default function InternshipEnrolleesPage() {
         )}
         {!error && !rows.length && (
           <p className="rounded-xl bg-white px-4 py-3 text-xs text-slate-500">
-            Loading enrollee list…
+            {loaded
+              ? "No one is waiting to pay the acceptance fee right now."
+              : "Loading enrollee list…"}
           </p>
         )}
 
@@ -127,23 +134,15 @@ export default function InternshipEnrolleesPage() {
               </label>
 
               <div className="flex flex-wrap gap-2">
-                <FilterSelect
-                  label="Track"
-                  value={track}
+                <CohortTrackFilter
+                  cohorts={cohorts}
+                  tracks={rows.map((row) => row.trackName)}
+                  value={cohortTrack}
                   onChange={(next) => {
-                    setTrack(next);
+                    setCohortTrack(next);
                     setPage(1);
                   }}
-                  options={["All", ...new Set(rows.map((row) => row.track))]}
-                />
-                <FilterSelect
-                  label="Cohort"
-                  value={cohort}
-                  onChange={(next) => {
-                    setCohort(next);
-                    setPage(1);
-                  }}
-                  options={["All", ...new Set(rows.map((row) => row.cohort))]}
+                  storageKey="admin-enrollees"
                 />
               </div>
             </div>
@@ -239,35 +238,5 @@ export default function InternshipEnrolleesPage() {
         )}
       </div>
     </AdminShell>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-}) {
-  return (
-    <label className="relative flex w-fit items-center">
-      <span className="sr-only">Filter by {label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-9 appearance-none rounded-lg px-3 pr-8 text-[10px] font-semibold text-[#1C1D52] shadow-[inset_0_0_0_1px_#d8dee8] outline-none"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {label}: {option}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-500" />
-    </label>
   );
 }
