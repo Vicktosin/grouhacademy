@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { Award, Check, Mail, MapPin, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -32,6 +34,9 @@ const emptyProfile: InstructorProfile = {
 };
 
 export default function InstructorProfilePage() {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const [profile, setProfile] = useState<InstructorProfile>(emptyProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import Image from "next/image";
 import {
   Bell,
@@ -57,6 +59,9 @@ const initialProfile: Profile = {
 };
 
 export default function InstructorSettingsPage() {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [loading, setLoading] = useState(true);

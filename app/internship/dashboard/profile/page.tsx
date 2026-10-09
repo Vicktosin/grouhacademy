@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import PageGuide from "@/components/onboarding/PageGuide";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -50,6 +52,9 @@ type Draft = {
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2MB - stored inline as a data URL (same pattern as course thumbnails elsewhere in this app), so kept modest to avoid bloating every profile fetch.
 
 export default function InternshipProfilePage() {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState(false);

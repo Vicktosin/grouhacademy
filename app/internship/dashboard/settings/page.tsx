@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { useEffect, useState } from "react";
 import {
   Bell,
@@ -64,6 +66,9 @@ const notificationRows: [keyof Notifications, string][] = [
 ];
 
 export default function InternshipSettingsPage() {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [profileFields, setProfileFields] = useState<ProfileFields | null>(
     null,

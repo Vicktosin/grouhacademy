@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CACHE_MS, cachedJson } from "@/lib/client-cache";
 import InternshipSidebar from "./InternshipSidebar";
 import StudentHeader from "./StudentHeader";
 import CommunityLink from "./CommunityLink";
@@ -51,9 +52,9 @@ export default function InternshipShell({
     !status?.acceptanceFeePaid;
 
   useEffect(() => {
-    fetch("/api/internship/access-status")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: AccessStatus | null) => setStatus(data))
+    // Reused across pages for a while (see client-cache).
+    cachedJson<AccessStatus>("/api/internship/access-status", CACHE_MS.accessStatus)
+      .then((data) => setStatus(data))
       .finally(() => setLoadingStatus(false));
   }, []);
 
