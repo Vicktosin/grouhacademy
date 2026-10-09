@@ -8,6 +8,7 @@ import {
 } from "@/lib/internship-groups";
 import { getPlatformSettings } from "@/lib/platform-settings";
 import { getPrisma } from "@/lib/prisma";
+import { notifyChats } from "@/lib/realtime";
 
 const MAX_CAPACITY = 100;
 /** Selects groups created before groups were scoped to cohorts. */
@@ -87,6 +88,8 @@ async function loadGroups(request: Request) {
     name: cohort.name,
     programId: cohort.programId,
     programName: cohort.program.name,
+    startDate: cohort.startDate.toISOString(),
+    endDate: cohort.endDate.toISOString(),
     status: cohortStatus(cohort.startDate, cohort.endDate),
     groupCount: cohort._count.groups,
   }));
@@ -196,6 +199,7 @@ async function loadGroups(request: Request) {
       programName: group.program.name,
       capacity: group.capacity,
       leaderId: group.leaderId,
+      discussionOpen: group.discussionOpen,
       members: group.members.map((member) => ({
         userId: member.userId,
         name: displayName(member.user),
@@ -222,6 +226,30 @@ export async function POST(request: Request) {
 
   try {
     switch (action) {
+      // Pause or reopen discussion: one group, or every group in a cohort.
+      // Members can still read; the academy team can still post.
+      case "setDiscussion":
+      case "setCohortDiscussion": {
+        if (typeof body?.open !== "boolean") throw new GroupActionError("Say whether the discussion is open.");
+        const open = body.open;
+        const where =
+          action === "setDiscussion"
+            ? { id: requireString(body?.groupId, "A group") }
+            : { cohortId: requireString(body?.cohortId, "A cohort") };
+        const groups = await prisma.internshipGroup.findMany({ where, select: { id: true, number: true } });
+        if (!groups.length) throw new GroupActionError("Group not found.", 404);
+        await prisma.internshipGroup.updateMany({ where, data: { discussionOpen: open } });
+        // Members with the chat open see the change straight away.
+        notifyChats(groups.map((group) => ({ kind: "group" as const, groupId: group.id })));
+        return NextResponse.json({
+          success: true,
+          message:
+            action === "setDiscussion"
+              ? `Group ${groups[0].number}'s discussion is ${open ? "open again" : "paused"}.`
+              : `Discussion ${open ? "opened" : "paused"} for all ${groups.length} group${groups.length === 1 ? "" : "s"} in this cohort.`,
+        });
+      }
+
       case "createGroup": {
         const cohortId = requireString(body?.cohortId, "A cohort");
         const cohort = await prisma.internshipCohort.findUnique({

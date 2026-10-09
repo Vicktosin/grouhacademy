@@ -1366,6 +1366,8 @@ model InternshipGroup {
   number    Int
   capacity  Int      @default(12)
   leaderId  String?  @db.Uuid
+  // Admins can pause a group's discussion: members can read but not post.
+  discussionOpen Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         where: {
           programId_userId: { programId: application.programId, userId },
         },
-        select: { groupId: true },
+        select: { groupId: true, group: { select: { discussionOpen: true } } },
       });
       if (!membership) return notInCohortResponse();
 
@@ -83,6 +83,8 @@ export async function GET(request: Request) {
 
       return NextResponse.json({
         messages: await serializeGroupMessages(newMessages, userId),
+        // An admin may pause or reopen the discussion at any time.
+        discussionOpen: membership.group.discussionOpen,
       });
     }
 
@@ -121,6 +123,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       groupNumber: group.number,
+      discussionOpen: group.discussionOpen,
       // Where to listen for new messages (see lib/realtime).
       realtimeTopic: chatTopic({ kind: "group", groupId: group.id }),
       isLeader,
@@ -190,6 +193,11 @@ export async function POST(request: Request) {
 
     const group = await ensureGroupMembership(application);
     if (!group) return notInCohortResponse();
+    if (!group.discussionOpen)
+      return NextResponse.json(
+        { error: "The academy has paused your group's discussion for now. You can still read past messages." },
+        { status: 403 },
+      );
 
     const message = await prisma.groupMessage.create({
       data: { groupId: group.id, senderId: userId, content },
