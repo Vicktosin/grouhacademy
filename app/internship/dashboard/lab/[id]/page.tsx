@@ -18,6 +18,7 @@ import SocialSimulator from "@/components/SocialSimulator";
 import AutomationSimulator from "@/components/AutomationSimulator";
 import BackendSimulator from "@/components/BackendSimulator";
 import WordPressLab from "@/components/WordPressLab";
+import FullscreenFrame from "@/components/FullscreenFrame";
 import ContentSimulator from "@/components/ContentSimulator";
 import type { ContentWork } from "@/lib/content-sim/model";
 import type { BackendFiles } from "@/lib/backend-sim/model";
@@ -146,56 +147,59 @@ export default function LabExercisePage({
               </p>
             </section>
 
-            {lab.kind === "ADS" ? (
-              <AdsExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : lab.kind === "BACKEND" ? (
-              <BackendExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : lab.kind === "CONTENT" ? (
-              <ContentExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : lab.kind === "WORDPRESS" ? (
-              <WordPressExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : lab.kind === "AUTOMATION" ? (
-              <AutomationExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : lab.kind === "SOCIAL" ? (
-              <SocialExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            ) : (
-              <CodeExercise
-                lab={lab}
-                id={id}
-                taskId={taskId}
-                onSaveState={setSaveState}
-              />
-            )}
+            {/* Every simulator can go full screen (Ads Studio has its own toggle). */}
+            <FullscreenFrame ownControls={lab.kind === "ADS"}>
+              {lab.kind === "ADS" ? (
+                <AdsExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : lab.kind === "BACKEND" ? (
+                <BackendExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : lab.kind === "CONTENT" ? (
+                <ContentExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : lab.kind === "WORDPRESS" ? (
+                <WordPressExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : lab.kind === "AUTOMATION" ? (
+                <AutomationExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : lab.kind === "SOCIAL" ? (
+                <SocialExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              ) : (
+                <CodeExercise
+                  lab={lab}
+                  id={id}
+                  taskId={taskId}
+                  onSaveState={setSaveState}
+                />
+              )}
+            </FullscreenFrame>
           </>
         )}
       </div>
