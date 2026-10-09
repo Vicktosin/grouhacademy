@@ -81,11 +81,21 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "unqeyyxzmlpnjiwtmtov.supabase.co",
+      // Public Storage images (avatars, thumbnails) from the live project
+      // and from whichever project this build is connected to (e.g. the
+      // development project when running locally).
+      ...[
+        ...new Set([
+          "unqeyyxzmlpnjiwtmtov.supabase.co",
+          ...(supabaseUrl.startsWith("https://") && !supabaseUrl.includes("*")
+            ? [new URL(supabaseUrl).hostname]
+            : []),
+        ]),
+      ].map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
         pathname: "/storage/v1/object/public/**",
-      },
+      })),
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
