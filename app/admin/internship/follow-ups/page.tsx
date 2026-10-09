@@ -241,7 +241,7 @@ export default function FollowUpsPage() {
               Follow-ups
             </h1>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
-              Applicants who sat the entrance exam but haven&apos;t paid.
+              Applicants who sat the entrance exam (or started paying) but haven&apos;t paid.
               Message them on WhatsApp or call, and keep track of who&apos;s
               been contacted. Anyone who pays leaves the list automatically.
             </p>
