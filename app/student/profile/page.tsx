@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import Image from "next/image";
 import { Pencil, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -46,6 +48,9 @@ function toDraft(profile: ProfileData): ProfileDraft {
 }
 
 export default function ProfilePage() {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [loading, setLoading] = useState(true);

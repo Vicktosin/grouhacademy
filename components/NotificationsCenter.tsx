@@ -1,5 +1,7 @@
 "use client";
 
+import { clearCachedJson } from "@/lib/client-cache";
+
 import { useEffect, useState } from "react";
 
 type NotificationItem = {
@@ -33,6 +35,9 @@ export default function NotificationsCenter({
 }: {
   variant: "courses" | "internship";
 }) {
+  // Whatever changed here (profile, avatar, notifications) shows in the
+  // header and sidebar on the next page.
+  useEffect(() => () => clearCachedJson(), []);
   const courses = variant === "courses";
   // Each workspace shows only its own side's notifications.
   const workspaceQuery = `?workspace=${variant}`;

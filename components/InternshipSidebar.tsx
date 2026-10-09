@@ -21,6 +21,7 @@ import {
   UserRound,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { CACHE_MS, cachedJson } from "@/lib/client-cache";
 
 const navItems = [
   { label: "Dashboard", href: "/internship/dashboard", icon: Grid2X2 },
@@ -84,15 +85,12 @@ export default function InternshipSidebar({
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const response = await fetch("/api/internship/profile", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load intern profile");
-        }
-
-        const data = await response.json();
+        // Shared with the other sidebar and later pages (see client-cache).
+        const data = await cachedJson<{ name?: string | null; avatarUrl?: string | null; tier?: string }>(
+          "/api/internship/profile",
+          CACHE_MS.profile,
+        );
+        if (!data) return;
 
         setProfile({
           name: data.name ?? null,

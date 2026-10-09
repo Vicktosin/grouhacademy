@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { CACHE_MS, cachedJson } from "@/lib/client-cache";
 import { Bell, Search } from "lucide-react";
 import Image from "next/image";
 import logo from "../public/logo.png";
@@ -20,8 +21,8 @@ export default function MentorHeader() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/student/profile", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
+    // Reused across pages for a while (see client-cache).
+    cachedJson<{ name?: string | null; avatarUrl?: string | null }>("/api/student/profile", CACHE_MS.profile)
       .then((data) => {
         if (data)
           setProfile({
@@ -32,8 +33,7 @@ export default function MentorHeader() {
       .catch((error) => console.error("Failed to load header profile:", error));
 
     const loadUnreadCount = () => {
-      fetch("/api/student/notifications/unread-count", { cache: "no-store" })
-        .then((response) => (response.ok ? response.json() : null))
+      cachedJson<{ count?: number }>("/api/student/notifications/unread-count", CACHE_MS.unreadCount)
         .then((data) => {
           if (data) setUnreadCount(data.count ?? 0);
         })

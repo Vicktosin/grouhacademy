@@ -4,6 +4,7 @@ import { sendGAEvent } from "@next/third-parties/google";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CACHE_MS, cachedJson } from "@/lib/client-cache";
 
 export type Banner = {
   id: string;
@@ -76,10 +77,10 @@ export default function DashboardBanner() {
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/internship/banners", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setBanners(data?.banners ?? []))
-      .catch((error) => console.error("Failed to load banners:", error));
+    // Reused across pages for a while (see client-cache).
+    cachedJson<{ banners?: Banner[] }>("/api/internship/banners", CACHE_MS.banners).then((data) =>
+      setBanners(data?.banners ?? []),
+    );
   }, []);
 
   const count = banners.length;
