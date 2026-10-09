@@ -9,6 +9,7 @@ import {
   CUSTOM_AUDIENCES,
   DESTINATIONS,
   FORMATS,
+  liveCampaign,
   LOCATIONS,
   LOOKALIKES,
   OBJECTIVES,
@@ -305,6 +306,8 @@ function judgeWithRules(campaign: Campaign, config: AdsConfig) {
 }
 
 export async function judgeCampaign(campaign: Campaign, config: AdsConfig): Promise<{ ratings: Ratings; feedback: AdFeedback }> {
+  // Only what's switched on is published and judged.
+  campaign = liveCampaign(campaign);
   if (isAiEnabled()) {
     try {
       const judgement = await judgeWithAi(campaign, config);

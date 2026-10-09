@@ -1,5 +1,7 @@
 "use client";
 
+import { useFullscreen } from "@/components/FullscreenFrame";
+
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
@@ -86,6 +88,8 @@ export default function LabWorkspace({
   onSubmit?: (results: LabCheckResult[]) => Promise<void> | void;
   submitLabel?: string;
 }) {
+  // Full screen (Practice Lab): the editor fills the screen.
+  const { full } = useFullscreen();
   const fileNames = LAB_FILES[kind];
   const [activeFile, setActiveFile] = useState(fileNames[0]);
   const [runId, setRunId] = useState(0);
@@ -258,7 +262,7 @@ export default function LabWorkspace({
   return (
     <div className="space-y-3">
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="flex min-h-[460px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className={`flex ${full ? "min-h-[calc(100vh-200px)]" : "min-h-[460px]"} flex-col overflow-hidden rounded-xl border border-slate-200 bg-white`}>
           <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-[#f8fbff] px-2 pt-2">
             {fileNames.map((name) => (
               <button
@@ -291,7 +295,7 @@ export default function LabWorkspace({
           </div>
         </div>
 
-        <div className="flex min-h-[460px] flex-col gap-3">
+        <div className={`flex ${full ? "min-h-[calc(100vh-200px)]" : "min-h-[460px]"} flex-col gap-3`}>
           <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 bg-[#f8fbff] px-3 py-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">

@@ -235,6 +235,27 @@ test("warm audiences are small but convert better", () => {
   assert.ok(rate(warmRun) > rate(coldRun) * 1.5);
 });
 
+test("switched-off ad sets and ads aren't published", () => {
+  const c = parseCampaign({ objective: "SALES", adSets: [adSet(0, 2, 10000), { ...(adSet(1, 1, 10000, { locations: ["kano"] }) as object), paused: true }] });
+  c.adSets[0].ads[1].paused = true;
+  // A paused ad set's problems don't block publishing.
+  c.adSets[1].ads[0].primaryText = "";
+  assert.deepEqual(campaignProblems(c, config), []);
+  const r = simulateCampaign({ campaign: c, config, ratings: ratings([0.7, 0.7]), seed: "p" });
+  assert.deepEqual(r.adSets!.map((s) => s.id), ["set1"]);
+  assert.deepEqual(r.creatives!.map((a) => a.id), ["s1ad1"]);
+  assert.ok(r.totals.spend <= 70000);
+  // Everything off: nothing to publish.
+  c.adSets[0].paused = true;
+  assert.deepEqual(campaignProblems(c, config), ["Switch on at least one ad set."]);
+  // An ad set with every ad off needs one on.
+  const d = parseCampaign({ objective: "SALES", adSets: [adSet(0, 1, 10000)] });
+  d.adSets[0].ads[0].paused = true;
+  assert.ok(campaignProblems(d, config).some((p) => /switch on at least one ad/.test(p)));
+  // Survives saving and loading.
+  assert.equal(parseCampaign(JSON.parse(JSON.stringify(c))).adSets[1].paused, true);
+});
+
 test("runs from before ad sets are shown in the new shape", () => {
   const c = campaign(1);
   const old = {
