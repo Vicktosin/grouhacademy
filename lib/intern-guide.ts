@@ -31,13 +31,14 @@ export const WELCOME_SLIDES: Array<{ title: string; body: string[] }> = [
     body: [
       "This is not a class. It's a hands-on internship: you'll work like a junior member of a real team.",
       "Throughout your cohort you get real tasks with deadlines. You do the work, submit it here, and a mentor reviews it.",
+      "Your first task is a group task, so you learn to work as a team. Start by meeting your group in Group Discussion.",
     ],
   },
   {
     title: "How it works",
     body: [
       "1. Learn what you need from Resources (guides, videos and notes for your track).",
-      "2. Do your tasks and submit them before the deadline. Some you do alone, some with your group.",
+      "2. Do your tasks and submit them before the deadline. Some you do alone, some with your group: for group tasks, your group leader submits once and ticks everyone who took part.",
       "3. Mentors review your work and grade it. If it needs changes, fix it and submit again.",
       "4. Practise skills any time in the Practice Lab.",
     ],
@@ -69,7 +70,8 @@ export const GUIDE: Record<GuideSection, GuideEntry> = {
     summary: "Your work. Every task has a deadline; open one to read what to do and submit your work.",
     steps: [
       "Open a task to read the brief: what to do, the deadline and how many points it's worth.",
-      "Individual tasks: you submit them yourself. Group tasks: your group leader submits for the group.",
+      "Individual tasks: you submit them yourself.",
+      "Group tasks: work on it together; your group leader submits once and ticks who took part. Only members ticked get credit, so take part and check your name is ticked.",
       "Submit before the deadline. Some tasks are done in the Practice Lab and graded automatically.",
       "After review you'll see your score and feedback. If it needs changes, improve your work and submit again.",
     ],
@@ -98,11 +100,12 @@ export const GUIDE: Record<GuideSection, GuideEntry> = {
   discussion: {
     label: "Group Discussion",
     href: "/internship/dashboard/discussion",
-    summary: "Chat with your group, plan group tasks and schedule meetings.",
+    summary: "Chat with your group, plan group tasks and schedule meetings. Your first task is a group task, so start here.",
     steps: [
-      "Introduce yourself to your group here.",
-      "Agree who does what for group tasks. Your group leader submits them.",
+      "Introduce yourself to your group here: your first task is a group task.",
+      "Agree who does what, and share your progress before the deadline.",
       "Use Schedule Meeting to set a time to meet online.",
+      "Group leaders: when you submit, tick everyone who took part. Only members ticked get credit.",
     ],
   },
   mentor: {
@@ -178,11 +181,15 @@ export const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: "What should I do first?",
-    a: "Open your dashboard, look at your current task and its deadline, read what it asks, then use Resources to learn what you need and submit before the deadline.",
+    a: "Say hello to your group in Group Discussion: your first task is a group task. Then open the task under Task, read the brief and deadline together, agree who does what, and use Resources to learn what you need.",
   },
   {
     q: "How do I submit a task?",
-    a: "Go to Task, open the task and use the submit section. For group tasks, your group leader submits for everyone. Some tasks link to a Practice Lab exercise: submit it there.",
+    a: "Go to Task, open the task and use the submit section. For group tasks, only your group leader submits, once for the group, and ticks everyone who took part. Some tasks link to a Practice Lab exercise: submit it there.",
+  },
+  {
+    q: "I worked on a group task but got no credit. Why?",
+    a: "Only members your group leader ticked when submitting get credit. Ask your leader to correct it, and if it's already been reviewed, contact the team.",
   },
   {
     q: "My task was rejected. What now?",
@@ -201,8 +208,8 @@ export const FAQ: Array<{ q: string; a: string }> = [
 /** Pages whose visit ticks a getting-started step. */
 export const STARTER_STEPS: Array<{ key: string; label: string; href: string; section?: GuideSection }> = [
   { key: "welcome", label: "Learn how the internship works", href: "/internship/dashboard/help" },
+  { key: "discussion", label: "Meet your group: your first task is a group task", href: "/internship/dashboard/discussion", section: "discussion" },
   { key: "tasks", label: "Open your tasks and read the current one", href: "/internship/dashboard/tasks", section: "tasks" },
   { key: "resources", label: "Look through your Resources", href: "/internship/dashboard/resources", section: "resources" },
-  { key: "discussion", label: "Say hello to your group", href: "/internship/dashboard/discussion", section: "discussion" },
   { key: "lab", label: "Try an exercise in the Practice Lab", href: "/internship/dashboard/lab", section: "lab" },
 ];

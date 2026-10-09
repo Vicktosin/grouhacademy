@@ -36,7 +36,7 @@ export default function GettingStarted({ passedFirstTask }: { passedFirstTask: b
     ...STARTER_STEPS.map((step) => ({ ...step, done: done[step.key] })),
     {
       key: "first-task",
-      label: "Submit your first task and get it accepted",
+      label: "Complete your first task with your group and get it accepted",
       href: "/internship/dashboard/tasks",
       done: passedFirstTask,
     },
