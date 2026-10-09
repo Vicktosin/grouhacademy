@@ -99,6 +99,25 @@ enum SubmissionStatus {
   REJECTED
 }
 
+// What happened in a task submission's history.
+enum SubmissionEventKind {
+  // The intern (or group leader) submitted or resubmitted work.
+  SUBMITTED
+  // A mentor or admin graded it (or changed the grade).
+  REVIEWED
+  // The Practice Lab graded it automatically.
+  AUTO_GRADED
+  // An automatic pass was sent to a mentor to confirm.
+  SENT_FOR_REVIEW
+}
+
+enum SubmissionActorRole {
+  INTERN
+  MENTOR
+  ADMIN
+  SYSTEM
+}
+
 enum InstructorApprovalStatus {
   PENDING
   APPROVED
@@ -290,6 +309,8 @@ model User {
   ledGroups            InternshipGroup[]           @relation("GroupLeader")
   groupMemberships     InternshipGroupMember[]     @relation("GroupMembership")
   taskParticipations   TaskSubmissionParticipant[] @relation("TaskSubmissionParticipation")
+  reviewedSubmissions  TaskSubmission[]            @relation("SubmissionReviewer")
+  submissionEvents     TaskSubmissionEvent[]       @relation("SubmissionEventActor")
   sentGroupMessages    GroupMessage[]              @relation("GroupMessageSender")
   createdGroupMeetings GroupMeeting[]              @relation("GroupMeetingCreator")
 
@@ -1174,29 +1195,59 @@ model InternshipTask {
 // per group, submitted by the group leader (userId), with the members who
 // took part listed in participants.
 model TaskSubmission {
-  id          String           @id @default(cuid())
-  taskId      String
-  userId      String           @db.Uuid
-  groupId     String?
-  content     String?
-  fileUrl     String?
-  score       Int?
-  feedback    String?
-  status      SubmissionStatus @default(SUBMITTED)
-  submittedAt DateTime         @default(now())
-  reviewedAt  DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  taskId       String
+  userId       String           @db.Uuid
+  groupId      String?
+  content      String?
+  fileUrl      String?
+  score        Int?
+  feedback     String?
+  status       SubmissionStatus @default(SUBMITTED)
+  submittedAt  DateTime         @default(now())
+  reviewedAt   DateTime?
+  // Who gave the current grade (null: automatic, or graded before this was
+  // recorded). Mentors may change grades they gave; admins any grade.
+  reviewedById String?          @db.Uuid
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   task         InternshipTask              @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   group        InternshipGroup?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  reviewedBy   User?                       @relation("SubmissionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   participants TaskSubmissionParticipant[]
+  events       TaskSubmissionEvent[]
 
   @@unique([taskId, userId])
   @@unique([taskId, groupId])
   @@index([taskId])
   @@index([userId])
+}
+
+// Every version submitted and every grade given, oldest first: grading
+// history for admins and mentors (interns see only the latest).
+model TaskSubmissionEvent {
+  id           String               @id @default(cuid())
+  submissionId String
+  kind         SubmissionEventKind
+  // SUBMITTED: the work as it was then.
+  content      String?
+  fileUrl      String?
+  // REVIEWED / AUTO_GRADED / SENT_FOR_REVIEW: the decision.
+  status       SubmissionStatus?
+  score        Int?
+  feedback     String?
+  // Who did it (null: the system, or someone since deleted).
+  actorId      String?              @db.Uuid
+  actorRole    SubmissionActorRole?
+  createdAt    DateTime             @default(now())
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor      User?          @relation("SubmissionEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([submissionId, createdAt])
+  @@index([actorId])
 }
 
 model TaskSubmissionParticipant {
@@ -1360,16 +1411,16 @@ model Announcement {
 // A team of interns within one cohort. Numbering restarts at 1 for each
 // cohort. Groups created before groups were cohort-scoped may have no cohort.
 model InternshipGroup {
-  id        String   @id @default(cuid())
-  programId String
-  cohortId  String?
-  number    Int
-  capacity  Int      @default(12)
-  leaderId  String?  @db.Uuid
+  id             String   @id @default(cuid())
+  programId      String
+  cohortId       String?
+  number         Int
+  capacity       Int      @default(12)
+  leaderId       String?  @db.Uuid
   // Admins can pause a group's discussion: members can read but not post.
-  discussionOpen Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  discussionOpen Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   program         InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   cohort          InternshipCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)

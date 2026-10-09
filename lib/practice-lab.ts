@@ -19,6 +19,7 @@ import {
   type LabTaskGrade,
 } from "@/lib/lab-task-grading";
 import { reviewLabCode, type LabReview } from "@/lib/lab-review";
+import { recordSubmissionEvent } from "@/lib/submission-history";
 import {
   blankWork,
   CONTENT_MODES,
@@ -1057,13 +1058,24 @@ async function gradeLinkedTask(
     feedback: grade.feedback,
     submittedAt: now,
     reviewedAt: now,
+    // Graded automatically, not by a person.
+    reviewedById: null,
   };
-  if (existing)
-    await prisma.taskSubmission.update({ where: { id: existing.id }, data });
-  else
-    await prisma.taskSubmission.create({
-      data: { taskId: task.id, userId, ...data },
+  await prisma.$transaction(async (tx) => {
+    const saved = existing
+      ? await tx.taskSubmission.update({ where: { id: existing.id }, data, select: { id: true } })
+      : await tx.taskSubmission.create({ data: { taskId: task.id, userId, ...data }, select: { id: true } });
+    // History: the work, then the automatic grade.
+    await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
+    await recordSubmissionEvent(tx, {
+      submissionId: saved.id,
+      kind: "AUTO_GRADED",
+      status: grade.status,
+      score: grade.score,
+      feedback: grade.feedback,
+      actorRole: "SYSTEM",
     });
+  });
   await recomputeInternProgress(userId, task.module.programId).catch((error) =>
     console.error("[practice-lab] Progress update failed.", error),
   );
@@ -1471,15 +1483,23 @@ async function sendPassToMentor(
     select: { id: true, content: true, task: { select: { module: { select: { programId: true } } } } },
   });
   if (!submission) return;
-  await prisma.taskSubmission.update({
-    where: { id: submission.id },
-    select: { id: true },
-    data: {
-      status: "UNDER_REVIEW",
-      feedback: "Your Practice Lab result is waiting for a mentor to confirm it.",
-      content: `Note for the mentor: please confirm this result. ${reason}\n\n${submission.content}`.slice(0, MAX_SUBMISSION_LENGTH),
-    },
-  });
+  const feedback = "Your Practice Lab result is waiting for a mentor to confirm it.";
+  await prisma.$transaction([
+    prisma.taskSubmission.update({
+      where: { id: submission.id },
+      select: { id: true },
+      data: {
+        status: "UNDER_REVIEW",
+        feedback,
+        content: `Note for the mentor: please confirm this result. ${reason}\n\n${submission.content}`.slice(0, MAX_SUBMISSION_LENGTH),
+      },
+    }),
+    // History: why the automatic pass went to a mentor.
+    prisma.taskSubmissionEvent.create({
+      data: { submissionId: submission.id, kind: "SENT_FOR_REVIEW", status: "UNDER_REVIEW", feedback: `${feedback} ${reason}`.slice(0, 2000), actorRole: "SYSTEM" },
+      select: { id: true },
+    }),
+  ]);
   await recomputeInternProgress(attempt.userId, submission.task.module.programId).catch((error) =>
     console.error("[practice-lab] Progress update failed.", error instanceof Error ? error.message : error),
   );

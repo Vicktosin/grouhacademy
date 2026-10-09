@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordSubmissionEvent } from "@/lib/submission-history";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
@@ -96,17 +97,23 @@ export async function POST(request: Request) {
       score: null,
       feedback: null,
       reviewedAt: null,
+      reviewedById: null,
     };
 
     if (!groupTask) {
-      const submission = existing
-        ? await prisma.taskSubmission.update({
-            where: { id: existing.id },
-            data: fresh,
-          })
-        : await prisma.taskSubmission.create({
-            data: { taskId, userId, ...fresh },
-          });
+      const submission = await prisma.$transaction(async (tx) => {
+        const saved = existing
+          ? await tx.taskSubmission.update({
+              where: { id: existing.id },
+              data: fresh,
+            })
+          : await tx.taskSubmission.create({
+              data: { taskId, userId, ...fresh },
+            });
+        // History keeps every version (see lib/submission-history).
+        await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
+        return saved;
+      });
       return NextResponse.json({ id: submission.id, success: true });
     }
 
@@ -133,6 +140,7 @@ export async function POST(request: Request) {
           userId: id,
         })),
       });
+      await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
       return saved;
     });
     return NextResponse.json({ id: submission.id, success: true });

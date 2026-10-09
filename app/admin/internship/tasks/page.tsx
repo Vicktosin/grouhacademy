@@ -254,9 +254,18 @@ export default function InternshipTasksPage() {
                       {formatWat(new Date(task.dueDate))}) WAT
                     </p>
                     <p className="mt-1 text-[11px] text-slate-500">
-                      {task.submissionCount} submission
-                      {task.submissionCount === 1 ? "" : "s"} ·{" "}
-                      {task.acceptedCount} passed
+                      {task.submissionCount > 0 ? (
+                        <Link
+                          href={`/admin/internship/submissions?cohortId=${task.cohortId}&taskId=${task.id}&kind=${task.kind}`}
+                          className="font-semibold text-blue-600 hover:underline"
+                        >
+                          {task.submissionCount} submission
+                          {task.submissionCount === 1 ? "" : "s"}
+                        </Link>
+                      ) : (
+                        "0 submissions"
+                      )}{" "}
+                      · {task.acceptedCount} passed
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
