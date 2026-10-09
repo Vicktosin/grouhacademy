@@ -25,6 +25,7 @@ import {
   Users,
   UsersRound,
   WalletCards,
+  FileCheck2,
 } from "lucide-react";
 import type { AdminContext } from "@/lib/admin-context";
 
@@ -74,6 +75,7 @@ const internshipItems = [
     icon: GraduationCap,
   },
   { label: "Tasks", href: "/admin/internship/tasks", icon: ClipboardCheck },
+  { label: "Submissions", href: "/admin/internship/submissions", icon: FileCheck2 },
   { label: "Practice Lab", href: "/admin/internship/lab", icon: FlaskConical },
   { label: "Interviews", href: "/admin/internship/interviews", icon: Mic },
   { label: "Resources", href: "/admin/internship/resources", icon: BookOpen },

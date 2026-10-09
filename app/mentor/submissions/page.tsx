@@ -49,6 +49,8 @@ export default async function MentorSubmissionsPage({
       score: true,
       feedback: true,
       submittedAt: true,
+      reviewedById: true,
+      reviewedBy: { select: { name: true, email: true } },
       user: { select: { name: true, email: true } },
       group: { select: { number: true } },
       participants: {
@@ -109,6 +111,14 @@ export default async function MentorSubmissionsPage({
             score: submission.score,
             maxScore: submission.task.maxScore,
             feedback: submission.feedback,
+            gradedBy:
+              submission.reviewedById === mentorId
+                ? "you"
+                : submission.reviewedBy
+                  ? submission.reviewedBy.name?.trim() || submission.reviewedBy.email
+                  : null,
+            // Mentors may change grades they gave (see lib/submission-grading).
+            canChangeGrade: submission.reviewedById === mentorId,
           }))}
         />
       </section>
