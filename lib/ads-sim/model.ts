@@ -346,6 +346,8 @@ export type Creative = {
   script: string;
   /** Video length in seconds. */
   seconds: number;
+  /** Switched off: kept, but not published. */
+  paused?: boolean;
 };
 
 export type Budget = { type: BudgetType; amount: number };
@@ -368,6 +370,8 @@ export type AdSet = {
   /** Manual placements (ignored when automatic). */
   placements: Placement[];
   ads: Creative[];
+  /** Switched off: kept, but not published. */
+  paused?: boolean;
 };
 
 export type Campaign = {
@@ -673,6 +677,7 @@ function parseCreative(value: unknown, index: number): Creative {
     visual: text(raw.visual, 400),
     script: format === "VIDEO" ? text(raw.script, 1200) : "",
     seconds: clampInt(raw.seconds, 5, 120, 15),
+    ...(raw.paused === true ? { paused: true } : {}),
   };
 }
 
@@ -720,6 +725,15 @@ function parseAdSet(value: unknown, index: number, objective: Objective): AdSet 
     placementMode: oneOf(raw.placementMode, ["AUTO", "MANUAL"] as const, "AUTO"),
     placements: placements.length ? placements : ["FEEDS"],
     ads: ads.length ? ads : [blankCreative(0)],
+    ...(raw.paused === true ? { paused: true } : {}),
+  };
+}
+
+/** The campaign as published: ad sets and ads that are switched on. */
+export function liveCampaign(campaign: Campaign): Campaign {
+  return {
+    ...campaign,
+    adSets: campaign.adSets.filter((set) => !set.paused).map((set) => ({ ...set, ads: set.ads.filter((ad) => !ad.paused) })),
   };
 }
 
@@ -789,6 +803,11 @@ export function campaignProblems(
   config: Pick<AdsConfig, "maxTotalBudget"> & Partial<Pick<AdsConfig, "hasApp">>,
 ) {
   const problems: string[] = [];
+  // Only what's switched on is published (and checked).
+  const offSets = campaign.adSets.filter((set) => !set.paused && set.ads.every((ad) => ad.paused));
+  for (const set of offSets) problems.push(`${set.name}: switch on at least one ad.`);
+  campaign = liveCampaign(campaign);
+  if (!campaign.adSets.length) return ["Switch on at least one ad set."];
   const total = plannedSpend(campaign);
   const days = campaignDays(campaign);
   const dailyEquivalent = (budget: Budget, length: number) => (budget.type === "DAILY" ? budget.amount : budget.amount / length);
@@ -1521,7 +1540,9 @@ function mergeRows(lists: BreakdownRow[][]): BreakdownRow[] {
 }
 
 export function simulateCampaign(input: { campaign: Campaign; config: AdsConfig; ratings: Ratings; seed: string }): RunResult {
-  const { campaign, config, ratings } = input;
+  const { config, ratings } = input;
+  // What's switched off isn't published.
+  const campaign = liveCampaign(input.campaign);
   const random = seededRandom(input.seed);
   const notes: string[] = [];
   const planned = plannedSpend(campaign);
