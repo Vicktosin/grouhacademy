@@ -2,6 +2,7 @@
 
 import { Loader2, Megaphone, Send, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useChatPolling } from "@/lib/use-chat-polling";
 
 // Admin tools for talking to internship groups: read and post in one
 // group's discussion, or send the same message to several groups. Members
@@ -15,7 +16,6 @@ type ChatMessage = {
   fromTeam: boolean;
 };
 
-const POLL_MS = 10_000;
 const MAX_LENGTH = 2000;
 
 function Sheet({
@@ -86,21 +86,18 @@ export function GroupChatDialog({
         const fresh = body.messages.filter((m) => !known.has(m.id));
         return fresh.length ? [...current, ...fresh] : current;
       });
+      // Tells the polling whether anything new came in.
+      return !initial && body.messages.length > 0;
     },
     [group.id],
   );
 
   useEffect(() => {
     const first = window.setTimeout(() => void load(true), 0);
-    const timer = window.setInterval(() => {
-      // Don't poll while the tab is in the background.
-      if (!document.hidden) void load(false);
-    }, POLL_MS);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(timer);
-    };
+    return () => window.clearTimeout(first);
   }, [load]);
+  // New messages: often while the group is talking, rarely when it's quiet.
+  const bumpPolling = useChatPolling(() => load(false), { resetKey: group.id });
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -122,6 +119,7 @@ export function GroupChatDialog({
     }
     setDraft("");
     await load(false);
+    bumpPolling();
   }
 
   return (

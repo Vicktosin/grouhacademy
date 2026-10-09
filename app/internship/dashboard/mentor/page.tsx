@@ -5,6 +5,7 @@ import { Send, Crown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
+import { useChatPolling } from "@/lib/use-chat-polling";
 
 type Message = {
   id: string;
@@ -14,7 +15,6 @@ type Message = {
   isMine: boolean;
 };
 
-const POLL_INTERVAL_MS = 4000;
 
 export default function MentorChatPage() {
   const [mentorName, setMentorName] = useState<string | null>(null);
@@ -59,6 +59,8 @@ export default function MentorChatPage() {
         );
       }
       setError(null);
+      // Tells the polling whether anything new came in.
+      return !initial && body.messages.length > 0;
     } catch {
       if (initial) setError("Unable to load conversation.");
     } finally {
@@ -67,16 +69,11 @@ export default function MentorChatPage() {
   }
 
   useEffect(() => {
-    loadMessages(true);
-    const interval = window.setInterval(
-      () => {
-        // Don't poll while the tab is in the background.
-        if (!document.hidden) loadMessages(false);
-      },
-      POLL_INTERVAL_MS,
-    );
-    return () => window.clearInterval(interval);
+    const first = window.setTimeout(() => void loadMessages(true), 0);
+    return () => window.clearTimeout(first);
   }, []);
+  // New messages: often while you're chatting, rarely when it's quiet.
+  const bumpPolling = useChatPolling(() => loadMessages(false));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -105,6 +102,8 @@ export default function MentorChatPage() {
       setMessages((current) => [...current, body]);
       lastFetchedAt.current = body.createdAt;
       setDraft("");
+      // The mentor may reply soon: check often again.
+      bumpPolling();
     } catch (sendError) {
       setError(
         sendError instanceof Error

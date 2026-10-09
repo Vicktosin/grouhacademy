@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
+import { useChatPolling } from "@/lib/use-chat-polling";
 
 /** A teammate's number; sent only to the group leader. */
 type Contact = { phone: string; whatsapp: string | null };
@@ -50,7 +51,6 @@ type MemberProfile = {
   contact?: Contact | null;
 };
 
-const POLL_INTERVAL_MS = 4000;
 
 function mergeMessages(current: Message[], incoming: Message[]): Message[] {
   const knownIds = new Set(current.map((message) => message.id));
@@ -120,6 +120,8 @@ export default function DiscussionPage() {
         }
       }
       setError(null);
+      // Tells the polling whether anything new came in.
+      return !initial && body.messages.length > 0;
     } catch {
       if (initial) setError("Unable to load your group.");
     } finally {
@@ -129,16 +131,11 @@ export default function DiscussionPage() {
   }
 
   useEffect(() => {
-    loadGroup(true);
-    const interval = window.setInterval(
-      () => {
-        // Don't poll while the tab is in the background.
-        if (!document.hidden) loadGroup(false);
-      },
-      POLL_INTERVAL_MS,
-    );
-    return () => window.clearInterval(interval);
+    const first = window.setTimeout(() => void loadGroup(true), 0);
+    return () => window.clearTimeout(first);
   }, []);
+  // New messages: often while the group is talking, rarely when it's quiet.
+  const bumpPolling = useChatPolling(() => loadGroup(false));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -169,6 +166,8 @@ export default function DiscussionPage() {
         lastFetchedAt.current = body.createdAt;
       }
       setDraft("");
+      // Replies are likely soon: check often again.
+      bumpPolling();
     } catch (sendError) {
       setError(
         sendError instanceof Error
