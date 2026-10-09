@@ -52,6 +52,9 @@ function MentorMessages() {
   const lastFetchedAt = useRef<string | null>(null);
   // What the list looked like last time, to tell when something changed.
   const listSignature = useRef("");
+  // Realtime channels (see lib/realtime): all this mentor's chats, and the open one.
+  const [inboxTopic, setInboxTopic] = useState<string | null>(null);
+  const [threadTopic, setThreadTopic] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // On phones the chat sits below the conversation list.
   const chatRef = useRef<HTMLDivElement>(null);
@@ -70,6 +73,7 @@ function MentorMessages() {
         throw new Error(body?.error ?? "Unable to load conversations.");
       const rows = body.conversations as ConversationSummary[];
       setConversations(rows);
+      setInboxTopic(body.realtimeTopic ?? null);
       const signature = rows.map((row) => `${row.internId}:${row.unread}:${row.lastMessage?.createdAt ?? ""}`).join("|");
       const changed = Boolean(listSignature.current) && signature !== listSignature.current;
       listSignature.current = signature;
@@ -108,6 +112,7 @@ function MentorMessages() {
           return;
         }
         const incoming = body.messages as Message[];
+        if (initial) setThreadTopic(body.realtimeTopic ?? null);
         if (incoming.length > 0)
           lastFetchedAt.current = incoming[incoming.length - 1].createdAt;
         setMessages((current) => {
@@ -131,7 +136,7 @@ function MentorMessages() {
     const first = window.setTimeout(() => void loadConversations(), 0);
     return () => window.clearTimeout(first);
   }, [loadConversations]);
-  useChatPolling(loadConversations, { fastMs: LIST_POLL_FAST_MS, slowMs: LIST_POLL_SLOW_MS });
+  useChatPolling(loadConversations, { fastMs: LIST_POLL_FAST_MS, slowMs: LIST_POLL_SLOW_MS, topic: inboxTopic });
 
   const activeProgramId = active?.programId ?? null;
   useEffect(() => {
@@ -139,6 +144,7 @@ function MentorMessages() {
     const first = window.setTimeout(() => {
       lastFetchedAt.current = null;
       setMessages([]);
+      setThreadTopic(null);
       setLoadingThread(true);
       setError(null);
       void loadThread(activeId, activeProgramId, true);
@@ -148,7 +154,7 @@ function MentorMessages() {
   // The open conversation: often while you're chatting, rarely when quiet.
   const bumpThreadPolling = useChatPolling(
     async () => (activeId && activeProgramId ? loadThread(activeId, activeProgramId, false) : false),
-    { enabled: Boolean(activeId && activeProgramId), resetKey: activeId },
+    { enabled: Boolean(activeId && activeProgramId), resetKey: activeId, topic: threadTopic },
   );
 
   useEffect(() => {

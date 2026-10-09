@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { chatTopic, notifyChats } from "@/lib/realtime";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { ensureGroupMembership } from "@/lib/internship-groups";
@@ -120,6 +121,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       groupNumber: group.number,
+      // Where to listen for new messages (see lib/realtime).
+      realtimeTopic: chatTopic({ kind: "group", groupId: group.id }),
       isLeader,
       members: members.map((m) => ({
         userId: m.userId,
@@ -191,6 +194,7 @@ export async function POST(request: Request) {
     const message = await prisma.groupMessage.create({
       data: { groupId: group.id, senderId: userId, content },
     });
+    notifyChats([{ kind: "group", groupId: group.id }]);
 
     return NextResponse.json({
       id: message.id,

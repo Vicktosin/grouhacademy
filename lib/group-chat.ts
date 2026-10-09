@@ -1,5 +1,6 @@
 import { LearnerAudience, RoleName } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { notifyChats } from "@/lib/realtime";
 
 // Group discussion messages, including ones the academy team (admins) post
 // into a group's chat from the admin Groups page. Team messages are shown to
@@ -99,6 +100,7 @@ export async function postTeamMessage(
       ),
     }),
   ]);
+  notifyChats(groups.map((group) => ({ kind: "group" as const, groupId: group.id })));
   const people = groups.reduce((total, group) => total + group.members.length, 0);
   return { groups: groups.length, people } as const;
 }

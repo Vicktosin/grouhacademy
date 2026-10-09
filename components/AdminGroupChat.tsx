@@ -67,6 +67,7 @@ export function GroupChatDialog({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const latest = useRef<string | null>(null);
+  const [realtimeTopic, setRealtimeTopic] = useState<string | null>(null);
 
   const load = useCallback(
     async (initial: boolean) => {
@@ -78,7 +79,8 @@ export function GroupChatDialog({
         if (initial) setError("Unable to load this group's chat.");
         return;
       }
-      const body = (await response.json()) as { messages: ChatMessage[] };
+      const body = (await response.json()) as { messages: ChatMessage[]; realtimeTopic?: string | null };
+      if (initial) setRealtimeTopic(body.realtimeTopic ?? null);
       if (body.messages.length) latest.current = body.messages[body.messages.length - 1].createdAt;
       setMessages((current) => {
         if (initial || !current) return body.messages;
@@ -96,8 +98,9 @@ export function GroupChatDialog({
     const first = window.setTimeout(() => void load(true), 0);
     return () => window.clearTimeout(first);
   }, [load]);
-  // New messages: often while the group is talking, rarely when it's quiet.
-  const bumpPolling = useChatPolling(() => load(false), { resetKey: group.id });
+  // New messages: live, or often while the group is talking and rarely
+  // when it's quiet (see useChatPolling).
+  const bumpPolling = useChatPolling(() => load(false), { resetKey: group.id, topic: realtimeTopic });
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });

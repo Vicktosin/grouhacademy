@@ -18,6 +18,8 @@ type Message = {
 
 export default function MentorChatPage() {
   const [mentorName, setMentorName] = useState<string | null>(null);
+  // The conversation's Realtime channel (see lib/realtime).
+  const [realtimeTopic, setRealtimeTopic] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,7 @@ export default function MentorChatPage() {
       }
 
       setMentorName(body.mentorName);
+      if (initial) setRealtimeTopic(body.realtimeTopic ?? null);
       if (body.messages.length > 0) {
         lastFetchedAt.current =
           body.messages[body.messages.length - 1].createdAt;
@@ -72,8 +75,9 @@ export default function MentorChatPage() {
     const first = window.setTimeout(() => void loadMessages(true), 0);
     return () => window.clearTimeout(first);
   }, []);
-  // New messages: often while you're chatting, rarely when it's quiet.
-  const bumpPolling = useChatPolling(() => loadMessages(false));
+  // New messages: live, or often while you're chatting and rarely when
+  // it's quiet (see useChatPolling).
+  const bumpPolling = useChatPolling(() => loadMessages(false), { topic: realtimeTopic });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({

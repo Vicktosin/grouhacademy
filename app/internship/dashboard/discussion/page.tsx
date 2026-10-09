@@ -60,6 +60,8 @@ function mergeMessages(current: Message[], incoming: Message[]): Message[] {
 
 export default function DiscussionPage() {
   const [groupNumber, setGroupNumber] = useState<number | null>(null);
+  // The group's Realtime channel (see lib/realtime).
+  const [realtimeTopic, setRealtimeTopic] = useState<string | null>(null);
   const [isLeader, setIsLeader] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -101,6 +103,7 @@ export default function DiscussionPage() {
       }
 
       if (initial) {
+        setRealtimeTopic(body.realtimeTopic ?? null);
         setGroupNumber(body.groupNumber);
         setIsLeader(body.isLeader);
         setMembers(body.members);
@@ -134,8 +137,9 @@ export default function DiscussionPage() {
     const first = window.setTimeout(() => void loadGroup(true), 0);
     return () => window.clearTimeout(first);
   }, []);
-  // New messages: often while the group is talking, rarely when it's quiet.
-  const bumpPolling = useChatPolling(() => loadGroup(false));
+  // New messages: live, or often while the group is talking and rarely
+  // when it's quiet (see useChatPolling).
+  const bumpPolling = useChatPolling(() => loadGroup(false), { topic: realtimeTopic });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
