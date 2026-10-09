@@ -4,6 +4,7 @@ import { PencilLine, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import CohortPicker, { rememberedCohort } from "@/components/admin/CohortPicker";
 import { formatWat, type TaskWindowState } from "@/lib/task-schedule";
 
 type TaskRecord = {
@@ -26,7 +27,7 @@ type TaskRecord = {
   submissionCount: number;
   acceptedCount: number;
 };
-type CohortOption = { id: string; name: string; programName: string };
+type CohortOption = { id: string; name: string; programName: string; startDate: string; endDate: string };
 
 const windowStyles: Record<TaskWindowState, string> = {
   UPCOMING: "bg-sky-100 text-sky-700",
@@ -57,6 +58,10 @@ export default function InternshipTasksPage() {
         if (!response.ok)
           throw new Error(payload?.error || "Task data is unavailable.");
         setCohorts(payload.cohorts ?? []);
+        // The cohort chosen last time, if it's still there.
+        const saved = rememberedCohort("admin-tasks");
+        if (saved && (saved === "all" || (payload.cohorts ?? []).some((c: CohortOption) => c.id === saved)))
+          setCohortFilter(saved);
         setTasks(payload.tasks ?? []);
       })
       .catch((reason: unknown) =>
@@ -183,18 +188,16 @@ export default function InternshipTasksPage() {
                 className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-[#5FBB46]"
               />
             </label>
-            <select
-              value={cohortFilter}
-              onChange={(event) => setCohortFilter(event.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-semibold text-[#1C1D52] outline-none"
-            >
-              <option value="all">All cohorts</option>
-              {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id}>
-                  {cohort.name}
-                </option>
-              ))}
-            </select>
+            <div>
+              <CohortPicker
+                hideLabel
+                cohorts={cohorts}
+                value={cohortFilter}
+                onChange={setCohortFilter}
+                storageKey="admin-tasks"
+                extras={[{ id: "all", label: "All cohorts" }]}
+              />
+            </div>
             <select
               value={kindFilter}
               onChange={(event) =>

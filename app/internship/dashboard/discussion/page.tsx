@@ -62,6 +62,8 @@ export default function DiscussionPage() {
   const [groupNumber, setGroupNumber] = useState<number | null>(null);
   // The group's Realtime channel (see lib/realtime).
   const [realtimeTopic, setRealtimeTopic] = useState<string | null>(null);
+  // The academy can pause a group's discussion (reading still works).
+  const [discussionOpen, setDiscussionOpen] = useState(true);
   const [isLeader, setIsLeader] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -102,6 +104,7 @@ export default function DiscussionPage() {
         return;
       }
 
+      if (typeof body.discussionOpen === "boolean") setDiscussionOpen(body.discussionOpen);
       if (initial) {
         setRealtimeTopic(body.realtimeTopic ?? null);
         setGroupNumber(body.groupNumber);
@@ -402,26 +405,33 @@ export default function DiscussionPage() {
             )}
           </div>
 
-          <form
-            onSubmit={sendMessage}
-            className="flex items-center gap-2 border-t border-slate-200 p-4 sm:px-5"
-          >
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Type a message..."
-              aria-label="Type a message"
-              className="min-w-0 flex-1 rounded-full bg-[#f3f6fb] px-4 py-3 text-xs text-[#1C1D52] outline-none focus:ring-2 focus:ring-[#5FBB46]/25"
-            />
-            <button
-              type="submit"
-              disabled={sending || !draft.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5FBB46] text-white transition hover:bg-[#4aaa3e] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Send message"
+          {discussionOpen ? (
+            <form
+              onSubmit={sendMessage}
+              className="flex items-center gap-2 border-t border-slate-200 p-4 sm:px-5"
             >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
+              <input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Type a message..."
+                aria-label="Type a message"
+                className="min-w-0 flex-1 rounded-full bg-[#f3f6fb] px-4 py-3 text-xs text-[#1C1D52] outline-none focus:ring-2 focus:ring-[#5FBB46]/25"
+              />
+              <button
+                type="submit"
+                disabled={sending || !draft.trim()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5FBB46] text-white transition hover:bg-[#4aaa3e] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </form>
+          ) : (
+            <p className="border-t border-slate-200 bg-amber-50 px-4 py-4 text-center text-xs font-semibold text-amber-800 sm:px-5">
+              The academy has paused this group&apos;s discussion for now. You can
+              still read the messages here.
+            </p>
+          )}
         </section>
       </div>
 
