@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import {
   ChevronRight,
   Clock3,
@@ -91,6 +92,7 @@ export default function InterviewPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="interview" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#1C1D52]">
             Practice interview

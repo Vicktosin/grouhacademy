@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import { Send, Crown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -140,6 +141,9 @@ export default function MentorChatPage() {
 
   return (
     <InternshipShell>
+      <div className="mb-4">
+        <PageGuide section="mentor" />
+      </div>
       <div className="flex h-[calc(100vh-160px)] flex-col rounded-2xl bg-white shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
           <div className="h-10 w-10 rounded-full bg-slate-200" />

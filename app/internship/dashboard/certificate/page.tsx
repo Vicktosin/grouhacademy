@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import { ArrowRight, Download, LoaderCircle, Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -188,6 +189,7 @@ export default function InternshipCertificatePage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="certificate" />
         {!data?.eligible && data?.reason && (
           <p className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />

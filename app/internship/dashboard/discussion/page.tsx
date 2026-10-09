@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
@@ -246,6 +247,9 @@ export default function DiscussionPage() {
 
   return (
     <InternshipShell>
+      <div className="mb-4">
+        <PageGuide section="discussion" />
+      </div>
       <div className="grid min-h-[calc(100dvh-104px)] gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
           <div className="flex items-center justify-between">

@@ -1,5 +1,7 @@
 "use client";
 
+import InternWelcome from "@/components/onboarding/InternWelcome";
+import GettingStarted from "@/components/onboarding/GettingStarted";
 import { Activity, Bell, CheckCircle2, Clock3, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -119,6 +121,8 @@ export default function InternshipDashboardPage() {
   return (
     <InternshipShell>
       <LevelCompleteModal />
+      {/* First visit: what the internship is, then an offer of a tour. */}
+      <InternWelcome autoOpen={data.paymentStatus === "PAID"} />
       <div className="space-y-5">
         {data.program ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
@@ -186,6 +190,9 @@ export default function InternshipDashboardPage() {
 
         {data.program && <RecommendedResources />}
 
+        {data.paymentStatus === "PAID" && (
+          <GettingStarted passedFirstTask={(data.stats?.completedTasks ?? 0) > 0} />
+        )}
         {data.program && (
           <>
             {data.cohort && (

@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -91,6 +92,7 @@ export default function TasksPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="tasks" />
         <section className="rounded-2xl bg-[#5FBB46] px-6 py-6 text-[#14204f] shadow-[0_12px_28px_rgba(95,187,70,0.18)] sm:px-8 sm:py-7">
           <h1 className="text-3xl font-bold tracking-tight">My Tasks</h1>
           <p className="mt-2 text-xs text-[#14204f]/75">

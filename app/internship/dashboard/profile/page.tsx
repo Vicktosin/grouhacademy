@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import { useEffect, useRef, useState } from "react";
 import {
   BriefcaseBusiness,
@@ -227,6 +228,7 @@ export default function InternshipProfilePage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="profile" />
         <section className="flex flex-col gap-5 rounded-2xl bg-[#5FBB46] p-5 text-[#14204f] shadow-[0_12px_28px_rgba(95,187,70,0.18)] sm:flex-row sm:items-center sm:px-6 sm:py-6">
           <div className="relative shrink-0">
             <Image

@@ -7,6 +7,7 @@ import StudentHeader from "./StudentHeader";
 import CommunityLink from "./CommunityLink";
 import { WhatsAppIcon } from "./CommunityInvite";
 import DashboardBanner from "./DashboardBanner";
+import InternTour from "./onboarding/InternTour";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
 // Routes reachable before the acceptance fee is paid — the onboarding →
@@ -201,6 +202,9 @@ export default function InternshipShell({
           </div>
         </div>
       )}
+
+      {/* The guided tour of the menu (started from the welcome or Help). */}
+      <InternTour />
     </div>
   );
 }
