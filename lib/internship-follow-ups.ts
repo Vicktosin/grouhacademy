@@ -1,3 +1,4 @@
+import { FollowUpStage } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { loadAcceptanceFees } from "@/lib/internship-levels";
 import { getSiteUrl } from "@/lib/site-url";
@@ -10,7 +11,8 @@ import {
 
 // Applicants to follow up: everyone who sat the entrance exam for their
 // current level but hasn't paid, split into those who passed (and need to
-// pay) and those who failed (and could retake or go a level lower).
+// pay) and those who failed (and could retake or go a level lower), plus
+// those who started paying without an exam result (NO_EXAM).
 // Applicants already admitted to the same track, and queued level-ups, are
 // left out.
 
@@ -90,10 +92,12 @@ export type FollowUpRow = {
   score: number | null;
   passMark: number | null;
   attempts: number;
-  /** When they passed (PASSED_UNPAID) or last failed (FAILED). */
+  /** When they passed (PASSED_UNPAID), last failed (FAILED) or started paying (NO_EXAM). */
   examDate: string | null;
   /** Payment was started but not completed. */
   triedToPay: boolean;
+  /** Where that payment stands, or null if they never started paying. */
+  paymentStatus: "PENDING" | "FAILED" | "CANCELLED" | null;
   nextCohort: { name: string; startDate: string } | null;
   followUp: {
     status: string;
@@ -134,7 +138,15 @@ export async function listFollowUps(
         { payment: { is: null } },
         { payment: { is: { status: { not: "PAID" } } } },
       ],
-      attempts: { some: { status: { in: ["PASSED", "FAILED"] } } },
+      // Sat the exam, or started paying without it.
+      AND: [
+        {
+          OR: [
+            { attempts: { some: { status: { in: ["PASSED", "FAILED"] } } } },
+            { payment: { isNot: null } },
+          ],
+        },
+      ],
     },
     orderBy: { updatedAt: "desc" },
     include: {
@@ -150,7 +162,7 @@ export async function listFollowUps(
       },
       program: true,
       level: { select: { name: true } },
-      payment: { select: { status: true } },
+      payment: { select: { status: true, createdAt: true } },
       attempts: {
         where: { status: { in: ["PASSED", "FAILED"] } },
         orderBy: { createdAt: "desc" },
@@ -206,8 +218,9 @@ export async function listFollowUps(
     );
     const passed = attempts.find((attempt) => attempt.status === "PASSED");
     const latest = passed ?? attempts[0];
-    if (!latest) continue;
-    const stage: FollowUpStageKey = passed ? "PASSED_UNPAID" : "FAILED";
+    // No result at this level: only those who started paying are followed up.
+    if (!latest && !application.payment) continue;
+    const stage: FollowUpStageKey = passed ? "PASSED_UNPAID" : latest ? "FAILED" : "NO_EXAM";
 
     const { student } = application;
     const answers = (application.onboardingAnswers ?? {}) as Record<
@@ -227,8 +240,10 @@ export async function listFollowUps(
     const firstName =
       student.profile?.firstName?.trim() || name.split(/\s+/)[0] || "there";
     const fee = feeFor(application.program, application.levelId);
-    const passMark = latest.assessment?.passingScore ?? null;
-    const examDate = latest.submittedAt ?? latest.createdAt;
+    const passMark = latest?.assessment?.passingScore ?? null;
+    const examDate =
+      latest?.submittedAt ?? latest?.createdAt ?? application.payment?.createdAt ?? application.createdAt;
+    const score = latest?.scorePercent ?? null;
     const nextCohort =
       nextCohortFor.get(`${application.programId}:${application.levelId}`) ??
       null;
@@ -249,11 +264,15 @@ export async function listFollowUps(
       levelId: application.levelId,
       level: application.level.name,
       fee,
-      score: latest.scorePercent,
+      score,
       passMark,
       attempts: attempts.length,
       examDate: examDate.toISOString(),
       triedToPay: Boolean(application.payment),
+      paymentStatus:
+        application.payment && application.payment.status !== "PAID"
+          ? application.payment.status
+          : null,
       nextCohort: nextCohort
         ? {
             name: nextCohort.name,
@@ -277,7 +296,7 @@ export async function listFollowUps(
         track: application.program.name,
         level: application.level.name,
         fee: formatNaira(fee),
-        score: latest.scorePercent === null ? "" : String(latest.scorePercent),
+        score: score === null ? "" : String(score),
         passMark: passMark === null ? "" : String(passMark),
         nextCohort: nextCohort?.name ?? "the next cohort",
         nextCohortDate: nextCohort ? formatDate(nextCohort.startDate) : "soon",
@@ -299,5 +318,11 @@ export async function getFollowUpTemplates() {
     PASSED_UNPAID:
       byStage.get("PASSED_UNPAID") ?? DEFAULT_TEMPLATES.PASSED_UNPAID,
     FAILED: byStage.get("FAILED") ?? DEFAULT_TEMPLATES.FAILED,
+    NO_EXAM: byStage.get("NO_EXAM") ?? DEFAULT_TEMPLATES.NO_EXAM,
   } satisfies Record<FollowUpStageKey, string>;
+}
+
+/** Whether a value from a request is a follow-up list (stage). */
+export function isFollowUpStage(value: unknown): value is FollowUpStage {
+  return Object.values(FollowUpStage).includes(value as FollowUpStage);
 }
