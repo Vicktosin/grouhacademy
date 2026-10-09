@@ -46,18 +46,27 @@ import {
   type LabFiles,
 } from "@/lib/lab-shared";
 import {
+  BID_STRATEGIES,
   BLANK_CAMPAIGN,
+  CUSTOM_AUDIENCES,
   DESTINATIONS,
   FORMATS as AD_FORMATS,
   keepOwnMedia,
   campaignProblems,
+  DELIVERY,
   formatGoalValue,
   LOCATIONS,
+  LOOKALIKES,
+  normalizeRunResult,
   OBJECTIVES,
   parseAdsConfig,
   parseCampaign,
+  PERFORMANCE_GOALS,
+  PLACEMENTS,
+  activePlacements,
   publicAdsConfig,
   simulateCampaign,
+  SPECIAL_CATEGORIES,
   type Campaign,
   type RunResult,
 } from "@/lib/ads-sim/model";
@@ -842,37 +851,51 @@ ${Object.entries(files)
   .join("\n")}`);
 }
 
-/** Task submission text for an ad campaign: plan, results and goals. */
+/** Task submission text for an ad campaign: results, goals and the whole plan. */
 function adsSubmissionText(scenario: Pick<LabScenario, "title">, run: AdsRun) {
-  const { campaign, result } = run;
+  const campaign = parseCampaign(run.campaign);
+  const result = normalizeRunResult(run.result, campaign);
   const t = result.totals;
-  const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
-  return fit(`Ad Campaign Simulator: ${scenario.title}
+  const naira = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+  const sets = campaign.adSets.map((set) => {
+    const stats = result.adSets?.find((s) => s.id === set.id);
+    const a = set.audience;
+    const lines = [
+      `== ${set.name}${stats ? ` · ${DELIVERY[stats.delivery].label} · spent ${naira(stats.spend)} · ${stats.results} ${stats.resultLabel.toLowerCase()} · ${stats.conversions} conversions · CTR ${stats.ctr}%` : ""}`,
+      `Conversion location: ${set.destination ? DESTINATIONS[set.destination].label : "none"} · goal: ${PERFORMANCE_GOALS[set.performanceGoal].label} · ${set.days} days`,
+      campaign.budgetMode === "AD_SET"
+        ? `Budget: ${set.budget.type === "DAILY" ? "daily" : "lifetime"} ${naira(set.budget.amount)} · ${BID_STRATEGIES[set.bidStrategy].label}${set.bidAmount ? ` (${set.bidAmount})` : ""}`
+        : "Budget: from the campaign budget",
+      `Audience: ${LOCATIONS.filter((l) => a.locations.includes(l.id)).map((l) => l.name).join(", ")} · age ${a.ageMin}-${a.ageMax} · ${a.gender.toLowerCase()} · interests: ${a.interests.join(", ") || "none"}${a.custom.length ? ` · custom: ${a.custom.map((id) => CUSTOM_AUDIENCES[id].label).join(", ")}` : ""}${a.lookalike ? ` · lookalike ${LOOKALIKES[a.lookalike]?.label}` : ""}${a.advantage ? " · automatic audience" : ""}${a.excludeCustomers ? " · excludes customers" : ""}`,
+      `Placements: ${set.placementMode === "AUTO" ? "automatic" : activePlacements(set).map((p) => PLACEMENTS[p].label).join(", ")}`,
+      ...set.ads.map((ad) => describeAdForMentor(ad, result)),
+    ];
+    return lines.join("\n");
+  });
+  return fit(`Ads Studio campaign: ${scenario.title}
 Score: ${result.score}/100 · Goals met: ${result.goals.filter((g) => g.met).length} of ${result.goals.length}
 ${result.goals.map((g) => `${g.met ? "✓" : "✗"} ${g.label}: ${formatGoalValue(g.metric, g.actual)} (target ${formatGoalValue(g.metric, g.target)})`).join("\n")}
+${result.delivery === "REJECTED" ? `\nREJECTED: ${result.notes[0]}\n` : ""}
+Results: spend ${naira(t.spend)} of ${naira(t.plannedBudget)} · reach ${t.reach.toLocaleString("en-NG")} · CTR ${t.ctr}% · CPC ${naira(t.cpc)} · conversions ${t.conversions} · cost/conversion ${naira(t.costPerConversion)} · ROAS ${t.roas}×${result.abTest ? `\n${result.abTest.summary}` : ""}
 
-Results: spend ${naira(t.spend)} of ${naira(t.plannedBudget)} · reach ${t.reach.toLocaleString("en-NG")} · CTR ${t.ctr}% · CPC ${naira(t.cpc)} · conversions ${t.conversions} · cost/conversion ${naira(t.costPerConversion)} · ROAS ${t.roas}×
+Campaign: ${campaign.name} · ${OBJECTIVES[campaign.objective].label} · special ad category: ${SPECIAL_CATEGORIES[campaign.specialCategory].label} · ${campaign.budgetMode === "CAMPAIGN" ? `campaign budget ${campaign.budget.type === "DAILY" ? "daily" : "lifetime"} ${naira(campaign.budget.amount)} · ${BID_STRATEGIES[campaign.bidStrategy].label}` : "ad set budgets"}${campaign.abTest ? " · A/B test" : ""}
 
-Campaign: ${campaign.name} · ${OBJECTIVES[campaign.objective].label} · sends people to ${DESTINATIONS[campaign.destination].label} · ${naira(campaign.dailyBudget)}/day × ${campaign.days} days
-Audience: ${LOCATIONS.filter((l) => campaign.locations.includes(l.id)).map((l) => l.name).join(", ")} · age ${campaign.ageMin}-${campaign.ageMax} · ${campaign.gender.toLowerCase()} · interests: ${campaign.interests.join(", ") || "broad"}
-
-${campaign.creatives.map((ad) => describeAdForMentor(ad, result)).join("\n\n")}`);
+${sets.join("\n\n")}`);
 }
 
 /** One ad for the task submission, with links to its images for the mentor. */
-function describeAdForMentor(ad: AdsRun["campaign"]["creatives"][number], result: AdsRun["result"]) {
+function describeAdForMentor(ad: Campaign["adSets"][number]["ads"][number], result: RunResult) {
   const link = (ref: string) => (ref ? `${getSiteUrl()}${mediaSrc(ref)}` : "(no image)");
   const stats = result.creatives?.find((c) => c.id === ad.id);
   const lines = [
-    `${ad.name} · ${AD_FORMATS[ad.format]}${stats ? ` · ${Math.round(stats.share * 100)}% of budget · CTR ${stats.ctr}% · ${stats.conversions} conversions` : ""}`,
-    `Text: ${ad.primaryText}`,
+    `- ${ad.name} · ${AD_FORMATS[ad.format]}${stats ? ` · ${Math.round(stats.share * 100)}% of its budget · CTR ${stats.ctr}% · ${stats.conversions} conversions` : ""}`,
+    `  Text: ${ad.primaryText}`,
   ];
-  if (ad.format === "CAROUSEL")
-    ad.cards.forEach((card, i) => lines.push(`Card ${i + 1}: ${card.headline} · image: ${link(card.image)}`));
-  else lines.push(`Headline: ${ad.headline}`, `${ad.format === "VIDEO" ? "Cover image" : "Image"}: ${link(ad.image)}`);
-  if (ad.visual) lines.push(`Visual: ${ad.visual}`);
-  if (ad.format === "VIDEO") lines.push(`Video (${ad.seconds}s) script: ${ad.script}`);
-  lines.push(`Button: ${ad.cta}`);
+  if (ad.format === "CAROUSEL") ad.cards.forEach((card, i) => lines.push(`  Card ${i + 1}: ${card.headline} · image: ${link(card.image)}`));
+  else lines.push(`  Headline: ${ad.headline}`, `  ${ad.format === "VIDEO" ? "Cover image" : "Image"}: ${link(ad.image)}`);
+  if (ad.visual) lines.push(`  Visual: ${ad.visual}`);
+  if (ad.format === "VIDEO") lines.push(`  Video (${ad.seconds}s) script: ${ad.script}`);
+  lines.push(`  Call to action: ${ad.cta}`);
   return lines.join("\n");
 }
 

@@ -28,7 +28,7 @@ import {
 import { DEFAULT_WP_CONFIG, parseWpConfig, parseWpWork, type WpConfig, type WpWork } from "@/lib/wp-sim/model";
 import { TestResultsList } from "@/components/BackendSimulator";
 import { RunResult } from "@/components/AutomationSimulator";
-import { AdBreakdown } from "@/components/AdsSimulator";
+import { RunReport } from "@/components/AdsSimulator";
 import WorkflowBuilder from "@/components/WorkflowBuilder";
 import type { AutomationRun, BackendRun, SocialRun } from "@/lib/practice-lab";
 import {
@@ -54,13 +54,10 @@ import {
 import type { SimRun } from "@/components/AdsSimulator";
 import {
   DEFAULT_ADS_CONFIG,
-  DESTINATIONS,
-  formatGoalValue,
   OBJECTIVES,
   parseCampaign,
   type AdsConfig,
 } from "@/lib/ads-sim/model";
-import { mediaSrc } from "@/lib/lab-media-shared";
 import {
   DEFAULT_STARTER,
   EXAMPLE_CHECKS,
@@ -760,6 +757,7 @@ function Attempts({
                                   key={run.at}
                                   run={{ ...(run as SimRun), campaign: parseCampaign((run as SimRun).campaign) }}
                                   index={index}
+                                  price={(config as AdsConfig | undefined)?.product?.price ?? 0}
                                 />
                               ),
                             )
@@ -998,69 +996,19 @@ function SocialRunSummary({ run, index }: { run: SocialRun; index: number }) {
   );
 }
 
-function AdsRunSummary({ run, index }: { run: SimRun; index: number }) {
-  const { campaign, result, feedback } = run;
-  const t = result.totals;
-  const naira = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+/** One intern ad run: the same report the intern saw, folded. */
+function AdsRunSummary({ run, index, price }: { run: SimRun; index: number; price: number }) {
+  const { campaign, result } = run;
   return (
-    <div className="rounded-lg bg-[#f8fbff] p-3 text-[11px] leading-5 text-slate-600">
-      <p className="font-bold text-[#1C1D52]">
-        Run {index + 1} · {result.score}/100 ·{" "}
-        {OBJECTIVES[campaign.objective].label} ·{" "}
-        {naira(campaign.dailyBudget)}/day × {campaign.days} days
-      </p>
-      <p>
-        Spent {naira(t.spend)} · reach {t.reach.toLocaleString("en-NG")} · CTR{" "}
-        {t.ctr}% · CPC {naira(t.cpc)} · {t.conversions} conversions · ROAS{" "}
-        {t.roas}×
-      </p>
-      <p>
-        Goals:{" "}
-        {result.goals
-          .map(
-            (goal) =>
-              `${goal.met ? "✓" : "✗"} ${goal.label} ${formatGoalValue(goal.metric, goal.actual)}`,
-          )
-          .join(" · ")}
-      </p>
-      <p>
-        Ratings: audience {Math.round(result.ratings.audienceFit * 100)}% · ad{" "}
-        {Math.round(result.ratings.creative * 100)}% · objective{" "}
-        {Math.round(result.ratings.objectiveFit * 100)}%
-      </p>
-      <p className="mt-1">
-        {campaign.creatives.length} ad{campaign.creatives.length === 1 ? "" : "s"} · sends people to{" "}
-        {DESTINATIONS[campaign.destination].label}
-      </p>
-      <p className="mt-1">{feedback.summary}</p>
-      <details className="mt-2">
-        <summary className="cursor-pointer font-semibold text-[#1C1D52]">Their ads and images</summary>
-        <div className="mt-2 space-y-2">
-          {campaign.creatives.map((ad) => (
-            <div key={ad.id} className="rounded-lg bg-white p-2">
-              <p className="font-bold text-[#1C1D52]">
-                {ad.name}: {ad.format === "CAROUSEL" ? ad.cards.map((c) => c.headline).join(" / ") : ad.headline}
-              </p>
-              <p className="whitespace-pre-line">{ad.primaryText}</p>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {[ad.image, ...ad.cards.map((c) => c.image)].filter(Boolean).map((ref) => (
-                  <a key={ref} href={mediaSrc(ref)} target="_blank" rel="noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={mediaSrc(ref, "thumb")} alt="" className="h-24 w-24 rounded object-cover" />
-                  </a>
-                ))}
-              </div>
-              {ad.visual && <p className="mt-1 italic">Visual: {ad.visual}</p>}
-              {ad.format === "VIDEO" && (
-                <p className="mt-1 whitespace-pre-line">
-                  Video ({ad.seconds}s) script: {ad.script}
-                </p>
-              )}
-            </div>
-          ))}
-          {result.creatives && <AdBreakdown run={run} />}
-        </div>
-      </details>
-    </div>
+    <details className="rounded-lg bg-[#f8fbff] p-3 text-[11px] leading-5 text-slate-600">
+      <summary className="cursor-pointer font-bold text-[#1C1D52]">
+        Run {index + 1} · {result.score}/100 · {OBJECTIVES[campaign.objective].label} · {campaign.adSets.length} ad set
+        {campaign.adSets.length === 1 ? "" : "s"} · spent ₦{Math.round(result.totals.spend).toLocaleString("en-NG")} ·{" "}
+        {result.totals.conversions} conversions
+      </summary>
+      <div className="mt-3">
+        <RunReport run={run} price={price} />
+      </div>
+    </details>
   );
 }

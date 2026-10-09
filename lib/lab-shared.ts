@@ -26,7 +26,7 @@ export const LAB_FILES: Record<LabKindKey, string[]> = {
 export const LAB_KIND_LABEL: Record<AnyLabKind, string> = {
   WEB: "HTML, CSS & JavaScript",
   REACT: "React",
-  ADS: "Ad campaign",
+  ADS: "Ad campaign (Ads Studio)",
   SOCIAL: "Social media",
   AUTOMATION: "AI automation",
   BACKEND: "Backend API",
