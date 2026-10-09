@@ -20,6 +20,23 @@ import {
 } from "@/lib/lab-task-grading";
 import { reviewLabCode, type LabReview } from "@/lib/lab-review";
 import {
+  blankWork,
+  CONTENT_MODES,
+  parseContentConfig,
+  parseContentWork,
+  publicContentConfig,
+  workProblems,
+  type ContentRun,
+} from "@/lib/content-sim/model";
+import { evaluateContent, NoAiError } from "@/lib/content-sim/evaluate";
+import {
+  describeWpWork,
+  parseWpConfig,
+  parseWpResults,
+  parseWpWork,
+  publicWpConfig,
+} from "@/lib/wp-sim/model";
+import {
   isCodeKind,
   LAB_KIND_LABEL,
   normalizeChecks,
@@ -122,6 +139,18 @@ import { BusyError, runBackendTestsIsolated } from "@/lib/backend-sim/server";
 // worker thread (lib/backend-sim/server), never in this process; interns
 // see hidden tests as passed or failed with the admin's hint. Submissions
 // also get an AI code review when an AI key is set (see lib/ai.ts).
+//
+// WordPress exercises (WORDPRESS): a real WordPress site runs in the
+// intern's browser (WordPress Playground) and is saved there, never here.
+// The checks run inside that site; submitting sends their results with a
+// summary of the site and the files the intern wrote. Results that don't
+// match the exercise's checks send a pass to a mentor instead.
+//
+// AI content exercises (CONTENT): Prompt Lab runs the intern's prompts on a
+// real AI model and marks the output; Brief Studio marks the pieces they
+// wrote; Fact-check marks which planted errors they fixed. Every run is
+// made here on the server within the exercise's run limit (AI calls cost),
+// and the intern submits their best run (see lib/content-sim).
 
 export function isLabReviewEnabled() {
   return isAiEnabled();
@@ -176,6 +205,8 @@ function storedRuns<T = AdsRun>(value: unknown): T[] {
 function goalCount(kind: string, config: unknown) {
   if (kind === "AUTOMATION") return parseAutomationConfig(config).records.length;
   if (kind === "BACKEND") return parseBackendConfig(config).tests.length;
+  if (kind === "WORDPRESS") return parseWpConfig(config).checks.length;
+  if (kind === "CONTENT") return contentGoalCount(parseContentConfig(config));
   return kind === "SOCIAL"
     ? parseSocialConfig(config).goals.length
     : parseAdsConfig(config).goals.length;
@@ -402,6 +433,29 @@ export async function getLabForIntern(
     };
   }
 
+  if (scenario.kind === "CONTENT") {
+    const config = parseContentConfig(scenario.config);
+    return {
+      ...common,
+      kind: "CONTENT" as const,
+      // Fact-check: the planted errors stay hidden.
+      content: publicContentConfig(config),
+      work: attempt ? parseContentWork(attempt.files, config) : blankWork(config),
+      runs: storedRuns<ContentRun>(attempt?.runs),
+      aiEnabled: isAiEnabled(),
+    };
+  }
+
+  if (scenario.kind === "WORDPRESS") {
+    return {
+      ...common,
+      kind: "WORDPRESS" as const,
+      wp: publicWpConfig(parseWpConfig(scenario.config)),
+      // What was last submitted (the site itself is in their browser).
+      work: attempt?.files ? parseWpWork(attempt.files) : null,
+    };
+  }
+
   if (scenario.kind === "AUTOMATION") {
     const config = parseAutomationConfig(scenario.config);
     const expected = await expectedResults(config);
@@ -446,6 +500,8 @@ export type InternAdsLab = Extract<InternLab, { kind: "ADS" }>;
 export type InternSocialLab = Extract<InternLab, { kind: "SOCIAL" }>;
 export type InternAutomationLab = Extract<InternLab, { kind: "AUTOMATION" }>;
 export type InternBackendLab = Extract<InternLab, { kind: "BACKEND" }>;
+export type InternWordPressLab = Extract<InternLab, { kind: "WORDPRESS" }>;
+export type InternContentLab = Extract<InternLab, { kind: "CONTENT" }>;
 
 /** Autosaves the intern's work (keeps a submitted attempt's results). */
 export async function saveLabDraft(
@@ -455,7 +511,11 @@ export async function saveLabDraft(
 ) {
   const scenario = await scenarioForIntern(userId, scenarioId);
   if (!scenario) return false;
-  const work = isCodeKind(scenario.kind)
+  // WordPress sites are saved in the intern's browser.
+  if (scenario.kind === "WORDPRESS") return true;
+  const work = scenario.kind === "CONTENT"
+    ? parseContentWork(files, parseContentConfig(scenario.config))
+    : isCodeKind(scenario.kind)
     ? normalizeFiles(scenario.kind, files)
     : scenario.kind === "SOCIAL"
       ? parsePlan(files)
@@ -558,6 +618,66 @@ export async function runSocialWeek(
     select: { id: true },
     data: { runs: [...runs, run] as unknown as Prisma.InputJsonValue },
   });
+  return { run, runsUsed: runs.length + 1 };
+}
+
+/** How many pass/fail items an AI content exercise marks. */
+function contentGoalCount(config: ReturnType<typeof parseContentConfig>) {
+  if (config.mode === "FACTCHECK") return config.errors.length;
+  return config.pieces.reduce((sum, piece) => sum + piece.rules.length + config.rubric.length, 0);
+}
+
+/**
+ * Marks the intern's AI content work (Prompt Lab: runs their prompts
+ * first), within the exercise's run limit, and keeps the run.
+ */
+export async function runContent(
+  userId: string,
+  scenarioId: string,
+  input: unknown,
+): Promise<{ run: ContentRun; runsUsed: number } | { error: string; status: number }> {
+  const scenario = await scenarioForIntern(userId, scenarioId);
+  if (!scenario || scenario.kind !== "CONTENT")
+    return { error: "Exercise not found.", status: 404 };
+  const config = parseContentConfig(scenario.config);
+  const work = parseContentWork(input, config);
+  const problems = workProblems(work, config);
+  if (problems.length) return { error: problems.join(" "), status: 400 };
+
+  const prisma = getPrisma();
+  const attempt = await prisma.labAttempt.upsert({
+    where: { userId_scenarioId: { userId, scenarioId } },
+    create: { userId, scenarioId, files: work },
+    update: { files: work },
+    select: { id: true, runs: true },
+  });
+  const runs = storedRuns<ContentRun>(attempt.runs);
+  const limitReached = {
+    error: `You've used all ${config.maxRuns} runs for this exercise. Submit your best one.`,
+    status: 409,
+  };
+  if (runs.length >= config.maxRuns) return limitReached;
+
+  let result;
+  try {
+    result = await evaluateContent(config, work);
+  } catch (error) {
+    if (error instanceof NoAiError)
+      return { error: "The AI is busy or unavailable right now, so your run wasn't used. Try again in a few minutes.", status: 503 };
+    console.error("[practice-lab] Content run failed.", error);
+    return { error: "Your work couldn't be marked just now. Try again.", status: 500 };
+  }
+  const run: ContentRun = { at: new Date().toISOString(), work, result };
+  // Only if no other run was added meanwhile (two tabs at once), so the
+  // limit holds.
+  const saved = await prisma.labAttempt.updateMany({
+    where: {
+      id: attempt.id,
+      runs: attempt.runs === null ? { equals: Prisma.AnyNull } : { equals: attempt.runs as Prisma.InputJsonValue },
+    },
+    data: { runs: [...runs, run] as unknown as Prisma.InputJsonValue },
+  });
+  if (!saved.count) return { error: "Another run finished at the same time. Reload the page to see it.", status: 409 };
   return { run, runsUsed: runs.length + 1 };
 }
 
@@ -842,6 +962,44 @@ ${sortedFileNames(files)
   .join("\n")}`);
 }
 
+/** Task submission text for AI content: the score, marks and the work. */
+function contentSubmissionText(scenario: Pick<LabScenario, "title" | "config">, run: ContentRun) {
+  const config = parseContentConfig(scenario.config);
+  const { result, work } = run;
+  const goals = result.goals.map((goal) => `${goal.met ? "✓" : "✗"} ${goal.label}`).join("\n");
+  const body =
+    config.mode === "FACTCHECK"
+      ? `Kept ${Math.round((result.kept ?? 0) * 100)}% of the draft's correct text.\n\n--- Edited draft ---\n${work.edited}`
+      : result.pieces
+          .map((piece) =>
+            [
+              `\n--- ${piece.label} (${piece.score}/100) ---`,
+              ...(piece.prompt !== undefined ? [`Prompt:\n${piece.prompt}\n\nAI output:`] : []),
+              piece.output,
+            ].join("\n"),
+          )
+          .join("\n");
+  return fit(`${CONTENT_MODES[config.mode].label}: ${scenario.title}
+Score: ${result.score}/100
+${goals}
+${result.summary}
+${body}${work.notes.trim() ? `\n\n--- Notes from the intern ---\n${work.notes}` : ""}`);
+}
+
+/** Task submission text for a WordPress site: checks, site summary, files. */
+function wordPressSubmissionText(
+  scenario: Pick<LabScenario, "title">,
+  work: ReturnType<typeof parseWpWork>,
+  results: LabCheckResult[],
+) {
+  const passed = results.filter((result) => result.passed).length;
+  return fit(`WordPress: ${scenario.title}
+Automatic checks: ${passed} of ${results.length} passed
+${results.map((result) => `${result.passed ? "✓" : "✗"} ${result.label}`).join("\n")}
+
+${describeWpWork(work)}`);
+}
+
 type LinkedTask = NonNullable<Awaited<ReturnType<typeof linkedTask>>>;
 
 /** What happened to the linked task when the exercise was submitted. */
@@ -1011,6 +1169,47 @@ export async function submitLab(
     };
   }
 
+  // WordPress: the checks ran inside the intern's site, in their browser.
+  if (scenario.kind === "WORDPRESS") {
+    const config = parseWpConfig(scenario.config);
+    const work = parseWpWork(input.files);
+    const results = parseWpResults(input.checkResults);
+    const checkLabels = config.checks.map((check) => check.label.slice(0, 200));
+    const passed = results.filter((result) => result.passed).length;
+    // Results whose labels don't match this exercise's checks may have been
+    // edited: a pass goes to a mentor.
+    const flags = codeSubmissionFlags({ starter: {}, files: {}, checkLabels, results });
+    const submitted = {
+      files: work as unknown as Prisma.InputJsonValue,
+      status: "SUBMITTED" as const,
+      checkResults: results,
+      checksPassed: passed,
+      checksTotal: checkLabels.length,
+      review: flags.length ? { flags } : Prisma.DbNull,
+      submittedAt: new Date(),
+    };
+    const saved = await prisma.labAttempt.upsert({
+      where: { userId_scenarioId: { userId, scenarioId } },
+      create: { userId, scenarioId, ...submitted },
+      update: submitted,
+      select: VIEW_FIELDS,
+    });
+    const text = wordPressSubmissionText(scenario, work, results);
+    const taskResult = task
+      ? await gradeLinkedTask(
+          userId,
+          task,
+          flags.length ? `Note for the mentor: please confirm this result. ${flags.join(" ")}\n\n${text}` : text,
+          {
+            ...scoreCodeChecks(checkLabels, results),
+            missedLabel: "checks",
+            needsReview: flags.length > 0,
+          },
+        )
+      : null;
+    return { attempt: attemptView({ ...saved, review: null }), taskResult };
+  }
+
   // Automations: the current workflow is run on every record, hidden ones
   // included, here on the server.
   if (scenario.kind === "AUTOMATION") {
@@ -1060,13 +1259,15 @@ export async function submitLab(
     const attempt = await prisma.labAttempt.findUnique({
       where: { userId_scenarioId: { userId, scenarioId } },
     });
-    const runs = storedRuns<AdsRun | SocialRun>(attempt?.runs);
+    const runs = storedRuns<AdsRun | SocialRun | ContentRun>(attempt?.runs);
     if (!attempt || !runs.length)
       return {
         error:
           scenario.kind === "SOCIAL"
             ? "Run your week at least once before submitting."
-            : "Run your campaign at least once before submitting.",
+            : scenario.kind === "CONTENT"
+              ? "Get your work marked at least once before submitting."
+              : "Run your campaign at least once before submitting.",
         status: 400,
       };
     const chosen =
@@ -1093,7 +1294,9 @@ export async function submitLab(
           task,
           scenario.kind === "SOCIAL"
             ? socialSubmissionText(scenario, chosen as SocialRun)
-            : adsSubmissionText(scenario, chosen as AdsRun),
+            : scenario.kind === "CONTENT"
+              ? contentSubmissionText(scenario, chosen as ContentRun)
+              : adsSubmissionText(scenario, chosen as AdsRun),
           {
             percent: chosen.result.score,
             missed: goals.filter((goal) => !goal.met).map((goal) => goal.label),

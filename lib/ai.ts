@@ -17,6 +17,8 @@ import { z } from "zod";
 // provider fails, the call throws and the feature falls back to its own
 // rules (or skips the AI part).
 //
+// generateText is the same for plain writing (no JSON).
+//
 // Requests can include images (ad creatives). Claude and Gemini read them;
 // OpenRouter's free router picks a model that can; Groq and xAI switch to
 // GROQ_VISION_MODEL / XAI_VISION_MODEL for those requests. If every
@@ -257,5 +259,76 @@ export async function generateObject<S extends z.ZodType>(
 
 (The images couldn't be shown to you; judge them from their descriptions.)`,
     });
+  throw new AiUnavailableError(`Every AI provider failed (${failures.join("; ")}).`);
+}
+
+type TextOptions = { task: string; system: string; prompt: string; maxTokens: number };
+
+/** Plain writing (no JSON): Prompt Lab runs interns' prompts with this. */
+async function writeWithAnthropic(options: TextOptions) {
+  const response = await new Anthropic().messages.create({
+    model: "claude-sonnet-5-5",
+    max_tokens: options.maxTokens,
+    system: options.system,
+    messages: [{ role: "user", content: options.prompt }],
+  });
+  if (response.stop_reason === "refusal") throw new Error("declined");
+  return response.content.map((block) => (block.type === "text" ? block.text : "")).join("");
+}
+
+async function writeWithCompatible(provider: CompatibleProvider, options: TextOptions) {
+  const response = await fetch(provider.url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${provider.key}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://grouhacademy.com",
+      "X-Title": "Grouh Academy",
+    },
+    body: JSON.stringify({
+      model: provider.model,
+      max_tokens: Math.min(options.maxTokens, 8000),
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: options.system },
+        { role: "user", content: options.prompt },
+      ],
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).slice(0, 300);
+    throw new Error(`HTTP ${response.status} ${detail}`);
+  }
+  const body = (await response.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
+  return body.choices?.[0]?.message?.content ?? "";
+}
+
+/**
+ * Asks the first available provider to write something, moving on to the
+ * next if one fails or answers with nothing. Throws AiUnavailableError when
+ * none is set up or every one fails.
+ */
+export async function generateText(options: TextOptions): Promise<string> {
+  const attempts: Array<{ name: string; run: () => Promise<string> }> = [
+    ...(process.env.ANTHROPIC_API_KEY ? [{ name: "Anthropic", run: () => writeWithAnthropic(options) }] : []),
+    ...compatibleProviders()
+      .filter((provider) => provider.key)
+      .map((provider) => ({ name: provider.name, run: () => writeWithCompatible(provider, options) })),
+  ];
+  if (!attempts.length) throw new AiUnavailableError("No AI provider is set up.");
+  const failures: string[] = [];
+  for (const attempt of attempts) {
+    try {
+      // Reasoning models may think out loud before answering.
+      const text = (await attempt.run()).replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      if (text) return text;
+      throw new Error("empty answer");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${attempt.name}: ${message}`);
+      console.warn(`[ai] ${options.task}: ${attempt.name} failed, trying the next provider.`, message);
+    }
+  }
   throw new AiUnavailableError(`Every AI provider failed (${failures.join("; ")}).`);
 }

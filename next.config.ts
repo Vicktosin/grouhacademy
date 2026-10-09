@@ -33,7 +33,10 @@ const proveSource = {
 /**
  * The site's policy. `wasm` also lets pages compile WebAssembly (not run
  * eval): only the Practice Lab, whose backend simulator runs interns' code
- * in a WebAssembly sandbox in a Web Worker.
+ * in a WebAssembly sandbox in a Web Worker. Lab pages may also download
+ * WordPress themes and plugins for the WordPress simulator, which runs
+ * WordPress Playground (the site itself is in a playground.wordpress.net
+ * frame).
  */
 const csp = ({ wasm = false } = {}) => [
   "default-src 'self'",
@@ -42,7 +45,7 @@ const csp = ({ wasm = false } = {}) => [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   `font-src 'self' data: ${proveSource.fonts}`,
-  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect} ${proveSource.connect}${isDev ? " ws:" : ""}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseRealtime} ${googleAnalytics.connect} ${metaPixel.connect} ${proveSource.connect}${wasm ? " https://downloads.wordpress.org https://playground.wordpress.net" : ""}${isDev ? " ws:" : ""}`,
   // 'self' for the Practice Lab preview (served over http in development).
   "frame-src 'self' https:",
   "worker-src 'self'",

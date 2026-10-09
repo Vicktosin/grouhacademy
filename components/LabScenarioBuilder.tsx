@@ -16,6 +16,16 @@ import AdsConfigEditor from "@/components/AdsConfigEditor";
 import SocialConfigEditor from "@/components/SocialConfigEditor";
 import AutomationConfigEditor from "@/components/AutomationConfigEditor";
 import BackendConfigEditor from "@/components/BackendConfigEditor";
+import WordPressConfigEditor from "@/components/WordPressConfigEditor";
+import ContentConfigEditor from "@/components/ContentConfigEditor";
+import { PieceCard } from "@/components/ContentSimulator";
+import {
+  DEFAULT_CONTENT_CONFIGS,
+  parseContentConfig,
+  type ContentConfig,
+  type ContentRun,
+} from "@/lib/content-sim/model";
+import { DEFAULT_WP_CONFIG, parseWpConfig, parseWpWork, type WpConfig, type WpWork } from "@/lib/wp-sim/model";
 import { TestResultsList } from "@/components/BackendSimulator";
 import { RunResult } from "@/components/AutomationSimulator";
 import { AdBreakdown } from "@/components/AdsSimulator";
@@ -77,7 +87,7 @@ type Draft = {
   starterFiles: LabFiles;
   solutionFiles: LabFiles | null;
   checks: LabCheck[];
-  config?: AdsConfig | SocialConfig | AutomationConfig | BackendConfig;
+  config?: AdsConfig | SocialConfig | AutomationConfig | BackendConfig | WpConfig | ContentConfig;
   published: boolean;
 };
 
@@ -169,6 +179,16 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
         solutionFiles: DEFAULT_BACKEND_SOLUTION,
         checks: [],
       });
+      return;
+    }
+    // AI content: the Prompt Lab example (the editor switches modes).
+    if (kind === "CONTENT") {
+      change({ kind, config: DEFAULT_CONTENT_CONFIGS.PROMPT, starterFiles: {}, solutionFiles: null, checks: [] });
+      return;
+    }
+    // WordPress: the example site and checks.
+    if (kind === "WORDPRESS") {
+      change({ kind, config: DEFAULT_WP_CONFIG, starterFiles: {}, solutionFiles: null, checks: [] });
       return;
     }
     // Simulators: start from that simulator's example settings.
@@ -384,6 +404,16 @@ export default function LabScenarioBuilder({ id }: { id?: string }) {
           config={parseAutomationConfig(draft.config ?? DEFAULT_AUTOMATION_CONFIG)}
           onChange={(config) => change({ config })}
         />
+      ) : draft.kind === "CONTENT" ? (
+        <ContentConfigEditor
+          config={parseContentConfig(draft.config ?? DEFAULT_CONTENT_CONFIGS.PROMPT)}
+          onChange={(config) => change({ config })}
+        />
+      ) : draft.kind === "WORDPRESS" ? (
+        <WordPressConfigEditor
+          config={parseWpConfig(draft.config ?? DEFAULT_WP_CONFIG)}
+          onChange={(config) => change({ config })}
+        />
       ) : draft.kind === "SOCIAL" ? (
         <SocialConfigEditor
           config={parseSocialConfig(draft.config ?? DEFAULT_SOCIAL_CONFIG)}
@@ -594,8 +624,9 @@ type AttemptRow = {
 
 type AttemptDetail = {
   files: Record<string, string>;
-  runs: Array<SimRun | SocialRun | AutomationRun | BackendRun>;
+  runs: Array<SimRun | SocialRun | AutomationRun | BackendRun | ContentRun>;
   review: { summary?: string; flags?: string[] } | null;
+  checkResults?: Array<{ label: string; passed: boolean; detail?: string }> | null;
 };
 
 function attemptSummary(attempt: AttemptRow, kind: AnyLabKind) {
@@ -611,7 +642,7 @@ function attemptSummary(attempt: AttemptRow, kind: AnyLabKind) {
       ? `${attempt.runCount} test run${attempt.runCount === 1 ? "" : "s"} · not submitted`
       : "Draft";
   }
-  if (kind === "ADS" || kind === "SOCIAL") {
+  if (kind === "ADS" || kind === "SOCIAL" || kind === "CONTENT") {
     const runs = `${attempt.runCount} run${attempt.runCount === 1 ? "" : "s"}`;
     if (attempt.status === "SUBMITTED" && attempt.submittedScore !== null)
       return `${runs} · submitted run ${(attempt.submittedRun ?? 0) + 1}: ${attempt.submittedScore}/100 · ${attempt.checksPassed ?? 0}/${attempt.checksTotal ?? 0} goals`;
@@ -768,9 +799,22 @@ function Attempts({
                                 </div>
                               </details>
                             ))}
+                        {kind === "CONTENT" &&
+                          (detail.runs.length ? (
+                            (detail.runs as ContentRun[]).map((run, index) => (
+                              <ContentRunSummary key={run.at} run={run} index={index} />
+                            ))
+                          ) : (
+                            <p className="text-xs text-slate-500">No runs yet.</p>
+                          ))}
+                        {kind === "WORDPRESS" && (
+                          <WordPressWork work={parseWpWork(detail.files)} results={detail.checkResults ?? []} />
+                        )}
                         {kind !== "ADS" &&
                           kind !== "SOCIAL" &&
                           kind !== "AUTOMATION" &&
+                          kind !== "WORDPRESS" &&
+                          kind !== "CONTENT" &&
                           Object.entries(detail.files ?? {}).map(([name, contents]) => (
                             <div key={name}>
                               <p className="text-[10px] font-bold text-slate-500">{name}</p>
@@ -789,6 +833,89 @@ function Attempts({
         </ul>
       )}
     </section>
+  );
+}
+
+/** One marked run of AI content: the score, marks and the work itself. */
+function ContentRunSummary({ run, index }: { run: ContentRun; index: number }) {
+  const { result, work } = run;
+  return (
+    <details className="rounded-lg bg-[#f8fbff] p-3 text-[11px] leading-5 text-slate-600">
+      <summary className="cursor-pointer font-bold text-[#1C1D52]">
+        Run {index + 1} · {result.score}/100 · {result.goals.filter((g) => g.met).length}/{result.goals.length} marks met ·{" "}
+        {new Date(run.at).toLocaleString()}
+      </summary>
+      <div className="mt-2 space-y-2">
+        <p>{result.summary}</p>
+        {result.errors.length > 0 && (
+          <>
+            <ul>
+              {result.errors.map((error) => (
+                <li key={error.id}>
+                  {error.caught ? "✓" : "✗"} {error.label}
+                  {error.fix && <span className="text-slate-400"> · {error.fix}</span>}
+                </li>
+              ))}
+            </ul>
+            <p>Kept {Math.round((result.kept ?? 0) * 100)}% of the correct text.</p>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3">{work.edited}</pre>
+          </>
+        )}
+        {result.pieces.map((piece) => (
+          <PieceCard key={piece.pieceId} piece={piece} />
+        ))}
+        {work.notes.trim() && <p className="whitespace-pre-line">Notes: {work.notes}</p>}
+      </div>
+    </details>
+  );
+}
+
+/** A submitted WordPress site: check results, a summary and their files. */
+function WordPressWork({ work, results }: { work: WpWork; results: Array<{ label: string; passed: boolean; detail?: string }> }) {
+  const s = work.summary;
+  return (
+    <div className="space-y-2 text-[11px] leading-5 text-slate-600">
+      {results.length > 0 && (
+        <ul className="space-y-0.5">
+          {results.map((result) => (
+            <li key={result.label}>
+              {result.passed ? "✓" : "✗"} {result.label}
+              {result.detail && <span className="text-slate-400"> · {result.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {s ? (
+        <div className="rounded-lg bg-[#f8fbff] p-3">
+          <p>
+            <strong className="text-[#1C1D52]">{s.title || "(no title)"}</strong>
+            {s.tagline && ` · ${s.tagline}`}
+          </p>
+          <p>
+            Theme: {s.theme || "unknown"}
+            {s.plugins.length > 0 && ` · Plugins: ${s.plugins.join(", ")}`}
+          </p>
+          <p>
+            Pages: {s.pages.join(", ") || "none"} · Posts: {s.posts}
+          </p>
+          {s.menus.map((menu) => (
+            <p key={menu.name}>
+              Menu “{menu.name}”: {menu.items.join(", ") || "(empty)"}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="text-slate-500">No site summary (not submitted yet).</p>
+      )}
+      {Object.entries(work.files).map(([path, contents]) => (
+        <div key={path}>
+          <p className="text-[10px] font-bold text-slate-500">wp-content/{path}</p>
+          <pre className="mt-1 max-h-64 overflow-auto rounded-lg bg-[#101426] p-3 text-[11px] leading-5 text-white/90">
+            {contents}
+          </pre>
+        </div>
+      ))}
+    </div>
   );
 }
 
