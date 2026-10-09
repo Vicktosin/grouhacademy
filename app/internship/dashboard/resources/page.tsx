@@ -1,3 +1,4 @@
+import PageGuide from "@/components/onboarding/PageGuide";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,6 +16,7 @@ export default async function InternResourcesPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="resources" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#1C1D52]">
             Resources

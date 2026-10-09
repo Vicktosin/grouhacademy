@@ -11,6 +11,7 @@ import {
   FileText,
   FlaskConical,
   Grid2X2,
+  LifeBuoy,
   LogOut,
   MessageCircle,
   Mic,
@@ -56,6 +57,7 @@ const navItems = [
     href: "/internship/dashboard/certificate",
     icon: FileText,
   },
+  { label: "Help", href: "/internship/dashboard/help", icon: LifeBuoy },
   { label: "Settings", href: "/internship/dashboard/settings", icon: Settings },
   { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
 ];
@@ -147,6 +149,7 @@ export default function InternshipSidebar({
                 <Link
                   href={item.href}
                   onClick={onNavigate}
+                  data-tour={item.href}
                   className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-xs font-medium transition-colors sm:px-4 sm:py-3 sm:text-sm ${active ? "bg-[#5FBB46] text-white" : "text-white/90 hover:bg-white/10"}`}
                 >
                   <Icon

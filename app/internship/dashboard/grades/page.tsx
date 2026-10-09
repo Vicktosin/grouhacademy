@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, ClipboardList, Clock3, Minus, Trophy } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
@@ -89,6 +90,7 @@ export default function GradesPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="grades" />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <h1 className="text-3xl font-bold tracking-tight text-[#1C1D52]">
             Grades

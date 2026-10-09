@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuide from "@/components/onboarding/PageGuide";
 import {
   ChevronRight,
   Code2,
@@ -48,6 +49,7 @@ export default function PracticeLabPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
+        <PageGuide section="lab" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#1C1D52]">
             Practice Lab
