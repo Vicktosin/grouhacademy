@@ -38,6 +38,7 @@ import {
   type WpSiteSummary,
 } from "@/lib/wp-sim/model";
 import { deleteSite, loadSite, saveSite } from "@/lib/wp-sim/site-store";
+import { useFullscreen } from "@/components/FullscreenFrame";
 
 // The WordPress workspace: a real WordPress site running in the browser
 // (WordPress Playground), a file editor for themes and plugins, the
@@ -83,6 +84,8 @@ export default function WordPressLab({
   submitLabel?: string;
 }) {
   const iframe = useRef<HTMLIFrameElement>(null);
+  // Full screen (Practice Lab): the site fills the screen.
+  const { full } = useFullscreen();
   const client = useRef<Client | null>(null);
   const booted = useRef(false);
   const [status, setStatus] = useState<Status>("starting");
@@ -357,7 +360,7 @@ export default function WordPressLab({
             key={restarts}
             ref={iframe}
             title="Your WordPress site"
-            className="h-[620px] w-full bg-white"
+            className={`${full ? "h-[calc(100vh-170px)] min-h-[520px]" : "h-[620px]"} w-full bg-white`}
           />
           {status !== "ready" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 p-6 text-center">
@@ -441,6 +444,8 @@ export default function WordPressLab({
 
 /** Browse wp-content/themes and wp-content/plugins and edit files. */
 function FileEditor({ client, onSaved }: { client: Client; onSaved: (path: string) => void }) {
+  // Full screen: as tall as the screen allows.
+  const { full } = useFullscreen();
   const [open, setOpen] = useState<string | null>(null);
   const [contents, setContents] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -487,7 +492,7 @@ function FileEditor({ client, onSaved }: { client: Client; onSaved: (path: strin
   };
 
   return (
-    <div className="flex h-[620px] min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className={`flex ${full ? "h-[calc(100vh-170px)] min-h-[520px]" : "h-[620px]"} min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white`}>
       <div className="w-48 shrink-0 overflow-y-auto border-r border-slate-200 bg-[#f8fbff] p-2 text-[11px]">
         <button type="button" onClick={() => void create()} className="mb-2 inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold text-[#1C1D52] hover:bg-white">
           <FilePlus2 className="h-3.5 w-3.5" /> New file

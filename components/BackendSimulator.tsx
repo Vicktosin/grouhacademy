@@ -1,5 +1,7 @@
 "use client";
 
+import { useFullscreen } from "@/components/FullscreenFrame";
+
 import { javascript } from "@codemirror/lang-javascript";
 import { sql } from "@codemirror/lang-sql";
 import {
@@ -120,6 +122,8 @@ export default function BackendSimulator({
   submission?: { at: string; result: BackendResult } | null;
   testsLabel?: string;
 }) {
+  // Full screen (Practice Lab): the editor fills the screen.
+  const { full } = useFullscreen();
   const names = useMemo(() => sortedFileNames(files), [files]);
   const [activeFile, setActiveFile] = useState(ENTRY_FILE);
   const [tab, setTab] = useState<Tab>("client");
@@ -257,7 +261,7 @@ export default function BackendSimulator({
     <div className="space-y-3">
       <div className="grid gap-3 lg:grid-cols-2">
         {/* Files and editor */}
-        <div className="flex min-h-[520px] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className={`flex ${full ? "min-h-[calc(100vh-200px)]" : "min-h-[520px]"} min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white`}>
           <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-[#f8fbff] px-2 pt-2">
             {names.map((name) => (
               <span
@@ -332,7 +336,7 @@ export default function BackendSimulator({
         </div>
 
         {/* Server tools */}
-        <div className="flex min-h-[520px] min-w-0 flex-col gap-3">
+        <div className={`flex ${full ? "min-h-[calc(100vh-200px)]" : "min-h-[520px]"} min-w-0 flex-col gap-3`}>
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-[#f8fbff] px-2 py-1.5">
               <ServerBadge server={server} />
