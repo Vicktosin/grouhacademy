@@ -1784,6 +1784,8 @@ enum LabKind {
   AUTOMATION
   // Backend API simulator (Node.js + Express + SQLite, sandboxed).
   BACKEND
+  // WordPress development: a real WordPress site running in the browser.
+  WORDPRESS
 }
 
 enum LabAttemptStatus {

@@ -6,7 +6,7 @@ import { transform } from "sucrase";
 /** Code exercises, done in the editor. */
 export type LabKindKey = "WEB" | "REACT";
 /** Simulators: scored against goals, test records or API tests. */
-export type SimLabKind = "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND";
+export type SimLabKind = "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND" | "WORDPRESS";
 /** Every kind of exercise. */
 export type AnyLabKind = LabKindKey | SimLabKind;
 
@@ -30,6 +30,7 @@ export const LAB_KIND_LABEL: Record<AnyLabKind, string> = {
   SOCIAL: "Social media",
   AUTOMATION: "AI automation",
   BACKEND: "Backend API",
+  WORDPRESS: "WordPress",
 };
 
 export const DEFAULT_STARTER: Record<LabKindKey, LabFiles> = {

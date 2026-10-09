@@ -9,6 +9,7 @@ import {
   Megaphone,
   MessagesSquare,
   Server,
+  Globe,
   Workflow,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,7 +19,7 @@ import InternshipShell from "@/components/InternshipShell";
 type Exercise = {
   id: string;
   title: string;
-  kind: "WEB" | "REACT" | "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND";
+  kind: "WEB" | "REACT" | "ADS" | "SOCIAL" | "AUTOMATION" | "BACKEND" | "WORDPRESS";
   kindLabel: string;
   track: string;
   level: string;
@@ -100,6 +101,8 @@ export default function PracticeLabPage() {
                       <Workflow className="h-3.5 w-3.5" />
                     ) : exercise.kind === "BACKEND" ? (
                       <Server className="h-3.5 w-3.5" />
+                    ) : exercise.kind === "WORDPRESS" ? (
+                      <Globe className="h-3.5 w-3.5" />
                     ) : (
                       <Code2 className="h-3.5 w-3.5" />
                     )}
@@ -138,4 +141,5 @@ const UNITS: Record<Exercise["kind"], { one: string; done: string }> = {
   SOCIAL: GOALS,
   AUTOMATION: { one: "test record", done: "records correct" },
   BACKEND: { one: "API test", done: "tests passed" },
+  WORDPRESS: CHECKS,
 };

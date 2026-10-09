@@ -12,7 +12,7 @@ export async function GET(
   const { id, attemptId } = await params;
   const attempt = await getPrisma().labAttempt.findFirst({
     where: { id: attemptId, scenarioId: id },
-    select: { files: true, runs: true, review: true },
+    select: { files: true, runs: true, review: true, checkResults: true },
   });
   if (!attempt)
     return NextResponse.json({ error: "Attempt not found." }, { status: 404 });
@@ -20,5 +20,6 @@ export async function GET(
     files: attempt.files,
     runs: Array.isArray(attempt.runs) ? attempt.runs : [],
     review: attempt.review,
+    checkResults: attempt.checkResults,
   });
 }
