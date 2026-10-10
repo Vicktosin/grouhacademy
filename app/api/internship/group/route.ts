@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { chatTopic, notifyChats } from "@/lib/realtime";
-import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { ensureGroupMembership } from "@/lib/internship-groups";
 import { memberContacts } from "@/lib/member-contact";
 import { serializeGroupMessages } from "@/lib/group-chat";
+import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-US", {
@@ -28,13 +28,9 @@ function notInCohortResponse() {
 }
 
 export async function GET(request: Request) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
-  }
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
 
   const { searchParams } = new URL(request.url);
   const after = searchParams.get("after");
@@ -153,13 +149,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
-  }
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
 
   const body = await request.json().catch(() => null);
   const content = typeof body?.content === "string" ? body.content.trim() : "";

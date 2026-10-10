@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/route-guards";
 import { listRecommendedForIntern } from "@/lib/intern-resources";
+import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 /** Resources recommended for the intern's current track and level. */
 export async function GET() {
-  const userId = await getCurrentUserId();
-  if (!userId)
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
   const recommended = await listRecommendedForIntern(userId);
   return NextResponse.json(
     recommended ?? {

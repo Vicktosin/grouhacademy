@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
+import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 export async function POST(request: Request) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
-  }
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
 
   const body = await request.json().catch(() => null);
   const scheduledAtRaw =

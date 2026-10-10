@@ -1,41 +1,13 @@
-import { redirect } from "next/navigation";
-import { getCurrentUserId } from "@/lib/route-guards";
-import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
-import { getPrisma } from "@/lib/prisma";
+import InternshipWorkspaceGate from "@/components/InternshipWorkspaceGate";
 
-export default async function InternshipDashboardLayout({
+// No server work here, so the dashboard's pages are static files: the gate
+// sends anyone without workspace access where they belong (from the shell
+// request), and the APIs refuse them their data. The few server-rendered
+// pages check for themselves (internshipWorkspaceRedirect).
+export default function InternshipDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/login");
-  if (!(await hasInternshipWorkspaceAccess(userId))) {
-    const removed = await getPrisma().internshipApplication.count({
-      where: { studentId: userId, status: "REMOVED" },
-    });
-    if (removed) redirect("/internship/removed");
-    const application = await getPrisma().internshipApplication.findFirst({
-      where: { studentId: userId },
-      include: {
-        // Only attempts at the application's current level: an applicant
-        // who moved to a lower level hasn't sat that level's exam yet.
-        attempts: {
-          where: { status: { in: ["PASSED", "FAILED"] } },
-          select: { assessment: { select: { levelId: true } } },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    redirect(
-      application?.attempts.some(
-        (attempt) => attempt.assessment?.levelId === application.levelId,
-      )
-        ? "/internship/results"
-        : application
-          ? "/internship/assessment/readiness"
-          : "/internship/onboarding",
-    );
-  }
-  return children;
+  return <InternshipWorkspaceGate>{children}</InternshipWorkspaceGate>;
 }
