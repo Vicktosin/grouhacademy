@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addressingProblems } from "../lib/work-life/grade";
-import { castFor, workdayWindow, workdaysFor, WORKDAYS, type Step } from "../lib/work-life/story";
+import { addressingProblems } from "../lib/office-life/grade";
+import { castFor, workdayWindow, workdaysFor, WORKDAYS, type Step } from "../lib/office-life/story";
 
 const TRACKS = [
   "Digital Marketing",

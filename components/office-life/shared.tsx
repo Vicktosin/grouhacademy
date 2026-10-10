@@ -1,13 +1,13 @@
 "use client";
 
-import type { workLifeDay } from "@/lib/work-life/server";
-import type { Feedback } from "@/lib/work-life/grade";
-import type { PersonId } from "@/lib/work-life/story";
+import type { officeLifeDay } from "@/lib/office-life/server";
+import type { Feedback } from "@/lib/office-life/grade";
+import type { PersonId } from "@/lib/office-life/story";
 
-// What the Work Life apps share: the day's data, people's avatars, and the
+// What the Office Life apps share: the day's data, people's avatars, and the
 // coach's feedback card (seen only by the intern, outside the "world").
 
-export type DayData = Exclude<Awaited<ReturnType<typeof workLifeDay>>, { error: unknown }>;
+export type DayData = Exclude<Awaited<ReturnType<typeof officeLifeDay>>, { error: unknown }>;
 export type StepView = DayData["steps"][number];
 export type PersonView = DayData["people"][number];
 /** Does the next step; resolves to an error message, or null when it worked. */

@@ -1,6 +1,6 @@
 "use client";
 
-// The voices in Work Life meetings, using only what the browser has: its
+// The voices in Office Life meetings, using only what the browser has: its
 // built-in text-to-speech for the manager, co-workers and client, and its
 // speech recognition for the intern (Chrome and Edge; elsewhere they type).
 // Nothing is recorded or uploaded by us, and it costs nothing to run.

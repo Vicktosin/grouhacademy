@@ -2,8 +2,8 @@
 
 import { ArrowLeft, Inbox, Loader2, PenSquare, Reply, Send, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Feedback } from "@/lib/work-life/grade";
-import type { PersonId } from "@/lib/work-life/story";
+import type { Feedback } from "@/lib/office-life/grade";
+import type { PersonId } from "@/lib/office-life/story";
 import { Avatar, CoachCard, personById, timeLabel, type Act, type DayData, type PersonView, type StepView } from "./shared";
 
 // Mail: an inbox like any work email app. Emails from the manager and the
@@ -323,7 +323,7 @@ export default function MailApp({ day, act, onSent }: { day: DayData; act: Act; 
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {sending ? "Sending…" : "Send"}
             </button>
-            <span className="text-[12px] text-[#5F6368]">Emails stay inside Work Life.</span>
+            <span className="text-[12px] text-[#5F6368]">Emails stay inside Office Life.</span>
           </div>
         </div>
       )}

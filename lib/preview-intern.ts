@@ -188,7 +188,7 @@ export async function resetPreviewIntern(adminId: string) {
     prisma.notification.deleteMany({ where: { userId } }),
     prisma.interviewSession.deleteMany({ where: { userId } }),
     prisma.internshipCertificate.deleteMany({ where: { userId } }),
-    prisma.workLifeDay.deleteMany({ where: { userId } }),
+    prisma.officeLifeDay.deleteMany({ where: { userId } }),
   ]);
   const current = await getPreviewPlacement(adminId);
   if (current) await placePreviewIntern(adminId, current);
