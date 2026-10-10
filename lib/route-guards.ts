@@ -8,7 +8,8 @@ import {
   ensureDevelopmentUser,
 } from "@/lib/dev-auth";
 import { userHasPermission, userHasRole } from "@/lib/rbac";
-import { ensurePrismaUserForSupabaseAuth } from "@/lib/supabase/auth";
+import { ensurePrismaUserWithRoles } from "@/lib/supabase/auth";
+import { hasVerifiedFactorInDatabase } from "@/lib/supabase/mfa-db";
 import {
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
@@ -28,10 +29,19 @@ type CurrentUser = {
 
 /**
  * Memoised per request: layouts, pages and permission checks that all ask
- * for the current user share one Supabase getUser call and one Prisma sync.
+ * for the current user share one sign-in check and one Prisma sync.
  */
 const resolveCurrentUser = cache(loadCurrentUser);
 
+// The sign-in token's signature is verified here, with Supabase's public
+// key (cached for 10 minutes), instead of asking Supabase Auth on every
+// request: those requests were over 90% of the project's Supabase log
+// volume. A token can't be forged or altered, and it expires (its lifetime
+// is set in Supabase), so a session cut off elsewhere (a ban, a deleted
+// account, "sign out everywhere") is refused once its token expires, not
+// at once. Admins can do the most, so they're still checked with Supabase
+// Auth on every request. Signing out deletes the token (refused at once),
+// and an intern's removal is checked in our own database.
 async function loadCurrentUser(): Promise<CurrentUser | null> {
   if (isDevelopmentBypassEnabled()) {
     const developmentRole = await getDevelopmentAuthRole();
@@ -46,22 +56,41 @@ async function loadCurrentUser(): Promise<CurrentUser | null> {
 
   const supabase = await createSupabaseServerClient();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
-  if (error || !user) {
+  if (error || !claims?.sub) {
     return null;
   }
 
-  const mfaPending = await isMfaVerificationPending(supabase, user);
-
   try {
-    return {
-      userId: await ensurePrismaUserForSupabaseAuth(user),
-      mfaPending,
-    };
+    const passedMfa = claims.aal === "aal2";
+    const [user, hasFactor] = await Promise.all([
+      ensurePrismaUserWithRoles({
+        id: claims.sub,
+        email: claims.email,
+        user_metadata: claims.user_metadata,
+      }),
+      // A session that hasn't done the second step is only let in when the
+      // user has no second step set up.
+      passedMfa ? false : hasVerifiedFactorInDatabase(claims.sub),
+    ]);
+
+    if (user.roles.includes(RoleName.ADMIN)) {
+      const {
+        data: { user: authUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !authUser || authUser.id !== claims.sub) {
+        return null;
+      }
+      return {
+        userId: user.id,
+        mfaPending: await isMfaVerificationPending(supabase, authUser),
+      };
+    }
+
+    return { userId: user.id, mfaPending: !passedMfa && hasFactor };
   } catch (syncError) {
     console.error(
       "Failed to synchronize Supabase auth user with Prisma:",
@@ -80,7 +109,7 @@ async function loadCurrentUser(): Promise<CurrentUser | null> {
  *   relations continue to work.
  *
  * Production:
- * - Get the authenticated Supabase user.
+ * - Verify the sign-in token (admins: also with Supabase Auth).
  * - Treat the session as unauthenticated when the user has MFA enrolled
  *   but has not completed the second factor.
  * - Synchronize the Supabase user into Prisma and return their ID.
@@ -89,6 +118,11 @@ export async function getCurrentUserId(): Promise<string | null> {
   const currentUser = await resolveCurrentUser();
 
   return currentUser && !currentUser.mfaPending ? currentUser.userId : null;
+}
+
+/** Signed in, but the second sign-in step (MFA) is still to be done. */
+export async function isCurrentUserMfaPending(): Promise<boolean> {
+  return (await resolveCurrentUser())?.mfaPending === true;
 }
 
 /**
