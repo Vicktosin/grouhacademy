@@ -63,17 +63,17 @@ export function trackForPath(path: string | null | undefined) {
 
 /**
  * A page someone asked to return to (`?next=`) that is allowed for this
- * side, or null to use the side's normal destination. Internship requests
- * go through onboarding, which forwards applicants who are further along.
+ * side, or null to use the side's normal destination. Internship pages are
+ * kept as asked: the dashboard sends anyone who isn't an intern yet to
+ * their next step (InternshipWorkspaceGate), and the application pages
+ * check for themselves. (Sending every request to onboarding left interns
+ * signing in from a dashboard link on the onboarding questions.)
  */
 export function requestedPathForTrack(
   track: LearnerTrack,
   requested: string | null | undefined,
 ): string | null {
   if (!isSafeInternalPath(requested)) return null;
-  if (track === "internship")
-    return requested.startsWith("/internship/")
-      ? LEARNER_TRACKS.internship.home
-      : requested;
+  if (track === "internship") return requested;
   return trackForPath(requested) === "courses" ? requested : null;
 }
