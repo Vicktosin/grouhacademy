@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { isPwaRoute } from "@/lib/app-routes";
+import MovedNotice from "@/components/MovedNotice";
 
 // Keeps the installable app (PWA) to the app itself, not the public website:
 // - the manifest is linked only on app pages, so only they offer "Install";
@@ -94,5 +95,6 @@ export default function PwaManager() {
     else window.addEventListener("load", register, { once: true });
   }, [appPage]);
 
-  return null;
+  // After the move to the new domain: a notice on app pages (see MovedNotice).
+  return appPage ? <MovedNotice /> : null;
 }
