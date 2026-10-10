@@ -13,7 +13,8 @@
 
 import type { ShellData } from "@/app/api/internship/shell/route";
 
-type Entry ={ at: number; value: Promise<unknown> };
+/** `data` is the answer once it has arrived (for peekCachedJson). */
+type Entry = { at: number; value: Promise<unknown>; data?: unknown };
 const entries = new Map<string, Entry>();
 
 // Logging out and in again doesn't reload the page, so the cache is
@@ -65,20 +66,39 @@ export function cachedJson<T>(url: string, maxAgeMs: number): Promise<T | null> 
   return fetchJson<T>(url, maxAgeMs);
 }
 
+/** The internship shell data (see /api/internship/shell). */
+export function loadShell(): Promise<ShellData | null> {
+  return fetchJson<ShellData>(SHELL_URL, CACHE_MS.unreadCount);
+}
+
+/**
+ * The shell data already loaded in this tab, however old, without waiting:
+ * so moving between pages never waits on (or flashes) the access check.
+ */
+export function peekShell(): ShellData | null {
+  return (entries.get(SHELL_URL)?.data as ShellData | undefined) ?? null;
+}
+
 function fetchJson<T>(url: string, maxAgeMs: number): Promise<T | null> {
   watchAuth();
   const now = Date.now();
   const entry = entries.get(url);
   if (entry && now - entry.at < maxAgeMs) return entry.value as Promise<T | null>;
-  const value = fetch(url, { cache: "no-store" })
+  const value: Promise<T | null> = fetch(url, { cache: "no-store" })
     .then((response) => (response.ok ? (response.json() as Promise<T>) : Promise.reject(new Error(`HTTP ${response.status}`))))
+    .then((data) => {
+      const current = entries.get(url);
+      if (current?.value === value) current.data = data;
+      return data;
+    })
     .catch((error: unknown) => {
       // Don't keep failures: the next caller tries again.
       if (entries.get(url)?.value === value) entries.delete(url);
       console.error(`Failed to load ${url}:`, error);
       return null;
     });
-  entries.set(url, { at: now, value });
+  // The last answer stays readable (peekShell) until this one arrives.
+  entries.set(url, { at: now, value, data: entry?.data });
   return value;
 }
 

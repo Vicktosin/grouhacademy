@@ -4,6 +4,7 @@ import CourseLearningPlayer, {
 } from "@/components/CourseLearningPlayer";
 import InternshipShell from "@/components/InternshipShell";
 import { getCurrentUserId } from "@/lib/route-guards";
+import { internshipWorkspaceRedirect } from "@/lib/internship-access";
 import { getResourceForIntern, resourceProgress } from "@/lib/intern-resources";
 import { lessonVideoSrc } from "@/lib/video-embed";
 
@@ -14,6 +15,10 @@ export default async function InternResourcePage({
 }) {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
+  // Rendered here, so it checks for itself (the dashboard's gate is in the
+  // browser): anyone without the workspace goes where they belong.
+  const elsewhere = await internshipWorkspaceRedirect(userId);
+  if (elsewhere) redirect(elsewhere);
 
   // A resource from another track (or an unpublished one) is a 404, so a
   // direct link can't be used to read it.

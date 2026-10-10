@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
-import { getInternshipAccessStatus, type InternshipAccessStatus } from "@/lib/internship-access";
+import {
+  getInternshipAccessStatus,
+  internshipWorkspaceRedirect,
+  type InternshipAccessStatus,
+} from "@/lib/internship-access";
 import { audienceWhere } from "@/lib/learner-audience";
 
-// Everything the internship pages' shell shows, in one request: access
-// status (paywall), the sidebar's and header's name, photo and tier, and the
+// Everything the internship pages' shell needs, in one request: whether
+// the user may use the workspace (the dashboard's pages are static files,
+// so the browser redirects anyone who may not), access status (paywall), the sidebar's and header's name, photo and tier, and the
 // bell's unread count. Each was its own request on every page view, and each
 // request pays for the sign-in check again (Vercel bills the CPU). The client
 // cache (lib/client-cache) hands each part to the component that asked for
@@ -13,6 +18,9 @@ import { audienceWhere } from "@/lib/learner-audience";
 // route instead, so one failure never blanks the others.
 
 export type ShellData = {
+  /** Where to send someone without workspace access (null: an intern with
+   *  access). The whole field is null when it couldn't be worked out. */
+  workspace: { redirect: string | null } | null;
   accessStatus: InternshipAccessStatus | null;
   profile: { name: string; avatarUrl: string | null; tier: "Premium" | "Free" } | null;
   unreadCount: number | null;
@@ -31,7 +39,11 @@ export async function GET() {
   }
 
   const prisma = getPrisma();
-  const [accessStatus, profile, unreadCount] = await Promise.all([
+  const [workspace, accessStatus, profile, unreadCount] = await Promise.all([
+    settle(
+      internshipWorkspaceRedirect(userId).then((redirect) => ({ redirect })),
+      "workspace access",
+    ),
     settle(getInternshipAccessStatus(userId), "access status"),
     settle(
       Promise.all([
@@ -59,5 +71,5 @@ export async function GET() {
     ),
   ]);
 
-  return NextResponse.json({ accessStatus, profile, unreadCount } satisfies ShellData);
+  return NextResponse.json({ workspace, accessStatus, profile, unreadCount } satisfies ShellData);
 }
