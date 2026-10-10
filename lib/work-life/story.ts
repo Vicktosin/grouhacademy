@@ -713,11 +713,20 @@ const LAGOS_OFFSET_MS = 60 * 60 * 1000; // UTC+1 all year
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Work Life started on the weekend of 17 October 2026: cohorts already
+ * running then count their workdays from that weekend, not from their own
+ * first weekend (which had passed).
+ */
+export const WORK_LIFE_LAUNCH = new Date("2026-10-12T00:00:00+01:00");
+
+/**
  * When workday `day` opens and is due: the Saturday 00:00 (Lagos) of the
- * cohort's `day`-th weekend, open until the end of that Sunday.
+ * cohort's `day`-th weekend (counting from launch for cohorts that began
+ * before it), open until the end of that Sunday.
  */
 export function workdayWindow(cohortStart: Date, day: number) {
-  const local = new Date(cohortStart.getTime() + LAGOS_OFFSET_MS);
+  const from = cohortStart < WORK_LIFE_LAUNCH ? WORK_LIFE_LAUNCH : cohortStart;
+  const local = new Date(from.getTime() + LAGOS_OFFSET_MS);
   const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
   const toSaturday = (6 - new Date(midnight).getUTCDay() + 7) % 7;
   const opensAt = new Date(midnight + (toSaturday + 7 * (day - 1)) * DAY_MS - LAGOS_OFFSET_MS);

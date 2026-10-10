@@ -16,12 +16,19 @@ const TRACKS = [
 ];
 
 test("workday N opens on the Nth weekend (Saturday 00:00 Lagos) and is due by Sunday's end", () => {
-  // A cohort starting Wednesday 8 October 2026 (Lagos).
-  const start = new Date("2026-10-08T08:00:00+01:00");
+  // A cohort starting Wednesday 21 October 2026 (Lagos).
+  const start = new Date("2026-10-21T08:00:00+01:00");
   const first = workdayWindow(start, 1);
-  assert.equal(first.opensAt.toISOString(), "2026-10-09T23:00:00.000Z"); // Sat 10 Oct, 00:00 Lagos
-  assert.equal(first.dueAt.toISOString(), "2026-10-11T23:00:00.000Z"); // Mon 12 Oct, 00:00 Lagos
-  assert.equal(workdayWindow(start, 3).opensAt.toISOString(), "2026-10-23T23:00:00.000Z"); // Sat 24 Oct
+  assert.equal(first.opensAt.toISOString(), "2026-10-23T23:00:00.000Z"); // Sat 24 Oct, 00:00 Lagos
+  assert.equal(first.dueAt.toISOString(), "2026-10-25T23:00:00.000Z"); // Mon 26 Oct, 00:00 Lagos
+  assert.equal(workdayWindow(start, 3).opensAt.toISOString(), "2026-11-06T23:00:00.000Z"); // Sat 7 Nov
+});
+
+test("cohorts already running at launch start on the launch weekend (17 October)", () => {
+  // The October cohorts started on 8 October.
+  const start = new Date("2026-10-08T08:00:00+01:00");
+  assert.equal(workdayWindow(start, 1).opensAt.toISOString(), "2026-10-16T23:00:00.000Z"); // Sat 17 Oct
+  assert.equal(workdayWindow(start, 2).opensAt.toISOString(), "2026-10-23T23:00:00.000Z"); // Sat 24 Oct
 });
 
 test("a cohort starting on a Saturday opens its first workday that day", () => {
