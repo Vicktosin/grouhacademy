@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import {
+  isDomainMoveActive,
+  KEEP_ON_OLD_DOMAIN,
+  NEW_ORIGIN,
+  OLD_HOST_CONDITION,
+} from "./lib/domain-move";
 
 const isDev = process.env.NODE_ENV === "development";
 const supabaseUrl =
@@ -106,6 +112,18 @@ const nextConfig: NextConfig = {
   // the proxy, so they work for logged-out visitors too.
   async redirects() {
     return [
+      // The old domain sends every page to the same page on the new one
+      // (see lib/domain-move.ts).
+      ...(isDomainMoveActive()
+        ? [
+            {
+              source: `/:path((?!${KEEP_ON_OLD_DOMAIN.join("|")}).*)`,
+              has: [OLD_HOST_CONDITION],
+              destination: `${NEW_ORIGIN}/:path?moved=1`,
+              permanent: process.env.DOMAIN_MOVE_PERMANENT === "true",
+            },
+          ]
+        : []),
       {
         source: "/student/login",
         destination: "/courses/login",
@@ -117,6 +135,17 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
     ];
+  },
+  async rewrites() {
+    return {
+      // On the old domain, the installed app's worker updates to one that
+      // retires it (clears its caches and sends open pages to the new domain).
+      beforeFiles: isDomainMoveActive()
+        ? [{ source: "/sw.js", has: [OLD_HOST_CONDITION], destination: "/sw-retire.js" }]
+        : [],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   async headers() {
     return [

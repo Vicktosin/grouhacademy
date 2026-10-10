@@ -17,7 +17,7 @@ import {
 // left out.
 
 /** Where applicants log in. Messages go to real people, so never localhost. */
-const PUBLIC_SITE_URL = "https://grouhacademy.space";
+const PUBLIC_SITE_URL = "https://grouhacademy.com";
 
 function publicSiteUrl() {
   const configured = getSiteUrl();

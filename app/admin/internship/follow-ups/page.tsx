@@ -1017,7 +1017,7 @@ function TemplateEditor({
     nextCohort: "November cohort",
     nextCohortDate: "Tuesday, 3 November 2026",
     countdown: "That's just 2 days to go!",
-    loginLink: "https://grouhacademy.space/login",
+    loginLink: "https://grouhacademy.com/login",
   };
 
   /** Inserts a {placeholder} where the cursor is. */
