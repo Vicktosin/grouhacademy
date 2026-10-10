@@ -11,7 +11,9 @@
 // changes something these show (their profile, avatar, notifications),
 // call clearCachedJson() so the next page shows it.
 
-type Entry = { at: number; value: Promise<unknown> };
+import type { ShellData } from "@/app/api/internship/shell/route";
+
+type Entry ={ at: number; value: Promise<unknown> };
 const entries = new Map<string, Entry>();
 
 // Logging out and in again doesn't reload the page, so the cache is
@@ -35,11 +37,35 @@ function watchAuth() {
     });
 }
 
+// On internship pages these come from one request (/api/internship/shell)
+// instead of four. Each maps the combined answer to what its own route
+// returns, as far as the shell uses it; null means "ask the route itself".
+const SHELL_URL = "/api/internship/shell";
+const SHELL_PARTS: Record<string, (shell: ShellData) => unknown> = {
+  "/api/internship/access-status": (shell) => shell.accessStatus,
+  "/api/internship/profile": (shell) => shell.profile,
+  "/api/student/profile": (shell) => shell.profile && { name: shell.profile.name, avatarUrl: shell.profile.avatarUrl },
+  "/api/student/notifications/unread-count?workspace=internship": (shell) =>
+    shell.unreadCount === null ? null : { count: shell.unreadCount },
+};
+
 /**
  * The JSON at `url`, fetched at most once per `maxAgeMs`. A failed request
  * isn't kept, and resolves to null.
  */
 export function cachedJson<T>(url: string, maxAgeMs: number): Promise<T | null> {
+  const part = SHELL_PARTS[url];
+  if (part && typeof window !== "undefined" && window.location.pathname.startsWith("/internship")) {
+    // Reused for the shortest of the parts' times, so each stays as fresh
+    // as it was when it had its own request.
+    return fetchJson<ShellData>(SHELL_URL, Math.min(maxAgeMs, CACHE_MS.unreadCount)).then(
+      (shell) => ((shell && part(shell)) as T | null) ?? fetchJson<T>(url, maxAgeMs),
+    );
+  }
+  return fetchJson<T>(url, maxAgeMs);
+}
+
+function fetchJson<T>(url: string, maxAgeMs: number): Promise<T | null> {
   watchAuth();
   const now = Date.now();
   const entry = entries.get(url);
