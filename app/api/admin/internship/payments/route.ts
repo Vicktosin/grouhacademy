@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import { listCohortOptions } from "@/lib/admin-cohort-options";
 import { loadAcceptanceFees } from "@/lib/internship-levels";
+import { REAL_USER } from "@/lib/real-user";
 
 function formatTier(value: string | null | undefined) {
   if (!value || value === "NONE") return "Free Tier";
@@ -82,6 +83,7 @@ export async function GET() {
   // Latest activity first: someone who first tried days ago and paid (or
   // tried again) today belongs at the top.
   const payments = await prisma.internshipPayment.findMany({
+    where: { application: { student: REAL_USER } },
     orderBy: { updatedAt: "desc" },
     include: {
       application: {

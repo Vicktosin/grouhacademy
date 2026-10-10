@@ -8,6 +8,7 @@ import {
   isTavusFreePlan,
   tavusConfig,
 } from "@/lib/tavus";
+import { REAL_USER } from "@/lib/real-user";
 
 /** Tracks, levels, every interview setup, and recent interviews. */
 export async function GET() {
@@ -21,9 +22,10 @@ export async function GET() {
     }),
     listLevels(),
     prisma.interviewSetup.findMany({
-      include: { _count: { select: { sessions: true } } },
+      include: { _count: { select: { sessions: { where: { user: REAL_USER } } } } },
     }),
     prisma.interviewSession.findMany({
+      where: { user: REAL_USER },
       orderBy: { createdAt: "desc" },
       take: 300,
       include: {

@@ -1,5 +1,6 @@
 import { getPrisma } from "@/lib/prisma";
 import { internshipAchievement } from "@/lib/internship-certificates";
+import { REAL_USER } from "@/lib/real-user";
 
 // Public certificate lookup. Returns only what an employer needs to confirm a
 // certificate (holder, achievement, dates, status), never contact details or
@@ -98,7 +99,8 @@ export async function verifyCertificate(
       },
     }),
     prisma.internshipCertificate.findMany({
-      where: courseWhere,
+      // An admin's preview intern's certificate is never genuine.
+      where: { ...courseWhere, user: REAL_USER },
       take: 2,
       select: {
         id: true,

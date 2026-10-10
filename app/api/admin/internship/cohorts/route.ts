@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import { cohortTimeline, scheduleToDate } from "@/lib/task-schedule";
 import { listLevels, resolveLevelId } from "@/lib/internship-levels";
+import { REAL_USER } from "@/lib/real-user";
 
 const DEFAULT_PASS_MARK = 70;
 
@@ -235,7 +236,11 @@ export async function PUT(request: Request) {
   const prisma = getPrisma();
   const cohort = await prisma.internshipCohort.findUnique({
     where: { id },
-    include: { _count: { select: { applications: true, groups: true } } },
+    include: {
+      _count: {
+        select: { applications: { where: { student: REAL_USER } }, groups: true },
+      },
+    },
   });
   if (!cohort) {
     return NextResponse.json({ error: "Cohort not found." }, { status: 404 });
@@ -266,6 +271,15 @@ export async function PUT(request: Request) {
       },
       { status: 409 },
     );
+  }
+
+  // An admin's preview intern doesn't hold a cohort in place: moved to
+  // another track or level, the cohort drops it.
+  if (programId !== cohort.programId || levelId !== cohort.levelId) {
+    await prisma.internshipApplication.updateMany({
+      where: { cohortId: id, student: { isPreview: true } },
+      data: { cohortId: null },
+    });
   }
 
   const updated = await prisma.internshipCohort.update({
@@ -336,8 +350,9 @@ export async function DELETE(request: Request) {
   }
 
   // Deleting a cohort deletes its tasks, so keep interns' submitted work safe.
+  // (Admins' preview interns' work doesn't count: it goes with the cohort.)
   const submissions = await prisma.taskSubmission.count({
-    where: { task: { cohortId: id } },
+    where: { task: { cohortId: id }, user: REAL_USER },
   });
   if (submissions > 0) {
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/lib/api-guards";
 import { listCohortOptions } from "@/lib/admin-cohort-options";
 import { SUBMISSION_LABELS } from "@/lib/mentor-data";
 import { getPrisma } from "@/lib/prisma";
+import { REAL_USER } from "@/lib/real-user";
 
 const PAGE_SIZE = 20;
 const PENDING = ["SUBMITTED", "UNDER_REVIEW"] as const;
@@ -30,6 +31,8 @@ export async function GET(request: Request) {
   const prisma = getPrisma();
   const scope: Prisma.TaskSubmissionWhereInput = {
     status: { not: "DRAFT" },
+    // Admins' preview interns' work never enters the queue.
+    user: REAL_USER,
     groupId: kind === "GROUP" ? { not: null } : null,
     ...(taskId ? { taskId } : cohortId ? { task: { cohortId } } : {}),
     ...(q

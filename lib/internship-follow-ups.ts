@@ -8,6 +8,7 @@ import {
   type FollowUpStageKey,
   type FollowUpValues,
 } from "@/lib/follow-up-templates";
+import { REAL_USER } from "@/lib/real-user";
 
 // Applicants to follow up: everyone who sat the entrance exam for their
 // current level but hasn't paid, split into those who passed (and need to
@@ -133,6 +134,7 @@ export async function listFollowUps(
   const applications = await prisma.internshipApplication.findMany({
     where: {
       ...(applicationId ? { id: applicationId } : {}),
+      student: REAL_USER,
       promotedFromId: null,
       OR: [
         { payment: { is: null } },

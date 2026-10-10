@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/route-guards";
+import { getCurrentUserId, isPreviewSession } from "@/lib/route-guards";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
 import { getInterviewOverview, startInterview } from "@/lib/interviews";
 
@@ -35,6 +35,12 @@ export async function GET() {
 export async function POST(request: Request) {
   const userId = await internId();
   if (userId instanceof NextResponse) return userId;
+  // Interviews use paid video minutes: not for an admin's preview intern.
+  if (await isPreviewSession())
+    return NextResponse.json(
+      { error: "Interviews can't be started in preview: they use paid video minutes." },
+      { status: 403 },
+    );
   const body = (await request.json().catch(() => null)) as {
     mode?: unknown;
   } | null;
