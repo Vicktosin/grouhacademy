@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId, isCurrentUserMfaPending } from "@/lib/route-guards";
+import { getCurrentUserId, isCurrentUserMfaPending, isPreviewSession } from "@/lib/route-guards";
+import { describePreviewIntern } from "@/lib/preview-intern";
 import { getPrisma } from "@/lib/prisma";
 import {
   getInternshipAccessStatus,
@@ -28,6 +29,8 @@ export type ShellData = {
   /** Signed in, but the second sign-in step (MFA) is still to be done:
    *  everything else is null, and the page sends them to do it. */
   mfaRequired?: true;
+  /** An admin previewing the internship (the banner): where they're placed. */
+  preview?: { track: string; level: string; cohort: string | null } | null;
 };
 
 const settle = <T,>(promise: Promise<T>, part: string) =>
@@ -52,7 +55,7 @@ export async function GET() {
   }
 
   const prisma = getPrisma();
-  const [workspace, accessStatus, profile, unreadCount] = await Promise.all([
+  const [workspace, accessStatus, profile, unreadCount, preview] = await Promise.all([
     settle(
       internshipWorkspaceRedirect(userId).then((redirect) => ({ redirect })),
       "workspace access",
@@ -82,7 +85,8 @@ export async function GET() {
       prisma.notification.count({ where: { userId, read: false, ...audienceWhere("internship") } }),
       "unread count",
     ),
+    isPreviewSession().then((preview) => (preview ? describePreviewIntern(userId) : null)),
   ]);
 
-  return NextResponse.json({ workspace, accessStatus, profile, unreadCount } satisfies ShellData);
+  return NextResponse.json({ workspace, accessStatus, profile, unreadCount, preview } satisfies ShellData);
 }

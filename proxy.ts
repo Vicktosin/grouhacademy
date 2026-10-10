@@ -9,6 +9,7 @@ import {
   DEV_AUTH_COOKIE_NAME,
   isDevelopmentBypassEnabled,
 } from "@/lib/dev-auth-cookie";
+import { PATH_HEADER } from "@/lib/request-path";
 
 // Paths the app has never served that bots keep requesting: spam "profile"
 // pages and WordPress endpoints. 410 Gone tells crawlers to drop them for good.
@@ -22,9 +23,13 @@ export async function proxy(request: NextRequest) {
     });
   }
 
+  // Server code reads the path from this (e.g. an admin previewing the
+  // internship is their preview intern only on the intern side).
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATH_HEADER, request.nextUrl.pathname);
   const response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 

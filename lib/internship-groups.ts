@@ -71,6 +71,10 @@ export async function ensureGroupMembership(application: {
   if (existingMembership) return existingMembership.group;
   if (!cohortId) return null;
 
+  // An admin's preview intern never joins a real group: the interns in it
+  // would see it as a member (lib/preview-intern).
+  if (await prisma.user.count({ where: { id: userId, isPreview: true } })) return null;
+
   // Never place an intern using a cohort from another programme.
   const cohortMatchesProgram = await prisma.internshipCohort.count({
     where: { id: cohortId, programId },

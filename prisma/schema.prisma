@@ -258,6 +258,13 @@ model User {
   avatarUrl String?
   status    UserStatus @default(ACTIVE)
 
+  // An admin's hidden preview intern ("Experience as intern"): a real intern
+  // record the admin moves between tracks, levels and cohorts to see the
+  // internship as interns do. Left out of every list, count, report, email
+  // and notification (lib/preview-intern).
+  isPreview      Boolean @default(false)
+  previewOwnerId String? @unique @db.Uuid
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -11,6 +11,7 @@ import {
   type CohortDb,
 } from "@/lib/internship-cohort";
 import { requireAdminApi } from "@/lib/api-guards";
+import { REAL_USER } from "@/lib/real-user";
 
 function formatTier(value: string | null | undefined) {
   if (!value || value === "NONE") return "Free Tier";
@@ -55,6 +56,7 @@ export async function GET() {
 
   const paidApplications = await prisma.internshipApplication.findMany({
     where: {
+      student: REAL_USER,
       payment: { status: InternshipPaymentStatus.PAID },
       attempts: { some: { status: AssessmentAttemptStatus.PASSED } },
     },

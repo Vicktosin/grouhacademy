@@ -28,6 +28,7 @@ export async function notifyCertificateIssued(certificateId: string) {
           select: {
             email: true,
             name: true,
+            isPreview: true,
             profile: { select: { firstName: true } },
           },
         },
@@ -62,6 +63,8 @@ export async function notifyCertificateIssued(certificateId: string) {
       },
     });
 
+    // An admin's preview intern has no real address (lib/preview-intern).
+    if (certificate.user.isPreview) return;
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
       console.info(

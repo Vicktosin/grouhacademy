@@ -10,6 +10,7 @@ import {
   CalendarRange,
   ClipboardCheck,
   CreditCard,
+  Eye,
   FlaskConical,
   GalleryHorizontalEnd,
   GraduationCap,
@@ -53,6 +54,7 @@ const studentItems = [
 
 const internshipItems = [
   { label: "Dashboard", href: "/admin/internship", icon: LayoutDashboard },
+  { label: "Experience as intern", href: "/admin/internship/preview", icon: Eye },
   { label: "Interns", href: "/admin/internship/interns", icon: Users },
   { label: "Tracks", href: "/admin/internship/tracks", icon: GraduationCap },
   { label: "Levels", href: "/admin/internship/levels", icon: Layers },
