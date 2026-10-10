@@ -331,6 +331,7 @@ model User {
   internshipFollowUpTemplates  InternshipFollowUpTemplate[] @relation("FollowUpTemplateEditor")
   interviewSessions            InterviewSession[]
   labAttempts                  LabAttempt[]
+  officeLifeDays               OfficeLifeDay[]
 
   @@index([status])
 }
@@ -1909,4 +1910,24 @@ model LabAttempt {
 
   @@unique([userId, scenarioId])
   @@index([scenarioId])
+}
+
+// Office Life: a weekend workday at a made-up agency (lib/office-life). One row
+// per intern, track and workday; everything they did that day (emails,
+// meeting answers, reports, and the feedback on them) is short text in
+// `state`, so the table stays small.
+model OfficeLifeDay {
+  id          String    @id @default(cuid())
+  userId      String    @db.Uuid
+  programId   String
+  day         Int
+  state       Json      @default("{}")
+  score       Int?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId, day])
 }
