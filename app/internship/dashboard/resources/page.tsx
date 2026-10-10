@@ -5,11 +5,16 @@ import { redirect } from "next/navigation";
 import { BookOpen, CheckCircle2 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
 import { getCurrentUserId } from "@/lib/route-guards";
+import { internshipWorkspaceRedirect } from "@/lib/internship-access";
 import { listResourcesForIntern } from "@/lib/intern-resources";
 
 export default async function InternResourcesPage() {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
+  // Rendered here, so it checks for itself (the dashboard's gate is in the
+  // browser): anyone without the workspace goes where they belong.
+  const elsewhere = await internshipWorkspaceRedirect(userId);
+  if (elsewhere) redirect(elsewhere);
   // Only resources published for the intern's own track come back.
   const resources = await listResourcesForIntern(userId);
 

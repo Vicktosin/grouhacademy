@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { computeInternProgress } from "@/lib/internship-progress";
 import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
 import { cohortTimeline } from "@/lib/task-schedule";
 import { audienceWhere } from "@/lib/learner-audience";
+import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
@@ -25,13 +25,9 @@ function timeAgoLabel(date: Date): string {
 }
 
 export async function GET() {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
-  }
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
 
   const prisma = getPrisma();
 

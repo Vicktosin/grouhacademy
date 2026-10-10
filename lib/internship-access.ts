@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/route-guards";
 import { getAcceptanceFee } from "@/lib/internship-levels";
 
 export type InternshipAccessStatus = {
@@ -77,4 +78,56 @@ export async function hasInternshipWorkspaceAccess(
   });
 
   return Boolean(application);
+}
+
+/**
+ * Where someone without the workspace belongs (removed, waiting on their
+ * results, still to sit the assessment, or yet to apply), or null for an
+ * intern with access. The dashboard's pages are files served as they are,
+ * so this decides on their behalf: in the shell request (the browser then
+ * redirects) and in the dashboard's few server-rendered pages.
+ */
+export async function internshipWorkspaceRedirect(userId: string): Promise<string | null> {
+  if (await hasInternshipWorkspaceAccess(userId)) return null;
+  const prisma = getPrisma();
+  const removed = await prisma.internshipApplication.count({
+    where: { studentId: userId, status: "REMOVED" },
+  });
+  if (removed) return "/internship/removed";
+  const application = await prisma.internshipApplication.findFirst({
+    where: { studentId: userId },
+    include: {
+      // Only attempts at the application's current level: an applicant
+      // who moved to a lower level hasn't sat that level's exam yet.
+      attempts: {
+        where: { status: { in: ["PASSED", "FAILED"] } },
+        select: { assessment: { select: { levelId: true } } },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return application?.attempts.some((attempt) => attempt.assessment?.levelId === application.levelId)
+    ? "/internship/results"
+    : application
+      ? "/internship/assessment/readiness"
+      : "/internship/onboarding";
+}
+
+/**
+ * For the internship workspace's APIs: the signed-in intern's id, or the
+ * response to send instead (not signed in, or no workspace access). The
+ * same rule as the dashboard, so an API answers exactly the people who can
+ * open the pages that use it.
+ */
+export async function requireInternshipWorkspace(): Promise<{ userId: string } | { response: Response }> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return { response: Response.json({ error: "Authentication required." }, { status: 401 }) };
+  }
+  if (!(await hasInternshipWorkspaceAccess(userId))) {
+    return {
+      response: Response.json({ error: "This is only for interns with access to the internship workspace." }, { status: 403 }),
+    };
+  }
+  return { userId };
 }
