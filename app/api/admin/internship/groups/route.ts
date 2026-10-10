@@ -174,6 +174,7 @@ async function loadGroups(request: Request) {
               promotedTo: { is: { payment: { is: { status: "PAID" } } } },
             },
             student: {
+              isPreview: false,
               groupMemberships: {
                 none: { programId: cohorts.find((c) => c.id === selected)!.programId },
               },

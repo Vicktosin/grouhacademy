@@ -13,6 +13,7 @@ import {
   DEFAULT_LAB_PASS_MARK,
   parseLabPassMark,
 } from "@/lib/lab-task-grading";
+import { REAL_USER } from "@/lib/real-user";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 10_000;
@@ -132,7 +133,7 @@ export async function GET() {
         cohort: {
           select: { id: true, name: true, program: { select: { name: true } } },
         },
-        submissions: { select: { status: true } },
+        submissions: { where: { user: REAL_USER }, select: { status: true } },
       },
     }),
     prisma.labScenario.findMany({
@@ -235,7 +236,7 @@ export async function PUT(request: Request) {
     select: {
       cohortId: true,
       kind: true,
-      _count: { select: { submissions: true } },
+      _count: { select: { submissions: { where: { user: REAL_USER } } } },
     },
   });
   if (!existing)
@@ -264,6 +265,10 @@ export async function PUT(request: Request) {
         },
         { status: 409 },
       );
+  }
+  // Admins' preview interns' work doesn't hold a task in place: it goes.
+  if (parsed.data.cohortId !== existing.cohortId || parsed.data.kind !== existing.kind) {
+    await prisma.taskSubmission.deleteMany({ where: { taskId: id, user: { isPreview: true } } });
   }
 
   await prisma.internshipTask.update({
