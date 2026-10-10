@@ -76,6 +76,8 @@ export async function PATCH(
     await assignApplicationCohort(
       prisma as unknown as CohortDb,
       payment.application,
+      // Marking it paid again never moves an intern who already joined.
+      { joining: payment.status !== InternshipPaymentStatus.PAID },
     );
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(payment.application.id);

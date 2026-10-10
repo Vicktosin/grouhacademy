@@ -9,6 +9,20 @@ export type CohortDb = {
   };
 };
 
+/**
+ * The cohort an application belongs in, saving it if it changes.
+ *
+ * Someone already placed keeps their cohort as long as it belongs to their
+ * track and level, however far it has run: interns must never be moved out
+ * of the cohort their tasks and group are in because a newer cohort was
+ * created. (On 10 October 2026 the admin Interns page, which calls this for
+ * everyone, moved 73 interns into new cohorts that had no tasks.)
+ *
+ * `joining` is only for the moment an application is paid: then a cohort
+ * that has already started gives way to the next one, so a new intern
+ * starts at the beginning of a cohort, joining a running one only when no
+ * other is coming.
+ */
 export async function assignApplicationCohort(
   db: CohortDb,
   application: {
@@ -17,6 +31,7 @@ export async function assignApplicationCohort(
     levelId: string;
     cohortId: string | null;
   },
+  { joining = false }: { joining?: boolean } = {},
 ) {
   const now = new Date();
   // Only keep the current cohort if it still belongs to this programme and
@@ -31,7 +46,7 @@ export async function assignApplicationCohort(
       })
     : null;
 
-  if (currentCohort?.startDate && currentCohort.startDate > now)
+  if (currentCohort && (!joining || (currentCohort.startDate && currentCohort.startDate > now)))
     return currentCohort.id;
 
   // Prefer the next cohort that hasn't started. If there is none, someone

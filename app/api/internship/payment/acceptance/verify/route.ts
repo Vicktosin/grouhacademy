@@ -109,13 +109,16 @@ export async function GET(request: Request) {
 
     // Store the reference that was actually paid. If it's already paid (e.g.
     // the webhook got there first), keep the original paid time.
-    if (application.payment?.status !== "PAID")
+    const joining = application.payment?.status !== "PAID";
+    if (joining)
       await prisma.internshipPayment.update({
         where: { applicationId },
         data: { status: "PAID", paidAt: new Date(), reference },
       });
 
-    await assignApplicationCohort(prisma as unknown as CohortDb, application);
+    // Only a payment being made now picks a cohort to join; revisiting this
+    // page later never moves an intern.
+    await assignApplicationCohort(prisma as unknown as CohortDb, application, { joining });
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(application.id);
 
