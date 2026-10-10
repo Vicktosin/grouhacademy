@@ -8,7 +8,7 @@ import MeetApp from "./MeetApp";
 import ReportsApp from "./ReportsApp";
 import type { Act, DayData, StepView } from "./shared";
 
-// A Work Life workday: clock in, then work through the day's steps in
+// A Office Life workday: clock in, then work through the day's steps in
 // order using Mail, Meet and Reports, as at a real job.
 
 type App = "mail" | "meet" | "reports";
@@ -18,7 +18,7 @@ const appFor = (step: StepView | undefined): App =>
 
 const ICON = { inbox: Mail, email: Mail, meeting: Video, report: ClipboardList, work: ClipboardList } as const;
 
-export default function WorkLifeDesk({ initial, onBack }: { initial: DayData; onBack: () => void }) {
+export default function OfficeLifeDesk({ initial, onBack }: { initial: DayData; onBack: () => void }) {
   const [day, setDay] = useState(initial);
   const [app, setApp] = useState<App>(() => appFor(initial.steps.find((step) => step.available)));
   const [toast, setToast] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export default function WorkLifeDesk({ initial, onBack }: { initial: DayData; on
 
   const act: Act = useCallback(
     async (body) => {
-      const response = await fetch(`/api/internship/work-life/${day.day}`, {
+      const response = await fetch(`/api/internship/office-life/${day.day}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

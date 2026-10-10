@@ -1,11 +1,11 @@
-// Work Life: four weekend workdays at Brightwave Digital, a made-up Lagos
+// Office Life: four weekend workdays at Brightwave Digital, a made-up Lagos
 // agency with a department for each internship track. Every track follows
 // the same story (first day, client discovery and a team disagreement,
 // building the project with a change from the client, delivery and a
 // review); each department fills it with its own people, client, project,
 // disagreement and objection. Meetings are written out line by line, with
 // the intern's turns marked, so they cost nothing to run: only the
-// intern's finished work is marked by AI (lib/work-life/grade).
+// intern's finished work is marked by AI (lib/office-life/grade).
 //
 // Safe to import anywhere: plain data and functions.
 
@@ -713,11 +713,11 @@ const LAGOS_OFFSET_MS = 60 * 60 * 1000; // UTC+1 all year
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Work Life started on the weekend of 17 October 2026: cohorts already
+ * Office Life started on the weekend of 17 October 2026: cohorts already
  * running then count their workdays from that weekend, not from their own
  * first weekend (which had passed).
  */
-export const WORK_LIFE_LAUNCH = new Date("2026-10-12T00:00:00+01:00");
+export const OFFICE_LIFE_LAUNCH = new Date("2026-10-12T00:00:00+01:00");
 
 /**
  * When workday `day` opens and is due: the Saturday 00:00 (Lagos) of the
@@ -725,7 +725,7 @@ export const WORK_LIFE_LAUNCH = new Date("2026-10-12T00:00:00+01:00");
  * before it), open until the end of that Sunday.
  */
 export function workdayWindow(cohortStart: Date, day: number) {
-  const from = cohortStart < WORK_LIFE_LAUNCH ? WORK_LIFE_LAUNCH : cohortStart;
+  const from = cohortStart < OFFICE_LIFE_LAUNCH ? OFFICE_LIFE_LAUNCH : cohortStart;
   const local = new Date(from.getTime() + LAGOS_OFFSET_MS);
   const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
   const toSaturday = (6 - new Date(midnight).getUTCDay() + 7) % 7;

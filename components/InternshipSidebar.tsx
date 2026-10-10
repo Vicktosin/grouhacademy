@@ -48,7 +48,7 @@ const navItems = [
     href: "/internship/dashboard/lab",
     icon: FlaskConical,
   },
-  { label: "Work Life", href: "/internship/dashboard/work-life", icon: Briefcase },
+  { label: "Office Life", href: "/internship/dashboard/office-life", icon: Briefcase },
   {
     label: "Interview",
     href: "/internship/dashboard/interview",

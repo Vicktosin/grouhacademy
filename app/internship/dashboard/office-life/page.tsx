@@ -4,40 +4,40 @@ import { Briefcase, CalendarClock, CheckCircle2, Loader2, Lock } from "lucide-re
 import { useCallback, useEffect, useState } from "react";
 import FullscreenFrame from "@/components/FullscreenFrame";
 import InternshipShell from "@/components/InternshipShell";
-import WorkLifeDesk from "@/components/work-life/WorkLifeDesk";
-import type { DayData } from "@/components/work-life/shared";
-import type { workLifeOverview } from "@/lib/work-life/server";
+import OfficeLifeDesk from "@/components/office-life/OfficeLifeDesk";
+import type { DayData } from "@/components/office-life/shared";
+import type { officeLifeOverview } from "@/lib/office-life/server";
 
-// Work Life: a workday at a company every weekend of the internship
+// Office Life: a workday at a company every weekend of the internship
 // (Saturday or Sunday, whichever suits the intern): emails, meetings and
 // reports with a manager, co-workers and a client.
 
-type Overview = Awaited<ReturnType<typeof workLifeOverview>>;
+type Overview = Awaited<ReturnType<typeof officeLifeOverview>>;
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Lagos" }) : "";
 
-export default function WorkLifePage() {
+export default function OfficeLifePage() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [day, setDay] = useState<DayData | null>(null);
   const [opening, setOpening] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    fetch("/api/internship/work-life", { cache: "no-store" })
+    fetch("/api/internship/office-life", { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(data?.error ?? "Unable to load Work Life.");
+        if (!response.ok) throw new Error(data?.error ?? "Unable to load Office Life.");
         setOverview(data);
       })
-      .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load Work Life."));
+      .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load Office Life."));
   }, []);
   useEffect(load, [load]);
 
   async function open(number: number) {
     setOpening(number);
     setError(null);
-    const response = await fetch(`/api/internship/work-life/${number}`, { cache: "no-store" }).catch(() => null);
+    const response = await fetch(`/api/internship/office-life/${number}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     setOpening(null);
     if (!response?.ok) return setError(data?.error ?? "Unable to open this workday.");
@@ -48,7 +48,7 @@ export default function WorkLifePage() {
     <InternshipShell>
       {day ? (
         <FullscreenFrame ownControls>
-          <WorkLifeDesk
+          <OfficeLifeDesk
             key={day.day}
             initial={day}
             onBack={() => {
@@ -60,7 +60,7 @@ export default function WorkLifePage() {
       ) : (
         <div className="space-y-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">Work Life</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">Office Life</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1C1D52]">Your weekend workdays</h1>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
               Every weekend of your internship you spend a workday at {overview?.enrolled ? overview.company : "a company"}
@@ -76,9 +76,9 @@ export default function WorkLifePage() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </p>
           ) : !overview.enrolled ? (
-            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Work Life opens once you&apos;re admitted to a track.</p>
+            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Office Life opens once you&apos;re admitted to a track.</p>
           ) : !overview.hasCohort ? (
-            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Work Life opens once you&apos;re placed in a cohort.</p>
+            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Office Life opens once you&apos;re placed in a cohort.</p>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-[#1C1D52] p-5 text-white">

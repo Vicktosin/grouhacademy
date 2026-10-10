@@ -2,8 +2,8 @@
 
 import { Captions, Loader2, MessageSquareText, Mic, MicOff, PhoneOff, Video, Volume2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { MeetingLine, PersonId } from "@/lib/work-life/story";
-import { canListen, canSpeak, listen, speak, stopSpeaking } from "@/lib/work-life/speech";
+import type { MeetingLine, PersonId } from "@/lib/office-life/story";
+import { canListen, canSpeak, listen, speak, stopSpeaking } from "@/lib/office-life/speech";
 import { Avatar, CoachCard, personById, type Act, type DayData, type StepView } from "./shared";
 
 // Meet: a video-call room without video. The manager, co-workers and client

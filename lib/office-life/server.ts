@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
-import { gradeStep, type Feedback, type Submission } from "@/lib/work-life/grade";
+import { gradeStep, type Feedback, type Submission } from "@/lib/office-life/grade";
 import {
   castFor,
   workdaysFor,
@@ -10,11 +10,11 @@ import {
   type PersonId,
   type Step,
   type Workday,
-} from "@/lib/work-life/story";
+} from "@/lib/office-life/story";
 
-// Work Life on the server: who the intern is (track, cohort, first name),
+// Office Life on the server: who the intern is (track, cohort, first name),
 // which workdays are open, and doing each step in order. One row per
-// workday holds everything (WorkLifeDay.state), as short text.
+// workday holds everything (OfficeLifeDay.state), as short text.
 
 type StepResult = { at: string; submission?: Submission; feedback?: Feedback };
 export type DayState = { clockedInAt?: string; steps: Record<string, StepResult> };
@@ -78,11 +78,11 @@ function people(cast: Cast) {
 }
 
 /** Every workday: when it opens, whether it's done, on time, and its score. */
-export async function workLifeOverview(userId: string, preview: boolean) {
+export async function officeLifeOverview(userId: string, preview: boolean) {
   const context = await internContext(userId);
   if (!context) return { enrolled: false as const };
   const cast = castFor(context.track);
-  const rows = await getPrisma().workLifeDay.findMany({
+  const rows = await getPrisma().officeLifeDay.findMany({
     where: { userId, programId: context.programId },
     select: { day: true, score: true, completedAt: true, state: true },
   });
@@ -132,9 +132,9 @@ function view(workday: Workday, state: DayState) {
 }
 
 /** One workday, with every step's content, progress and feedback. */
-export async function workLifeDay(userId: string, day: number, preview: boolean) {
+export async function officeLifeDay(userId: string, day: number, preview: boolean) {
   const context = await internContext(userId);
-  if (!context) return { error: "Work Life opens once you're admitted to a track.", status: 403 } as const;
+  if (!context) return { error: "Office Life opens once you're admitted to a track.", status: 403 } as const;
   const workday = workdaysFor(context.track, context.you).find((item) => item.day === day);
   if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
   const { window, open } = availability(context, day, preview);
@@ -142,10 +142,10 @@ export async function workLifeDay(userId: string, day: number, preview: boolean)
     return {
       error: window
         ? `This workday opens on ${window.opensAt.toUTCString()}.`
-        : "Work Life opens once you're placed in a cohort.",
+        : "Office Life opens once you're placed in a cohort.",
       status: 403,
     } as const;
-  const row = await getPrisma().workLifeDay.findUnique({
+  const row = await getPrisma().officeLifeDay.findUnique({
     where: { userId_programId_day: { userId, programId: context.programId, day } },
     select: { state: true, score: true, completedAt: true },
   });
@@ -167,7 +167,7 @@ export async function workLifeDay(userId: string, day: number, preview: boolean)
   };
 }
 
-export type WorkLifeAction =
+export type OfficeLifeAction =
   | { action: "clock-in" }
   | { action: "read"; stepId: string }
   | { action: "email"; stepId: string; to: string[]; cc: string[]; subject: string; body: string }
@@ -184,16 +184,16 @@ const asPeople = (value: unknown) =>
  * unfinished one is accepted, and a finished step can't be redone (so
  * each piece of work is marked once).
  */
-export async function workLifeAct(userId: string, day: number, preview: boolean, input: WorkLifeAction) {
+export async function officeLifeAct(userId: string, day: number, preview: boolean, input: OfficeLifeAction) {
   const context = await internContext(userId);
-  if (!context) return { error: "Work Life opens once you're admitted to a track.", status: 403 } as const;
+  if (!context) return { error: "Office Life opens once you're admitted to a track.", status: 403 } as const;
   const workday = workdaysFor(context.track, context.you).find((item) => item.day === day);
   if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
   if (!availability(context, day, preview).open) return { error: "This workday isn't open yet.", status: 403 } as const;
 
   const prisma = getPrisma();
   const key = { userId_programId_day: { userId, programId: context.programId, day } };
-  const row = await prisma.workLifeDay.findUnique({ where: key, select: { state: true } });
+  const row = await prisma.officeLifeDay.findUnique({ where: key, select: { state: true } });
   const state = parseState(row?.state);
   const now = new Date().toISOString();
 
@@ -214,7 +214,7 @@ export async function workLifeAct(userId: string, day: number, preview: boolean,
   const scores = graded.map((step) => state.steps[step.id]?.feedback?.score).filter((score): score is number => typeof score === "number");
   const score = finished && scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null;
 
-  await prisma.workLifeDay.upsert({
+  await prisma.officeLifeDay.upsert({
     where: key,
     create: {
       userId,
@@ -230,13 +230,13 @@ export async function workLifeAct(userId: string, day: number, preview: boolean,
       ...(finished ? { completedAt: new Date() } : {}),
     },
   });
-  return workLifeDay(userId, day, preview);
+  return officeLifeDay(userId, day, preview);
 }
 
 async function doStep(
   context: Context,
   step: Step,
-  input: Exclude<WorkLifeAction, { action: "clock-in" }>,
+  input: Exclude<OfficeLifeAction, { action: "clock-in" }>,
 ): Promise<{ submission?: Submission; feedback?: Feedback } | { error: string; status: number }> {
   const cast = castFor(context.track);
   if (step.kind === "inbox") {
