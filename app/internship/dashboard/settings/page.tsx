@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
+import { useIsPreview } from "@/components/PreviewBanner";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const panelClass =
@@ -66,6 +67,7 @@ const notificationRows: [keyof Notifications, string][] = [
 ];
 
 export default function InternshipSettingsPage() {
+  const preview = useIsPreview();
   // Whatever changed here (profile, avatar, notifications) shows in the
   // header and sidebar on the next page.
   useEffect(() => () => clearCachedJson(), []);
@@ -171,6 +173,7 @@ export default function InternshipSettingsPage() {
       form?.querySelector<HTMLInputElement>('input[name="confirm-password"]')
         ?.value ?? "";
     setPasswordMessage(null);
+    if (preview) return;
     if (newPassword.length < 8 || newPassword !== confirmation) {
       setPasswordMessage(
         newPassword.length < 8
@@ -341,7 +344,15 @@ export default function InternshipSettingsPage() {
                 Password &amp; Security
               </h2>
             </div>
+            {/* Supabase changes the password of whoever is signed in: in a
+                preview that's the admin, so it's off there. */}
+            {preview && (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-semibold text-amber-800">
+                Not available in preview: it would change your own admin password.
+              </p>
+            )}
             <form className="mt-5 space-y-3">
+              <fieldset disabled={preview} className="space-y-3 disabled:opacity-50">
               <label className="block text-[10px] font-semibold text-[#1C1D52]">
                 Current Password
                 <input
@@ -383,6 +394,7 @@ export default function InternshipSettingsPage() {
                   {passwordMessage}
                 </p>
               )}
+              </fieldset>
             </form>
           </section>
 

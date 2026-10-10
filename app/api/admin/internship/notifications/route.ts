@@ -11,6 +11,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { REAL_USER } from "@/lib/real-user";
 
 type ActivityCategory =
   "Assessment" | "Payment" | "Task" | "Cohort" | "Program" | "Announcement";
@@ -56,7 +57,7 @@ export async function GET() {
       cohorts,
     ] = await Promise.all([
       prisma.internshipApplication.findMany({
-        where: { status: InternshipApplicationStatus.ACTIVE },
+        where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
         orderBy: { createdAt: "desc" },
         take: 8,
         include: {
@@ -75,6 +76,7 @@ export async function GET() {
               AssessmentAttemptStatus.FAILED,
             ],
           },
+          application: { student: REAL_USER },
         },
         orderBy: { submittedAt: "desc" },
         take: 8,
@@ -96,6 +98,7 @@ export async function GET() {
               InternshipPaymentStatus.FAILED,
             ],
           },
+          application: { student: REAL_USER },
         },
         orderBy: { updatedAt: "desc" },
         take: 8,
@@ -111,6 +114,7 @@ export async function GET() {
       prisma.taskSubmission.findMany({
         where: {
           status: { in: ["SUBMITTED", "UNDER_REVIEW", "ACCEPTED", "REJECTED"] },
+          user: REAL_USER,
         },
         orderBy: { submittedAt: "desc" },
         take: 8,
@@ -207,7 +211,7 @@ export async function GET() {
       activities: sorted.slice(0, 50),
       summary: {
         activeInterns: await prisma.internshipApplication.count({
-          where: { status: InternshipApplicationStatus.ACTIVE },
+          where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
         }),
         assessmentQueue: await prisma.assessmentAttempt.count({
           where: {
@@ -277,9 +281,11 @@ export async function POST(request: Request) {
       };
     }
 
+    // Admins' preview interns get it too (seeing notifications is part of
+    // previewing), but aren't counted as recipients.
     const recipients = await prisma.internshipApplication.findMany({
       where,
-      select: { studentId: true },
+      select: { studentId: true, student: { select: { isPreview: true } } },
     });
 
     if (!recipients.length) {
@@ -302,7 +308,10 @@ export async function POST(request: Request) {
     await prisma.notification.createMany({ data: rows });
 
     return NextResponse.json(
-      { success: true, recipientCount: rows.length },
+      {
+        success: true,
+        recipientCount: recipients.filter((recipient) => !recipient.student.isPreview).length,
+      },
       { status: 201 },
     );
   } catch (error) {

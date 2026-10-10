@@ -9,6 +9,7 @@ import CommunityLink from "./CommunityLink";
 import { WhatsAppIcon } from "./CommunityInvite";
 import DashboardBanner from "./DashboardBanner";
 import InternTour from "./onboarding/InternTour";
+import PreviewBanner from "./PreviewBanner";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
 // Routes reachable before the acceptance fee is paid — the onboarding →
@@ -94,6 +95,7 @@ export default function InternshipShell({
 
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#F0F7FF]">
+      <PreviewBanner />
       <header className="z-30 w-full shrink-0 bg-[#F0F7FF] px-3 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <button

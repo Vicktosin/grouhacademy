@@ -12,6 +12,7 @@ import { parseAutomationConfig } from "@/lib/automation-sim/model";
 import { parseBackendConfig } from "@/lib/backend-sim/model";
 import { parseWpConfig } from "@/lib/wp-sim/model";
 import { parseContentConfig } from "@/lib/content-sim/model";
+import { REAL_USER } from "@/lib/real-user";
 
 /** Every exercise, plus tracks and levels for the builder. */
 export async function GET() {
@@ -29,8 +30,8 @@ export async function GET() {
       include: {
         program: { select: { name: true } },
         level: { select: { name: true } },
-        _count: { select: { attempts: true, tasks: true } },
-        attempts: { where: { status: "SUBMITTED" }, select: { id: true } },
+        _count: { select: { attempts: { where: { user: REAL_USER } }, tasks: true } },
+        attempts: { where: { status: "SUBMITTED", user: REAL_USER }, select: { id: true } },
       },
     }),
   ]);

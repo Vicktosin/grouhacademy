@@ -10,6 +10,7 @@ import {
 import { userHasPermission, userHasRole } from "@/lib/rbac";
 import { ensurePrismaUserWithRoles } from "@/lib/supabase/auth";
 import { hasVerifiedFactorInDatabase } from "@/lib/supabase/mfa-db";
+import { previewInternForRequest } from "@/lib/preview-intern";
 import {
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
@@ -25,6 +26,10 @@ type RouteAccessOptions = {
 type CurrentUser = {
   userId: string;
   mfaPending: boolean;
+  /** Admins may experience the internship as their preview intern. */
+  isAdmin?: boolean;
+  /** This is an admin's preview intern (the admin is previewing). */
+  preview?: boolean;
 };
 
 /**
@@ -32,6 +37,19 @@ type CurrentUser = {
  * for the current user share one sign-in check and one Prisma sync.
  */
 const resolveCurrentUser = cache(loadCurrentUser);
+
+/**
+ * The signed-in user, except that an admin experiencing the internship as
+ * their preview intern ("Experience as intern", lib/preview-intern) is that
+ * intern on the intern side's pages and APIs. Only ever an admin's own
+ * preview intern; admin pages stay the admin's.
+ */
+async function loadCurrentUser(): Promise<CurrentUser | null> {
+  const user = await loadSignedInUser();
+  if (!user || user.mfaPending || !user.isAdmin) return user;
+  const previewId = await previewInternForRequest(user.userId);
+  return previewId ? { userId: previewId, mfaPending: false, preview: true } : user;
+}
 
 // The sign-in token's signature is verified here, with Supabase's public
 // key (cached for 10 minutes), instead of asking Supabase Auth on every
@@ -42,7 +60,7 @@ const resolveCurrentUser = cache(loadCurrentUser);
 // at once. Admins can do the most, so they're still checked with Supabase
 // Auth on every request. Signing out deletes the token (refused at once),
 // and an intern's removal is checked in our own database.
-async function loadCurrentUser(): Promise<CurrentUser | null> {
+async function loadSignedInUser(): Promise<CurrentUser | null> {
   if (isDevelopmentBypassEnabled()) {
     const developmentRole = await getDevelopmentAuthRole();
 
@@ -50,6 +68,7 @@ async function loadCurrentUser(): Promise<CurrentUser | null> {
       return {
         userId: await ensureDevelopmentUser(developmentRole),
         mfaPending: false,
+        isAdmin: developmentRole === RoleName.ADMIN,
       };
     }
   }
@@ -87,6 +106,7 @@ async function loadCurrentUser(): Promise<CurrentUser | null> {
       return {
         userId: user.id,
         mfaPending: await isMfaVerificationPending(supabase, authUser),
+        isAdmin: true,
       };
     }
 
@@ -118,6 +138,11 @@ export async function getCurrentUserId(): Promise<string | null> {
   const currentUser = await resolveCurrentUser();
 
   return currentUser && !currentUser.mfaPending ? currentUser.userId : null;
+}
+
+/** An admin experiencing the internship as their preview intern. */
+export async function isPreviewSession(): Promise<boolean> {
+  return (await resolveCurrentUser())?.preview === true;
 }
 
 /** Signed in, but the second sign-in step (MFA) is still to be done. */

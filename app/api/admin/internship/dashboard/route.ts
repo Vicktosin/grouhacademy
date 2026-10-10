@@ -11,6 +11,7 @@ import {
 import { audienceWhere } from "@/lib/learner-audience";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
+import { REAL_USER } from "@/lib/real-user";
 
 function formatCompactNumber(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
@@ -92,9 +93,9 @@ export async function GET() {
       paidInternshipFees,
       passedAssessments,
     ] = await Promise.all([
-      prisma.internshipApplication.count(),
+      prisma.internshipApplication.count({ where: { student: REAL_USER } }),
       prisma.internshipApplication.count({
-        where: { status: InternshipApplicationStatus.ACTIVE },
+        where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
       }),
       prisma.internshipProgram.count({
         where: { status: InternshipProgramStatus.PUBLISHED },
@@ -103,10 +104,14 @@ export async function GET() {
         where: { roles: { some: { role: { name: RoleName.MENTOR } } } },
       }),
       prisma.internshipProgress.aggregate({
+        where: { user: REAL_USER },
         _avg: { progressPercent: true },
       }),
       prisma.assessmentAttempt.count({
-        where: { status: { not: AssessmentAttemptStatus.NOT_STARTED } },
+        where: {
+          status: { not: AssessmentAttemptStatus.NOT_STARTED },
+          application: { student: REAL_USER },
+        },
       }),
       prisma.mentorAssignment.groupBy({
         by: ["mentorId"],
@@ -114,7 +119,7 @@ export async function GET() {
         _count: { _all: true },
       }),
       prisma.internshipApplication.findMany({
-        where: { status: InternshipApplicationStatus.ACTIVE },
+        where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
         include: {
           student: { select: { name: true } },
           program: { select: { name: true } },
@@ -127,6 +132,7 @@ export async function GET() {
           status: {
             in: [InternshipPaymentStatus.PAID, InternshipPaymentStatus.PENDING],
           },
+          application: { student: REAL_USER },
         },
         include: {
           application: {
@@ -151,10 +157,10 @@ export async function GET() {
       }),
       prisma.internshipPayment.aggregate({
         _sum: { amount: true },
-        where: { status: InternshipPaymentStatus.PAID },
+        where: { status: InternshipPaymentStatus.PAID, application: { student: REAL_USER } },
       }),
       prisma.assessmentAttempt.count({
-        where: { status: AssessmentAttemptStatus.PASSED },
+        where: { status: AssessmentAttemptStatus.PASSED, application: { student: REAL_USER } },
       }),
     ]);
 
@@ -168,7 +174,7 @@ export async function GET() {
     const totalAcceptanceFeeRevenue = paidInternshipFees._sum.amount ?? 0;
 
     const atRiskInterns = await prisma.internshipProgress.count({
-      where: { progressPercent: { lt: 40 } },
+      where: { progressPercent: { lt: 40 }, user: REAL_USER },
     });
 
     const [programPerformance, programProgress] = await Promise.all([
@@ -180,7 +186,7 @@ export async function GET() {
           _count: {
             select: {
               applications: {
-                where: { status: InternshipApplicationStatus.ACTIVE },
+                where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
               },
             },
           },
@@ -188,6 +194,7 @@ export async function GET() {
       }),
       prisma.internshipProgress.groupBy({
         by: ["programId"],
+        where: { user: REAL_USER },
         _avg: { progressPercent: true },
       }),
     ]);
@@ -211,11 +218,11 @@ export async function GET() {
     });
 
     const cohortPerformance = await prisma.internshipCohort.findMany({
-      where: { applications: { some: {} } },
+      where: { applications: { some: { student: REAL_USER } } },
       include: {
         program: { select: { name: true } },
         applications: {
-          where: { status: InternshipApplicationStatus.ACTIVE },
+          where: { status: InternshipApplicationStatus.ACTIVE, student: REAL_USER },
           select: { studentId: true, programId: true },
         },
       },

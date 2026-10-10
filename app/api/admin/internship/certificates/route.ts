@@ -6,11 +6,13 @@ import {
   internshipCertificateSelect,
   serializeInternshipCertificate,
 } from "@/lib/internship-certificates";
+import { REAL_USER } from "@/lib/real-user";
 
 export async function GET() {
   const adminId = await requireAdminApi();
   if (adminId instanceof NextResponse) return adminId;
   const certificates = await getPrisma().internshipCertificate.findMany({
+    where: { user: REAL_USER },
     orderBy: { issuedAt: "desc" },
     select: internshipCertificateSelect,
   });

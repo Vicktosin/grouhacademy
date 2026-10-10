@@ -7,6 +7,7 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import { listCohortOptions } from "@/lib/admin-cohort-options";
+import { REAL_USER } from "@/lib/real-user";
 
 function formatDate(date: Date | null | undefined) {
   if (!date) return "Not available";
@@ -23,6 +24,7 @@ export async function GET() {
 
   const applications = await getPrisma().internshipApplication.findMany({
     where: {
+      student: REAL_USER,
       OR: [
         { payment: null },
         { payment: { status: { not: InternshipPaymentStatus.PAID } } },
