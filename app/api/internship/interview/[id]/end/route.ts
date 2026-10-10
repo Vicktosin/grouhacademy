@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/route-guards";
 import { endInterview } from "@/lib/interviews";
+import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 /** Ends the intern's interview now. */
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const userId = await getCurrentUserId();
-  if (!userId)
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+  const access = await requireInternshipWorkspace();
+  if ("response" in access) return access.response;
+  const { userId } = access;
   const session = await endInterview(userId, (await params).id);
   if (!session)
     return NextResponse.json(
