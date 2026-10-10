@@ -4,13 +4,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookOpen, CheckCircle2 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
-import { getCurrentUserId } from "@/lib/route-guards";
+import { requireRouteAccess } from "@/lib/route-guards";
 import { internshipWorkspaceRedirect } from "@/lib/internship-access";
 import { listResourcesForIntern } from "@/lib/intern-resources";
 
 export default async function InternResourcesPage() {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/login");
+  // Signed out: the login page; second sign-in step owed: the MFA page.
+  const userId = await requireRouteAccess();
   // Rendered here, so it checks for itself (the dashboard's gate is in the
   // browser): anyone without the workspace goes where they belong.
   const elsewhere = await internshipWorkspaceRedirect(userId);

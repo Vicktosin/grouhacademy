@@ -3,7 +3,7 @@ import CourseLearningPlayer, {
   type LearnCourseData,
 } from "@/components/CourseLearningPlayer";
 import InternshipShell from "@/components/InternshipShell";
-import { getCurrentUserId } from "@/lib/route-guards";
+import { requireRouteAccess } from "@/lib/route-guards";
 import { internshipWorkspaceRedirect } from "@/lib/internship-access";
 import { getResourceForIntern, resourceProgress } from "@/lib/intern-resources";
 import { lessonVideoSrc } from "@/lib/video-embed";
@@ -13,8 +13,8 @@ export default async function InternResourcePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/login");
+  // Signed out: the login page; second sign-in step owed: the MFA page.
+  const userId = await requireRouteAccess();
   // Rendered here, so it checks for itself (the dashboard's gate is in the
   // browser): anyone without the workspace goes where they belong.
   const elsewhere = await internshipWorkspaceRedirect(userId);

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { loadShell, peekShell } from "@/lib/client-cache";
+import { MFA_CHALLENGE_PATH } from "@/lib/supabase/mfa";
 
 // Who may use the internship dashboard. Its pages are static files (no
 // server work on each view, which Vercel bills), so the decision the server
 // used to make on every page is made here, from the shell request: anyone
 // without workspace access (removed, unpaid, still applying) is sent where
-// they belong, exactly as before.
+// they belong, exactly as before, and anyone who still owes the second
+// sign-in step (MFA) is sent to do it, then brought back.
 //
 // Until it knows, the page is rendered but hidden: its data loads at the
 // same time, and nothing flashes for someone being sent away. Once this tab
@@ -31,6 +33,11 @@ export default function InternshipWorkspaceGate({ children }: { children: React.
     // Cached for a minute, so moving between pages rarely makes a request.
     void loadShell().then((shell) => {
       if (cancelled) return;
+      if (shell?.mfaRequired) {
+        setState("leaving");
+        router.replace(`${MFA_CHALLENGE_PATH}?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
       const workspace = shell?.workspace;
       if (!workspace) {
         // Couldn't tell (network or server trouble, or signed out): someone

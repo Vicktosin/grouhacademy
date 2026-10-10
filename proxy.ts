@@ -90,7 +90,14 @@ export async function proxy(request: NextRequest) {
 
   // Internship pages load their data client-side, so without this redirect a
   // user who skipped the MFA challenge would only see failing API requests.
-  if (requiresInternshipRegistration && claimsData?.claims?.aal !== "aal2") {
+  // Not on the dashboard, the most visited: its gate sends them to the
+  // challenge (InternshipWorkspaceGate), without this request to Supabase
+  // Auth on every page view. Either way the APIs refuse them (route-guards).
+  if (
+    requiresInternshipRegistration &&
+    !pathname.startsWith("/internship/dashboard") &&
+    claimsData?.claims?.aal !== "aal2"
+  ) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
