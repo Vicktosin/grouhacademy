@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   Award,
   BookOpen,
+  Briefcase,
   CheckSquare,
   Crown,
   FileText,
@@ -47,6 +48,7 @@ const navItems = [
     href: "/internship/dashboard/lab",
     icon: FlaskConical,
   },
+  { label: "Work Life", href: "/internship/dashboard/work-life", icon: Briefcase },
   {
     label: "Interview",
     href: "/internship/dashboard/interview",

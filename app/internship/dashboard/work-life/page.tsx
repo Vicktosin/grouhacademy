@@ -1,0 +1,140 @@
+"use client";
+
+import { Briefcase, CalendarClock, CheckCircle2, Loader2, Lock } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import FullscreenFrame from "@/components/FullscreenFrame";
+import InternshipShell from "@/components/InternshipShell";
+import WorkLifeDesk from "@/components/work-life/WorkLifeDesk";
+import type { DayData } from "@/components/work-life/shared";
+import type { workLifeOverview } from "@/lib/work-life/server";
+
+// Work Life: a workday at a company every weekend of the internship
+// (Saturday or Sunday, whichever suits the intern): emails, meetings and
+// reports with a manager, co-workers and a client.
+
+type Overview = Awaited<ReturnType<typeof workLifeOverview>>;
+
+const when = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Lagos" }) : "";
+
+export default function WorkLifePage() {
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [day, setDay] = useState<DayData | null>(null);
+  const [opening, setOpening] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetch("/api/internship/work-life", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error ?? "Unable to load Work Life.");
+        setOverview(data);
+      })
+      .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load Work Life."));
+  }, []);
+  useEffect(load, [load]);
+
+  async function open(number: number) {
+    setOpening(number);
+    setError(null);
+    const response = await fetch(`/api/internship/work-life/${number}`, { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    setOpening(null);
+    if (!response?.ok) return setError(data?.error ?? "Unable to open this workday.");
+    setDay(data as DayData);
+  }
+
+  return (
+    <InternshipShell>
+      {day ? (
+        <FullscreenFrame ownControls>
+          <WorkLifeDesk
+            key={day.day}
+            initial={day}
+            onBack={() => {
+              setDay(null);
+              load();
+            }}
+          />
+        </FullscreenFrame>
+      ) : (
+        <div className="space-y-5">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">Work Life</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1C1D52]">Your weekend workdays</h1>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
+              Every weekend of your internship you spend a workday at {overview?.enrolled ? overview.company : "a company"}
+              {overview?.enrolled ? ` in the ${overview.department} team` : ""}: you read and send emails, join meetings with your manager,
+              co-workers and the client, and send reports, as you would in a real job. Do it on Saturday or Sunday, whichever suits you.
+            </p>
+          </div>
+
+          {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+          {!overview ? (
+            <p className="flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            </p>
+          ) : !overview.enrolled ? (
+            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Work Life opens once you&apos;re admitted to a track.</p>
+          ) : !overview.hasCohort ? (
+            <p className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">Work Life opens once you&apos;re placed in a cohort.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-[#1C1D52] p-5 text-white">
+                <Briefcase className="h-8 w-8 text-[#5FBB46]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">
+                    {overview.company} · {overview.department}
+                  </p>
+                  <p className="text-xs text-white/70">This month&apos;s client: {overview.client}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-white/60">Workplace readiness</p>
+                  <p className="text-2xl font-bold">{overview.readiness === null ? "–" : `${overview.readiness}/100`}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {overview.days.map((item) => (
+                  <section key={item.day} className="flex flex-col rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Workday {item.day}</p>
+                        <h2 className="mt-1 text-base font-bold text-[#1C1D52]">{item.title}</h2>
+                      </div>
+                      {item.completedAt ? (
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${item.late ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {item.score}/100{item.late ? " · late" : ""}
+                        </span>
+                      ) : !item.open ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                          <Lock className="h-3.5 w-3.5" /> Opens {when(item.opensAt)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 flex-1 text-xs leading-5 text-slate-500">{item.summary}</p>
+                    {item.opensAt && item.dueAt && (
+                      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+                        <CalendarClock className="h-3.5 w-3.5" /> Weekend of {when(item.opensAt)} – {when(new Date(new Date(item.dueAt).getTime() - 1).toISOString())}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!item.open || opening !== null}
+                      onClick={() => void open(item.day)}
+                      className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1D52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                    >
+                      {opening === item.day && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {item.completedAt ? "Review this workday" : item.stepsDone > 0 ? `Continue (${item.stepsDone}/${item.stepsTotal})` : item.open ? "Start this workday" : "Not open yet"}
+                    </button>
+                  </section>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </InternshipShell>
+  );
+}
