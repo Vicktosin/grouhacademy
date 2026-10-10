@@ -159,6 +159,7 @@ export async function settleSuccessfulPaystackPayment(
         await assignApplicationCohort(
           prisma,
           internshipPayment.application,
+          { joining: true },
         ).catch(() => null);
     } else if (internshipPayment) {
       console.warn("[paystack-webhook] Acceptance payment validation failed.", {

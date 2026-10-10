@@ -151,6 +151,7 @@ export async function GET() {
   const assignedCohortIds = await Promise.all(
     applications.map((application) =>
       // Removed interns keep whatever cohort they had; nobody re-places them.
+      // Others keep theirs too; only interns without one are placed.
       application.status === InternshipApplicationStatus.REMOVED
         ? application.cohortId
         : assignApplicationCohort(prisma as unknown as CohortDb, {
