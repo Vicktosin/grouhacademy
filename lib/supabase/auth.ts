@@ -88,6 +88,14 @@ export async function ensurePrismaUserForSupabaseAuth(
   authUser: SupabaseAuthUser,
   defaultRole: RoleName = RoleName.INTERN,
 ): Promise<string> {
+  return (await ensurePrismaUserWithRoles(authUser, defaultRole)).id;
+}
+
+/** The same, with the user's role names (read in the same query). */
+export async function ensurePrismaUserWithRoles(
+  authUser: SupabaseAuthUser,
+  defaultRole: RoleName = RoleName.INTERN,
+): Promise<{ id: string; roles: RoleName[] }> {
   if (!authUser.id) {
     throw new Error("Supabase auth user is missing an id.");
   }
@@ -105,24 +113,25 @@ export async function ensurePrismaUserForSupabaseAuth(
         where: { name: defaultRole },
       });
 
-      if (defaultRoleRecord) {
-        await prisma.userRole.upsert({
-          where: {
-            userId_roleId: {
-              userId: existingUser.id,
-              roleId: defaultRoleRecord.id,
-            },
-          },
-          update: {},
-          create: {
+      if (!defaultRoleRecord) return { id: existingUser.id, roles: [] };
+
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
             userId: existingUser.id,
             roleId: defaultRoleRecord.id,
           },
-        });
-      }
+        },
+        update: {},
+        create: {
+          userId: existingUser.id,
+          roleId: defaultRoleRecord.id,
+        },
+      });
+      return { id: existingUser.id, roles: [defaultRole] };
     }
 
-    return existingUser.id;
+    return { id: existingUser.id, roles: existingUser.roles.map((userRole) => userRole.role.name) };
   }
 
   const defaultRoleRecord = await prisma.role.findUnique({
@@ -156,5 +165,5 @@ export async function ensurePrismaUserForSupabaseAuth(
     },
   });
 
-  return createdUser.id;
+  return { id: createdUser.id, roles: [defaultRole] };
 }
