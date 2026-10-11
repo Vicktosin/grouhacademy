@@ -3,7 +3,7 @@ import { requireAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 import { getEntryLevel, listLevels } from "@/lib/internship-levels";
 
-// Acceptance fees per track and level. Entry is the track's own fee (the one
+// Acceptance fees per track and level. Beginner is the track's own fee (the one
 // on the Tracks page); higher levels are InternshipLevelFee rows. A level is
 // open to applicants on a track once it has a fee and an entrance assessment.
 
@@ -57,7 +57,7 @@ export async function GET() {
 
 /**
  * Sets one fee. Body: { programId, levelId, acceptanceFee } in naira; an
- * empty fee closes a level above Entry for that track.
+ * empty fee closes a level above Beginner for that track.
  */
 export async function PUT(request: Request) {
   const adminId = await requireAdminApi();
@@ -97,7 +97,7 @@ export async function PUT(request: Request) {
   if (levelId === (await getEntryLevel()).id) {
     if (fee === null)
       return NextResponse.json(
-        { error: "Entry level always needs a fee." },
+        { error: "Beginner level always needs a fee." },
         { status: 400 },
       );
     await prisma.internshipProgram.update({

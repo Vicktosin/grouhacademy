@@ -1,10 +1,11 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { gradeStep, type Feedback, type Submission } from "@/lib/office-life/grade";
+import { castFromOfficeLifeContent, defaultOfficeLifeContent, parseOfficeLifeContent, personalizeOfficeLifeContent, type OfficeLifeContent } from "@/lib/office-life/content";
+import { scheduleToDate } from "@/lib/task-schedule";
 import {
   castFor,
   workdaysFor,
-  workdayWindow,
   WORKDAYS,
   type Cast,
   type PersonId,
@@ -17,7 +18,7 @@ import {
 // workday holds everything (OfficeLifeDay.state), as short text.
 
 type StepResult = { at: string; submission?: Submission; feedback?: Feedback };
-export type DayState = { clockedInAt?: string; steps: Record<string, StepResult> };
+export type DayState = { clockedInAt?: string; steps: Record<string, StepResult>; workday?: Workday; cast?: Cast };
 
 const LIMITS = { subject: 200, body: 4000, turn: 2000, field: 2000, summary: 3000, link: 500 };
 const clip = (value: unknown, max: number) => (typeof value === "string" ? value.trim().slice(0, max) : "");
@@ -27,9 +28,14 @@ async function internContext(userId: string) {
   const prisma = getPrisma();
   const [application, user] = await Promise.all([
     prisma.internshipApplication.findFirst({
-      where: { studentId: userId },
-      orderBy: { createdAt: "desc" },
-      select: { programId: true, program: { select: { name: true } }, cohort: { select: { name: true, startDate: true } } },
+      where: {
+        studentId: userId,
+        status: { not: "REMOVED" },
+        payment: { is: { status: "PAID" } },
+        attempts: { some: { status: "PASSED" } },
+      },
+      orderBy: [{ level: { rank: "desc" } }, { createdAt: "desc" }],
+      select: { programId: true, levelId: true, level: { select: { name: true, rank: true } }, program: { select: { name: true } }, cohort: { select: { name: true, startDate: true, endDate: true } } },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -39,7 +45,10 @@ async function internContext(userId: string) {
   if (!application) return null;
   const you = user?.profile?.firstName?.trim() || user?.name?.trim().split(/\s+/)[0] || "there";
   return {
+    userId,
     programId: application.programId,
+    levelId: application.levelId,
+    level: application.level,
     track: application.program.name,
     cohort: application.cohort,
     you,
@@ -48,23 +57,33 @@ async function internContext(userId: string) {
 
 type Context = NonNullable<Awaited<ReturnType<typeof internContext>>>;
 
-function windowFor(context: Context, day: number) {
-  return context.cohort ? workdayWindow(context.cohort.startDate, day) : null;
+function windowFor(context: Context, workday: Workday) {
+  if (!context.cohort) return null;
+  return {
+    opensAt: scheduleToDate(context.cohort.startDate, { week: workday.opensWeek ?? workday.day, day: workday.opensDay ?? 1, time: workday.opensTime ?? "09:00" }),
+    dueAt: scheduleToDate(context.cohort.startDate, { week: workday.dueWeek ?? workday.day, day: workday.dueDay ?? 7, time: workday.dueTime ?? "23:59" }),
+  };
 }
 
 /** Open now (or always, for an admin's preview), and whether it's past due. */
-function availability(context: Context, day: number, preview: boolean, now = new Date()) {
-  const window = windowFor(context, day);
+function availability(context: Context, workday: Workday, preview: boolean, now = new Date()) {
+  const window = windowFor(context, workday);
   return {
     window,
-    open: preview || Boolean(window && now >= window.opensAt),
+    open: preview || Boolean(window && now >= window.opensAt && now < window.dueAt),
   };
 }
 
 const parseState = (value: unknown): DayState => {
   const state = (value && typeof value === "object" ? value : {}) as Partial<DayState>;
-  return { clockedInAt: state.clockedInAt, steps: state.steps ?? {} };
+  return { clockedInAt: state.clockedInAt, steps: state.steps ?? {}, workday: state.workday, cast: state.cast };
 };
+
+async function contentFor(programId: string, levelId: string, track: string, levelName: string, intern: string): Promise<OfficeLifeContent> {
+  const saved = await getPrisma().officeLifeContent.findUnique({ where: { programId_levelId: { programId, levelId } }, select: { content: true } });
+  const content = parseOfficeLifeContent(saved?.content) ?? defaultOfficeLifeContent(track, levelName);
+  return personalizeOfficeLifeContent(content, intern);
+}
 
 /** The cast, for the apps: names, roles, addresses and voices. */
 function people(cast: Cast) {
@@ -81,15 +100,21 @@ function people(cast: Cast) {
 export async function officeLifeOverview(userId: string, preview: boolean) {
   const context = await internContext(userId);
   if (!context) return { enrolled: false as const };
-  const cast = castFor(context.track);
+  const content = await contentFor(context.programId, context.levelId, context.track, context.level.name, context.you);
   const rows = await getPrisma().officeLifeDay.findMany({
-    where: { userId, programId: context.programId },
+    where: { userId, programId: context.programId, levelId: context.levelId },
     select: { day: true, score: true, completedAt: true, state: true },
   });
   const byDay = new Map(rows.map((row) => [row.day, row]));
-  const days = workdaysFor(context.track, context.you).map((workday) => {
-    const row = byDay.get(workday.day);
-    const { window, open } = availability(context, workday.day, preview);
+  const days = content.workdays.map((defaultWorkday) => {
+    const row = byDay.get(defaultWorkday.day);
+    const rowState = parseState(row?.state);
+    const legacyWorkday = rowState.clockedInAt && !rowState.workday
+      ? workdaysFor(context.track, context.you).find((item) => item.day === defaultWorkday.day)
+      : null;
+    const snapshot = rowState.workday ?? legacyWorkday;
+    const workday = { ...defaultWorkday, ...(snapshot ?? {}) };
+    const { window, open } = availability(context, workday, preview);
     const state = parseState(row?.state);
     const done = workday.steps.filter((step) => state.steps[step.id]).length;
     return {
@@ -99,6 +124,8 @@ export async function officeLifeOverview(userId: string, preview: boolean) {
       opensAt: window?.opensAt.toISOString() ?? null,
       dueAt: window?.dueAt.toISOString() ?? null,
       open,
+      upcoming: Boolean(window && new Date() < window.opensAt),
+      closed: Boolean(window && new Date() >= window.dueAt && !row?.completedAt),
       stepsDone: done,
       stepsTotal: workday.steps.length,
       score: row?.score ?? null,
@@ -111,10 +138,11 @@ export async function officeLifeOverview(userId: string, preview: boolean) {
     enrolled: true as const,
     hasCohort: Boolean(context.cohort),
     cohort: context.cohort?.name ?? null,
+    level: context.level.name,
     you: context.you,
-    company: cast.company.name,
-    department: cast.department,
-    client: cast.clientCompany,
+    company: content.company.name,
+    department: content.department,
+    client: content.clientCompany,
     days,
     readiness: scored.length ? Math.round(scored.reduce((sum, day) => sum + (day.score ?? 0), 0) / scored.length) : null,
   };
@@ -135,27 +163,34 @@ function view(workday: Workday, state: DayState) {
 export async function officeLifeDay(userId: string, day: number, preview: boolean) {
   const context = await internContext(userId);
   if (!context) return { error: "Office Life opens once you're admitted to a track.", status: 403 } as const;
-  const workday = workdaysFor(context.track, context.you).find((item) => item.day === day);
+  const content = await contentFor(context.programId, context.levelId, context.track, context.level.name, context.you);
+  const row = await getPrisma().officeLifeDay.findUnique({
+    where: { userId_programId_levelId_day: { userId, programId: context.programId, levelId: context.levelId, day } },
+    select: { state: true, score: true, completedAt: true },
+  });
+  const state = parseState(row?.state);
+  const defaultWorkday = content.workdays.find((item) => item.day === day);
+  const legacyWorkday = state.clockedInAt && !state.workday
+    ? workdaysFor(context.track, context.you).find((item) => item.day === day)
+    : null;
+  const snapshot = state.workday ?? legacyWorkday;
+  const workday = defaultWorkday ? { ...defaultWorkday, ...(snapshot ?? {}) } : snapshot;
   if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
-  const { window, open } = availability(context, day, preview);
-  if (!open)
+  const { window, open } = availability(context, workday, preview);
+  if (!open && !row?.completedAt)
     return {
       error: window
         ? `This workday opens on ${window.opensAt.toUTCString()}.`
         : "Office Life opens once you're placed in a cohort.",
       status: 403,
     } as const;
-  const row = await getPrisma().officeLifeDay.findUnique({
-    where: { userId_programId_day: { userId, programId: context.programId, day } },
-    select: { state: true, score: true, completedAt: true },
-  });
-  const state = parseState(row?.state);
-  const cast = castFor(context.track);
+  const cast = state.cast ?? (state.clockedInAt ? castFor(context.track) : castFromOfficeLifeContent(content));
   return {
     day: workday.day,
     title: workday.title,
     summary: workday.summary,
     you: context.you,
+    level: context.level.name,
     company: { ...cast.company },
     department: cast.department,
     people: people(cast),
@@ -187,25 +222,39 @@ const asPeople = (value: unknown) =>
 export async function officeLifeAct(userId: string, day: number, preview: boolean, input: OfficeLifeAction) {
   const context = await internContext(userId);
   if (!context) return { error: "Office Life opens once you're admitted to a track.", status: 403 } as const;
-  const workday = workdaysFor(context.track, context.you).find((item) => item.day === day);
-  if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
-  if (!availability(context, day, preview).open) return { error: "This workday isn't open yet.", status: 403 } as const;
+  const content = await contentFor(context.programId, context.levelId, context.track, context.level.name, context.you);
 
   const prisma = getPrisma();
-  const key = { userId_programId_day: { userId, programId: context.programId, day } };
+  const key = { userId_programId_levelId_day: { userId, programId: context.programId, levelId: context.levelId, day } };
   const row = await prisma.officeLifeDay.findUnique({ where: key, select: { state: true } });
   const state = parseState(row?.state);
+  const defaultWorkday = content.workdays.find((item) => item.day === day);
+  if (!defaultWorkday && !state.workday) return { error: "That workday doesn't exist.", status: 404 } as const;
+  const legacyWorkday = state.clockedInAt && !state.workday
+    ? workdaysFor(context.track, context.you).find((item) => item.day === day)
+    : null;
+  const snapshot = state.workday ?? legacyWorkday;
+  const workday = defaultWorkday ? { ...defaultWorkday, ...(snapshot ?? {}) } : snapshot;
+  if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
+  if (!availability(context, workday, preview).open) return { error: "This workday is outside its scheduled window.", status: 403 } as const;
+  const cast = state.cast ?? (state.clockedInAt ? castFor(context.track) : castFromOfficeLifeContent(content));
   const now = new Date().toISOString();
 
   if (input.action === "clock-in") {
-    if (!state.clockedInAt) state.clockedInAt = now;
+    if (!state.clockedInAt) {
+      state.clockedInAt = now;
+      state.workday = defaultWorkday;
+      state.cast = castFromOfficeLifeContent(content);
+    }
   } else {
     if (!state.clockedInAt) return { error: "Clock in first.", status: 400 } as const;
     const next = workday.steps.find((step) => !state.steps[step.id]);
     if (!next || next.id !== input.stepId) return { error: "Finish the steps in order.", status: 409 } as const;
     const step = next;
-    const result = await doStep(context, step, input);
+    const result = await doStep(context, step, input, cast);
     if ("error" in result) return result;
+    state.workday = workday;
+    state.cast = cast;
     state.steps[step.id] = { at: now, ...result };
   }
 
@@ -219,6 +268,7 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
     create: {
       userId,
       programId: context.programId,
+      levelId: context.levelId,
       day,
       state: state as unknown as Prisma.InputJsonValue,
       score,
@@ -237,8 +287,16 @@ async function doStep(
   context: Context,
   step: Step,
   input: Exclude<OfficeLifeAction, { action: "clock-in" }>,
+  cast: Cast,
 ): Promise<{ submission?: Submission; feedback?: Feedback } | { error: string; status: number }> {
-  const cast = castFor(context.track);
+  if (step.kind === "work" && step.labScenarioId) {
+    const attempt = await getPrisma().labAttempt.findUnique({
+      where: { userId_scenarioId: { userId: context.userId, scenarioId: step.labScenarioId } },
+      select: { status: true },
+    });
+    if (attempt?.status !== "SUBMITTED")
+      return { error: "Complete and submit the linked Practice Lab exercise before sending this activity.", status: 409 };
+  }
   if (step.kind === "inbox") {
     if (input.action !== "read") return { error: "Open the email first.", status: 400 };
     return {};

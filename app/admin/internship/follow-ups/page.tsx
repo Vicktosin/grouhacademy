@@ -1010,7 +1010,7 @@ function TemplateEditor({
     firstName: "Ada",
     name: "Ada Okafor",
     track: "AI Automation",
-    level: "Entry",
+    level: "Beginner",
     fee: "₦25,000",
     score: "85",
     passMark: "70",

@@ -14,6 +14,7 @@ import {
   parseLabPassMark,
 } from "@/lib/lab-task-grading";
 import { REAL_USER } from "@/lib/real-user";
+import { defaultOfficeLifeContent, parseOfficeLifeContent } from "@/lib/office-life/content";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 10_000;
@@ -45,7 +46,7 @@ async function parseTask(body: Record<string, unknown>) {
 
   const cohort = await getPrisma().internshipCohort.findUnique({
     where: { id: cohortId },
-    select: { id: true, programId: true, startDate: true },
+    select: { id: true, programId: true, levelId: true, startDate: true, program: { select: { name: true } }, level: { select: { name: true } } },
   });
   if (!cohort) return "The selected cohort was not found.";
 
@@ -54,6 +55,25 @@ async function parseTask(body: Record<string, unknown>) {
     typeof body.labScenarioId === "string" && body.labScenarioId
       ? body.labScenarioId
       : null;
+  const officeLifeDay = body.officeLifeDay === undefined || body.officeLifeDay === null || body.officeLifeDay === ""
+    ? null
+    : Number(body.officeLifeDay);
+
+  if (officeLifeDay !== null) {
+    const saved = await getPrisma().officeLifeContent.findUnique({
+      where: { programId_levelId: { programId: cohort.programId, levelId: cohort.levelId } },
+      select: { content: true },
+    });
+    const plan = parseOfficeLifeContent(saved?.content) ?? defaultOfficeLifeContent(cohort.program.name, cohort.level.name);
+    if (!plan.workdays.some((workday) => workday.day === officeLifeDay))
+      return "That Work-Life week is not configured for this cohort's track and level.";
+  }
+  if (officeLifeDay !== null && (!Number.isInteger(officeLifeDay) || officeLifeDay < 1 || officeLifeDay > 4))
+    return "Choose a valid Work-Life week.";
+  if (labScenarioId && officeLifeDay !== null)
+    return "A task can target either Practice Lab or Work-Life, not both.";
+  if (officeLifeDay !== null && kind === "GROUP")
+    return "Work-Life sessions can only be linked to individual tasks.";
   if (labScenarioId && kind === "GROUP")
     return "Practice Lab exercises can only be linked to individual tasks.";
   if (labScenarioId) {
@@ -91,6 +111,7 @@ async function parseTask(body: Record<string, unknown>) {
       dueDate,
       labScenarioId,
       labPassMark,
+      officeLifeDay,
     } as const,
   };
 }
@@ -116,7 +137,7 @@ export async function GET() {
   if (adminId instanceof NextResponse) return adminId;
 
   const prisma = getPrisma();
-  const [cohorts, tasks, labScenarios] = await Promise.all([
+  const [cohorts, tasks, labScenarios, officeLifePlans] = await Promise.all([
     prisma.internshipCohort.findMany({
       orderBy: { startDate: "desc" },
       select: {
@@ -125,6 +146,7 @@ export async function GET() {
         startDate: true,
         endDate: true,
         program: { select: { id: true, name: true } },
+        level: { select: { id: true, name: true } },
       },
     }),
     prisma.internshipTask.findMany({
@@ -146,8 +168,10 @@ export async function GET() {
         level: { select: { name: true } },
       },
     }),
+    prisma.officeLifeContent.findMany({ select: { programId: true, levelId: true, content: true } }),
   ]);
 
+  const savedPlans = new Map(officeLifePlans.map((item) => [`${item.programId}:${item.levelId}`, parseOfficeLifeContent(item.content)]));
   const now = new Date();
   return NextResponse.json({
     labScenarios: labScenarios.map((scenario) => ({
@@ -162,6 +186,9 @@ export async function GET() {
       name: cohort.name,
       programId: cohort.program.id,
       programName: cohort.program.name,
+      levelId: cohort.level.id,
+      levelName: cohort.level.name,
+      officeLifeWeeks: (savedPlans.get(`${cohort.program.id}:${cohort.level.id}`) ?? defaultOfficeLifeContent(cohort.program.name, cohort.level.name)).workdays.map(({ day, title }) => ({ day, title })),
       startDate: cohort.startDate.toISOString(),
       endDate: cohort.endDate.toISOString(),
     })),
@@ -184,6 +211,7 @@ export async function GET() {
       window: taskWindowState(task.opensAt, task.dueDate, now),
       labScenarioId: task.labScenarioId,
       labPassMark: task.labPassMark,
+      officeLifeDay: task.officeLifeDay,
       submissionCount: task.submissions.length,
       acceptedCount: task.submissions.filter((s) => s.status === "ACCEPTED")
         .length,

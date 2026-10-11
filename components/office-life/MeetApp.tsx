@@ -33,7 +33,7 @@ export default function MeetApp({ day, act, onDone }: { day: DayData; act: Act; 
   return (
     <div className="flex h-full min-h-[560px] flex-col items-center justify-center gap-4 bg-[#202124] p-6 text-center text-white">
       <Video className="h-10 w-10 text-[#8AB4F8]" />
-      <p className="text-[18px]">No meeting right now</p>
+      <p className="text-[18px]">No meeting or interview right now</p>
       {upcoming.length > 0 && <p className="text-[13px] text-[#BDC1C6]">Next: {upcoming[0].title}, once you&apos;ve finished the steps before it.</p>}
       {past.length > 0 && (
         <div className="mt-2 w-full max-w-md space-y-2 text-left">
@@ -41,7 +41,7 @@ export default function MeetApp({ day, act, onDone }: { day: DayData; act: Act; 
           {past.map((step) => (
             <button key={step.id} type="button" onClick={() => setReviewId(step.id)} className="flex w-full items-center justify-between rounded-lg bg-[#303134] px-4 py-3 text-[14px] hover:bg-[#3C4043]">
               {step.title}
-              <span className="text-[12px] text-[#8AB4F8]">Transcript and feedback</span>
+              <span className="text-[12px] text-[#8AB4F8]">{step.meetingType === "interview" ? "Interview transcript and feedback" : "Transcript and feedback"}</span>
             </button>
           ))}
         </div>
@@ -107,6 +107,7 @@ function Lobby({ day, meeting, onJoin }: { day: DayData; meeting: MeetingStep; o
         {micState === "blocked" && <p className="mt-3 text-[12px] text-[#F28B82]">Microphone blocked. You can still type your answers.</p>}
       </div>
       <div className="text-center md:text-left">
+        {meeting.meetingType === "interview" && <span className="mb-2 w-fit rounded-full bg-[#E8EAED] px-3 py-1 text-[11px] font-semibold uppercase text-[#3C4043]">Job interview</span>}
         <p className="text-[24px]">{meeting.title}</p>
         <p className="mt-2 text-[14px] text-[#5F6368]">{meeting.agenda}</p>
         <div className="mt-4 flex justify-center gap-2 md:justify-start">
@@ -310,7 +311,7 @@ function Room({ day, meeting, act, onLeave, onDone }: { day: DayData; meeting: M
       </div>
 
       <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <span className="hidden truncate text-[14px] sm:block">{meeting.title}</span>
+        <span className="hidden truncate text-[14px] sm:block">{meeting.meetingType === "interview" ? `Interview · ${meeting.title}` : meeting.title}</span>
         <div className="flex items-center gap-2">
           <button
             type="button"

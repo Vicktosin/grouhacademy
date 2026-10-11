@@ -14,7 +14,7 @@ type Params = { params: Promise<{ day: string }> };
 
 function dayNumber(raw: string) {
   const day = Number(raw);
-  return Number.isInteger(day) && day >= 1 && day <= 10 ? day : null;
+  return Number.isInteger(day) && day >= 1 && day <= 30 ? day : null;
 }
 
 export async function GET(_request: Request, { params }: Params) {

@@ -432,6 +432,7 @@ model InternshipProgram {
   announcements          Announcement[]
   internshipCertificates InternshipCertificate[]
   groups                 InternshipGroup[]
+  officeLifeContent      OfficeLifeContent[]
 }
 
 model InternshipOnboardingQuestion {
@@ -1193,7 +1194,9 @@ model InternshipTask {
   labScenarioId String?
   labScenario   LabScenario?     @relation(fields: [labScenarioId], references: [id], onDelete: SetNull)
   // Lab percentage (checks passed, or the run score) needed to pass the task.
-  labPassMark   Int              @default(70)
+  labPassMark   Int @default(70)
+  // The selected Office Life workday (1-4) the intern completes for this task.
+  officeLifeDay Int?
 
   @@index([moduleId])
   @@index([cohortId, dueDate])
@@ -1632,10 +1635,11 @@ model InternResourceLessonProgress {
   @@index([lessonId])
 }
 
-// Internship levels, in order of `rank` (1 = Entry). Every intern starts at
+// Internship levels, in order of `rank` (1 = Beginner). Every intern starts at
 // the lowest level; a certificate at one level lets them move to the next.
 // Applications, cohorts, entrance assessments and resources each belong to
-// one level. The starting list (Entry, Intermediate, Senior) is created by
+// one level. The standard ladder (Beginner, Novice, Intermediate, Advanced,
+// Professional) is created by
 // the migration; admins can add more.
 model InternshipLevel {
   id          String   @id @default(cuid())
@@ -1648,6 +1652,8 @@ model InternshipLevel {
   applications    InternshipApplication[]
   cohorts         InternshipCohort[]
   assessments     InternshipAssessment[]
+  officeLifeContent OfficeLifeContent[]
+  officeLifeDays    OfficeLifeDay[]
   resources       InternResource[]
   fees            InternshipLevelFee[]
   recommendations InternResourceRecommendation[]
@@ -1920,6 +1926,7 @@ model OfficeLifeDay {
   id          String    @id @default(cuid())
   userId      String    @db.Uuid
   programId   String
+  levelId     String
   day         Int
   state       Json      @default("{}")
   score       Int?
@@ -1928,6 +1935,20 @@ model OfficeLifeDay {
   updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level InternshipLevel @relation(fields: [levelId], references: [id], onDelete: Restrict)
 
-  @@unique([userId, programId, day])
+  @@unique([userId, programId, levelId, day])
+}
+
+model OfficeLifeContent {
+  id        String   @id @default(cuid())
+  programId String
+  levelId   String
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  program   InternshipProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level     InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, levelId])
 }
