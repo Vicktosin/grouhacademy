@@ -123,7 +123,7 @@ export function listen(onText: (text: string) => void, onStop: (error?: string) 
     onStop(error);
   };
   let languages = ["en-NG", "en-GB", "en-US"];
-  let recognition: Recognition;
+  let recognition: Recognition | null = null;
 
   const begin = () => {
     recognition = new Recognition();
@@ -144,9 +144,18 @@ export function listen(onText: (text: string) => void, onStop: (error?: string) 
         languages = languages.slice(1);
         return;
       }
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      const messages: Record<string, string> = {
+        "not-allowed": "Microphone access was blocked: allow it in your browser, or type your answer.",
+        "service-not-allowed": "Microphone access was blocked: allow it in your browser, or type your answer.",
+        "audio-capture": "No microphone is available. Check your microphone connection, or type your answer.",
+        network: "Speech recognition couldn't connect. Check your connection, or type your answer.",
+      };
+      if (event.error in messages) {
         stopped = true;
-        finish("Microphone access was blocked: allow it in your browser, or type your answer.");
+        finish(messages[event.error]);
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+        stopped = true;
+        finish("Speech recognition stopped. Try again, or type your answer.");
       }
     };
     recognition.onend = () => {
@@ -154,12 +163,21 @@ export function listen(onText: (text: string) => void, onStop: (error?: string) 
       if (!stopped) begin();
       else finish();
     };
-    recognition.start();
+    try {
+      recognition.start();
+    } catch {
+      stopped = true;
+      finish("Couldn't start speech recognition. Check browser microphone access, or type your answer.");
+    }
   };
   begin();
 
   return () => {
     stopped = true;
-    recognition?.stop();
+    try {
+      recognition?.stop();
+    } catch {
+      finish();
+    }
   };
 }
