@@ -1,6 +1,7 @@
 "use client";
 
 import { Briefcase, CalendarClock, CheckCircle2, Loader2, Lock } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import FullscreenFrame from "@/components/FullscreenFrame";
 import InternshipShell from "@/components/InternshipShell";
@@ -8,16 +9,15 @@ import OfficeLifeDesk from "@/components/office-life/OfficeLifeDesk";
 import type { DayData } from "@/components/office-life/shared";
 import type { officeLifeOverview } from "@/lib/office-life/server";
 
-// Office Life: a workday at a company every weekend of the internship
-// (Saturday or Sunday, whichever suits the intern): emails, meetings and
-// reports with a manager, co-workers and a client.
+// Office Life: scheduled workdays at a company during the internship.
 
 type Overview = Awaited<ReturnType<typeof officeLifeOverview>>;
 
 const when = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Lagos" }) : "";
+  iso ? new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }) : "";
 
 export default function OfficeLifePage() {
+  const searchParams = useSearchParams();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [day, setDay] = useState<DayData | null>(null);
   const [opening, setOpening] = useState<number | null>(null);
@@ -33,6 +33,14 @@ export default function OfficeLifePage() {
       .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load Office Life."));
   }, []);
   useEffect(load, [load]);
+
+  useEffect(() => {
+    const raw = searchParams.get("day");
+    const number = raw === null ? null : Number(raw);
+    if (number !== null && Number.isInteger(number) && number >= 1 && number <= 4) {
+      void open(number);
+    }
+  }, [searchParams]);
 
   async function open(number: number) {
     setOpening(number);
@@ -61,11 +69,10 @@ export default function OfficeLifePage() {
         <div className="space-y-5">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">Office Life</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1C1D52]">Your weekend workdays</h1>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1C1D52]">Your workdays</h1>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
-              Every weekend of your internship you spend a workday at {overview?.enrolled ? overview.company : "a company"}
-              {overview?.enrolled ? ` in the ${overview.department} team` : ""}: you read and send emails, join meetings with your manager,
-              co-workers and the client, and send reports, as you would in a real job. Do it on Saturday or Sunday, whichever suits you.
+              Complete scheduled workdays at {overview?.enrolled ? overview.company : "a company"}
+              {overview?.enrolled ? ` in the ${overview.department} team · ${overview.level} level` : ""}: read and send emails, join meetings, work with the Practice Lab, and submit reports.
             </p>
           </div>
 
@@ -87,7 +94,7 @@ export default function OfficeLifePage() {
                   <p className="text-sm font-semibold">
                     {overview.company} · {overview.department}
                   </p>
-                  <p className="text-xs text-white/70">This month&apos;s client: {overview.client}</p>
+                  <p className="text-xs text-white/70">This month&apos;s client: {overview.client} · {overview.level} level</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] uppercase tracking-[0.12em] text-white/60">Workplace readiness</p>
@@ -116,17 +123,17 @@ export default function OfficeLifePage() {
                     <p className="mt-2 flex-1 text-xs leading-5 text-slate-500">{item.summary}</p>
                     {item.opensAt && item.dueAt && (
                       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <CalendarClock className="h-3.5 w-3.5" /> Weekend of {when(item.opensAt)} – {when(new Date(new Date(item.dueAt).getTime() - 1).toISOString())}
+                        <CalendarClock className="h-3.5 w-3.5" /> Opens {when(item.opensAt)} · Due {when(item.dueAt)} WAT
                       </p>
                     )}
                     <button
                       type="button"
-                      disabled={!item.open || opening !== null}
+                      disabled={(!item.open && !item.completedAt) || opening !== null}
                       onClick={() => void open(item.day)}
                       className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1D52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
                     >
                       {opening === item.day && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {item.completedAt ? "Review this workday" : item.stepsDone > 0 ? `Continue (${item.stepsDone}/${item.stepsTotal})` : item.open ? "Start this workday" : "Not open yet"}
+                      {item.completedAt ? "Review this workday" : item.closed ? "Window closed" : item.stepsDone > 0 ? `Continue (${item.stepsDone}/${item.stepsTotal})` : item.open ? "Start this workday" : "Not open yet"}
                     </button>
                   </section>
                 ))}

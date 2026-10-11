@@ -1,6 +1,6 @@
 import { getPrisma } from "@/lib/prisma";
 
-// Internship levels (Entry → Intermediate → Senior → …), ordered by rank.
+// Internship levels (Beginner → Novice → Intermediate → Advanced → Professional → …), ordered by rank.
 // Every intern starts at the lowest-ranked level.
 
 export type InternshipLevelOption = {
@@ -17,7 +17,7 @@ export function listLevels(): Promise<InternshipLevelOption[]> {
   });
 }
 
-/** The level everyone starts at (lowest rank). */
+/** The level everyone starts at (lowest rank; currently Beginner). */
 export async function getEntryLevel() {
   const level = await getPrisma().internshipLevel.findFirst({
     orderBy: { rank: "asc" },
@@ -42,13 +42,13 @@ export async function resolveLevelId(value: unknown) {
   return level?.id ?? null;
 }
 
-/** The lowest-ranked level's id (Entry). */
+/** The lowest-ranked level's id (Beginner). */
 async function entryLevelId() {
   return (await getEntryLevel()).id;
 }
 
 /**
- * A track's acceptance fee at a level: Entry uses the track's own fee, other
+ * A track's acceptance fee at a level: Beginner uses the track's own fee, other
  * levels their InternshipLevelFee row. Null means no fee is set, so the
  * level isn't open for that track.
  */

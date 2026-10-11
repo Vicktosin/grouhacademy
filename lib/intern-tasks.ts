@@ -159,6 +159,7 @@ export async function getInternTasks(
       kind: task.kind,
       labScenarioId: task.labScenarioId,
       labPassMark: task.labPassMark,
+      officeLifeDay: task.officeLifeDay,
       weekLabel: `Week ${task.opensWeek}`,
       weekNumber: task.opensWeek,
       window,

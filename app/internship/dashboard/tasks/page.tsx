@@ -480,6 +480,13 @@ function TaskCard({
             </div>
           )}
 
+          {task.officeLifeDay && (
+            <p className="mt-4 rounded-lg border border-[#dfeaf8] bg-[#f6f9ff] p-3 text-xs text-[#1C1D52]">
+              This task will be done in a Work-Life session. Open Workday{" "}
+              <span className="font-semibold">{task.officeLifeDay}</span> to complete it.
+            </p>
+          )}
+
           {task.labScenarioId && (
             <p className="mt-4 text-xs text-slate-500">
               Done in the Practice Lab. Reach{" "}
@@ -488,6 +495,15 @@ function TaskCard({
               </span>{" "}
               there to pass this task. Submitting grades it straight away.
             </p>
+          )}
+
+          {task.officeLifeDay && (
+            <a
+              href={`/internship/dashboard/office-life?day=${task.officeLifeDay}`}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-bold text-white"
+            >
+              Open Work-Life session
+            </a>
           )}
 
           {task.labScenarioId && (
@@ -501,7 +517,7 @@ function TaskCard({
             </a>
           )}
 
-          {task.canSubmit && !task.labScenarioId ? (
+          {task.canSubmit && !task.labScenarioId && !task.officeLifeDay ? (
             <form onSubmit={submit} className="mt-4 space-y-3">
               {leaderSubmits && group && (
                 <fieldset className="rounded-lg border border-slate-200 p-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Loader2, Send } from "lucide-react";
+import { ClipboardList, ExternalLink, Loader2, Send } from "lucide-react";
 import { useState } from "react";
 import { CoachCard, personById, timeLabel, type Act, type DayData, type StepView } from "./shared";
 
@@ -12,12 +12,17 @@ type FormStep = Extract<StepView, { kind: "report" } | { kind: "work" }>;
 export default function ReportsApp({ day, act, onSent }: { day: DayData; act: Act; onSent: (message: string) => void }) {
   const current = day.steps.find((step): step is FormStep => (step.kind === "report" || step.kind === "work") && step.available);
   const done = day.steps.filter((step): step is FormStep => (step.kind === "report" || step.kind === "work") && step.done);
-  const [fields, setFields] = useState<string[]>(["", "", ""]);
+  const [fieldState, setFieldState] = useState<{ stepId: string; fields: string[] }>({ stepId: "", fields: [] });
   const [summary, setSummary] = useState("");
   const [link, setLink] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const manager = personById(day.people, "manager");
+
+  if (current?.kind === "report" && fieldState.stepId !== current.id) {
+    setFieldState({ stepId: current.id, fields: current.fields.map(() => "") });
+  }
+  const fields = current?.kind === "report" && fieldState.stepId === current.id ? fieldState.fields : [];
 
   async function send() {
     if (!current) return;
@@ -29,7 +34,7 @@ export default function ReportsApp({ day, act, onSent }: { day: DayData; act: Ac
         : await act({ action: "work", stepId: current.id, summary, link });
     setSending(false);
     if (failure) return setError(failure);
-    setFields(["", "", ""]);
+    setFieldState({ stepId: current.id, fields: current.kind === "report" ? current.fields.map(() => "") : [] });
     setSummary("");
     setLink("");
     onSent(`Sent to ${manager.name.split(" ")[0]}. Their reply is below and in your inbox.`);
@@ -47,6 +52,15 @@ export default function ReportsApp({ day, act, onSent }: { day: DayData; act: Ac
           <p className="mt-1 text-[13px] text-[#5F6368]">
             {current.task} To: {manager.name}, {manager.role}
           </p>
+          {current.kind === "work" && current.labScenarioId && (
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <p className="text-xs font-semibold text-[#1C1D52]">Practice Lab exercise required</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Open and submit the linked exercise first. Then return here to describe your work.</p>
+              <a href={`/internship/dashboard/lab/${encodeURIComponent(current.labScenarioId)}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-3 py-2 text-xs font-semibold text-white">
+                <ExternalLink className="h-3.5 w-3.5" /> Open Practice Lab
+              </a>
+            </div>
+          )}
           <div className="mt-4 space-y-3">
             {current.kind === "report" ? (
               current.fields.map((label, i) => (
@@ -54,7 +68,7 @@ export default function ReportsApp({ day, act, onSent }: { day: DayData; act: Ac
                   {label}
                   <textarea
                     value={fields[i]}
-                    onChange={(e) => setFields(fields.map((value, j) => (j === i ? e.target.value : value)))}
+                    onChange={(e) => setFieldState((state) => ({ ...state, fields: fields.map((value, j) => (j === i ? e.target.value : value)) }))}
                     rows={3}
                     maxLength={2000}
                     className={`${field} mt-1 font-normal`}

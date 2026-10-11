@@ -9,7 +9,7 @@ function formatDate(date: Date) {
 
 /**
  * What a certificate says the intern achieved: the track, plus the level for
- * anything above the first level (so Entry certificates read as before).
+ * anything above the first level (so Beginner certificates show the track name).
  */
 export function internshipAchievement(
   programName: string,

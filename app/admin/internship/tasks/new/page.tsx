@@ -34,6 +34,8 @@ type TaskRecord = {
   dueTime: string;
   labScenarioId: string | null;
   labPassMark: number;
+  officeLifeDay: number | null;
+  destination: TaskDestination;
   submissionCount: number;
 };
 type LabOption = {
@@ -43,6 +45,7 @@ type LabOption = {
   level: string;
   published: boolean;
 };
+type TaskDestination = "none" | "lab" | "work-life";
 type Draft = Omit<TaskRecord, "id" | "submissionCount">;
 
 const emptyDraft: Draft = {
@@ -58,6 +61,8 @@ const emptyDraft: Draft = {
   dueTime: "23:59",
   labScenarioId: null,
   labPassMark: 70,
+  officeLifeDay: null,
+  destination: "none" as TaskDestination,
 };
 
 const inputClass =
@@ -102,6 +107,8 @@ export default function InternshipTaskFormPage() {
             dueTime: task.dueTime,
             labScenarioId: task.labScenarioId,
             labPassMark: task.labPassMark,
+            officeLifeDay: task.officeLifeDay,
+            destination: task.labScenarioId ? "lab" : task.officeLifeDay ? "work-life" : "none",
           });
           setSubmissionCount(task.submissionCount);
         } else {
@@ -305,16 +312,54 @@ export default function InternshipTaskFormPage() {
                 </select>
               </label>
               <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
-                Practice Lab exercise (optional)
+                Task destination
+                <select
+                  value={draft.destination}
+                  disabled={locked}
+                  onChange={(event) => setDraft({
+                    ...draft,
+                    destination: event.target.value as TaskDestination,
+                    labScenarioId: event.target.value === "lab" ? draft.labScenarioId : null,
+                    officeLifeDay: event.target.value === "work-life" ? (draft.officeLifeDay ?? 1) : null,
+                  })}
+                  className={`${inputClass} disabled:opacity-60`}
+                >
+                  <option value="none">Standard task submission</option>
+                  <option value="lab">Practice Lab</option>
+                  <option value="work-life" disabled={draft.kind === "GROUP"}>Work-Life Experience</option>
+                </select>
+                <span className="mt-1 block font-normal text-slate-400">
+                  Choose where interns will complete this task. The selection appears prominently on their task card.
+                </span>
+              </label>
+              {draft.destination === "work-life" && (
+                <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
+                  Work-Life week
+                  <select
+                    value={draft.officeLifeDay ?? 1}
+                    disabled={locked}
+                    onChange={(event) => setDraft({ ...draft, officeLifeDay: Number(event.target.value) })}
+                    className={`${inputClass} disabled:opacity-60`}
+                  >
+                    {[1, 2, 3, 4].map((week) => <option key={week} value={week}>Week {week}</option>)}
+                  </select>
+                  <span className="mt-1 block font-normal text-slate-400">The intern opens this Work-Life week from their task card; its activities and schedule come from the track and level plan.</span>
+                </label>
+              )}
+              {draft.destination === "lab" && (
+                <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
+                  Practice Lab exercise (optional)
                 <select
                   value={draft.labScenarioId ?? ""}
+                  disabled={locked}
                   onChange={(event) =>
                     setDraft({
                       ...draft,
                       labScenarioId: event.target.value || null,
+                      officeLifeDay: null,
                     })
                   }
-                  className={inputClass}
+                  className={`${inputClass} disabled:opacity-60`}
                 >
                   <option value="">None, interns submit text as usual</option>
                   {labScenarios
@@ -332,7 +377,8 @@ export default function InternshipTaskFormPage() {
                   if not (they can improve and resubmit until it&apos;s due).
                   Mentors can still change the grade.
                 </span>
-              </label>
+                </label>
+              )}
               {draft.labScenarioId && (
                 <label className="block text-[10px] font-semibold text-slate-500 md:col-span-2">
                   Pass mark (%)

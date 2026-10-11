@@ -50,6 +50,8 @@ export type InternshipTaskItem = {
   labScenarioId: string | null;
   /** Lab percentage needed to pass, for Practice Lab tasks. */
   labPassMark: number;
+  /** Work-Life week this task launches, if selected as the task destination. */
+  officeLifeDay: number | null;
 };
 
 export type InternshipAlert = {

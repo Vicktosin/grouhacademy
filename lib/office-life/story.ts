@@ -319,7 +319,7 @@ const GENERAL: Department = {
 };
 
 export type Cast = Record<PersonId, Person> & {
-  company: typeof COMPANY;
+  company: { name: string; domain: string; about: string };
   department: string;
   clientCompany: string;
   clientBusiness: string;
@@ -388,6 +388,7 @@ export type Step =
       kind: "meeting";
       title: string;
       agenda: string;
+      meetingType?: "meeting" | "interview";
       participants: PersonId[];
       lines: MeetingLine[];
       rubric: string;
@@ -401,10 +402,21 @@ export type Step =
       cc: PersonId[];
       rubric: string;
     }
-  | { id: string; kind: "report"; title: string; task: string; fields: [string, string, string]; rubric: string }
-  | { id: string; kind: "work"; title: string; task: string; rubric: string };
+  | { id: string; kind: "report"; title: string; task: string; fields: string[]; rubric: string }
+  | { id: string; kind: "work"; title: string; task: string; rubric: string; labScenarioId?: string | null };
 
-export type Workday = { day: number; title: string; summary: string; steps: Step[] };
+export type Workday = {
+  day: number;
+  title: string;
+  summary: string;
+  opensWeek: number;
+  opensDay: number;
+  opensTime: string;
+  dueWeek: number;
+  dueDay: number;
+  dueTime: string;
+  steps: Step[];
+};
 
 export const WORKDAYS = 4;
 
@@ -431,6 +443,7 @@ export function workdaysFor(trackName: string, you: string): Workday[] {
       day: 1,
       title: `First day at ${firm}`,
       summary: "Meet your manager and team, read your onboarding pack, and send your first report.",
+      opensWeek: 1, opensDay: 1, opensTime: "00:00", dueWeek: 1, dueDay: 7, dueTime: "23:59",
       steps: [
         {
           id: "d1-welcome",
@@ -499,6 +512,7 @@ ${cast.manager.role}`,
       day: 2,
       title: `Meeting ${clientCo}`,
       summary: "Lead a discovery call with the client, handle a disagreement in the team meeting, and follow up in writing.",
+      opensWeek: 2, opensDay: 1, opensTime: "00:00", dueWeek: 2, dueDay: 7, dueTime: "23:59",
       steps: [
         {
           id: "d2-brief",
@@ -583,6 +597,7 @@ ${m}`,
       day: 3,
       title: "Building the project",
       summary: `Build the work in the Practice Lab, and handle a change from ${clientCo}.`,
+      opensWeek: 3, opensDay: 1, opensTime: "00:00", dueWeek: 3, dueDay: 7, dueTime: "23:59",
       steps: [
         {
           id: "d3-brief",
@@ -646,6 +661,7 @@ ${cast.client.role}`,
       day: 4,
       title: "Delivery day",
       summary: "Present the work to the client, handle their concern, follow up, and have your review.",
+      opensWeek: 4, opensDay: 1, opensTime: "00:00", dueWeek: 4, dueDay: 7, dueTime: "23:59",
       steps: [
         {
           id: "d4-presentation",
