@@ -151,6 +151,22 @@ const nextConfig: NextConfig = {
     return [
       { source: "/(.*)", headers: securityHeaders },
       {
+        // Office Life meetings let interns answer by speaking (the
+        // browser's speech-to-text), so the dashboard may use the
+        // microphone, for this site only; the browser still asks the
+        // intern first. It's the whole dashboard, not just Office Life,
+        // because moving between dashboard pages doesn't reload the page,
+        // and the browser keeps the rules of the page loaded first.
+        // Camera, location and payments stay off.
+        source: "/internship/dashboard/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=()",
+          },
+        ],
+      },
+      {
         // Practice interviews run in an embedded Tavus (Daily) video room,
         // which needs the camera and microphone. Allowed only here, only
         // for this site and that room; every other page keeps them off.
