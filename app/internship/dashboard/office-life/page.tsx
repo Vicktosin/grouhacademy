@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Briefcase, CalendarClock, CheckCircle2, Loader2, Lock } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -16,7 +17,7 @@ type Overview = Awaited<ReturnType<typeof officeLifeOverview>>;
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }) : "";
 
-export default function OfficeLifePage() {
+function OfficeLifePageContent() {
   const searchParams = useSearchParams();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [day, setDay] = useState<DayData | null>(null);
@@ -143,5 +144,13 @@ export default function OfficeLifePage() {
         </div>
       )}
     </InternshipShell>
+  );
+}
+
+export default function OfficeLifePage() {
+  return (
+    <Suspense fallback={<p className="p-6 text-sm text-slate-500">Loading Office Life...</p>}>
+      <OfficeLifePageContent />
+    </Suspense>
   );
 }
