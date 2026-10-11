@@ -75,9 +75,7 @@ const page = () => {
               </h1>
 
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/75">
-                Your gateway to elite learning and real-world internships. Learn
-                from industry experts, build in-demand skills, and launch a
-                future you&apos;re proud of.
+                Your gateway to real-world internships. Explore our interactive simulators and industry-relevant curricula.
               </p>
 
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
