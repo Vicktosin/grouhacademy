@@ -365,6 +365,14 @@ module.exports = app;`,
   assert.match(result.tests[2].error ?? "", /Not run/);
 });
 
+test("the lab preview's self-hosted screenshot library matches the installed version", async () => {
+  const { SCREENSHOT_VERSION } = await import("../app/lab-preview/route");
+  const installed = JSON.parse(readFileSync("node_modules/modern-screenshot/package.json", "utf8")).version;
+  assert.equal(SCREENSHOT_VERSION, installed, "Run npm run lab-runtime and update SCREENSHOT_VERSION");
+  const code = readFileSync(`public/lab-runtime/modern-screenshot-${SCREENSHOT_VERSION}/index.mjs`, "utf8");
+  assert.ok(code.includes("domToBlob") && !/from\s*"https?:/.test(code), "must not load code from another site");
+});
+
 test("the lab preview's self-hosted React matches the installed version", async () => {
   const { REACT_VERSION } = await import("../app/lab-preview/route");
   const installed = JSON.parse(readFileSync("node_modules/react/package.json", "utf8")).version;

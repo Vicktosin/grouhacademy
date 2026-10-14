@@ -6,6 +6,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { Prisma, type LabScenario } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { awardTaskAchievements, awardTaskSubmittedAchievements } from "@/lib/achievements";
+import { artifactKeys, deleteArtifacts, parseArtifacts, type LabArtifacts } from "@/lib/lab-artifacts";
 import { getInternTrackAccess } from "@/lib/intern-resources";
 import { getInternTaskContext } from "@/lib/intern-tasks";
 import {
@@ -1050,13 +1051,18 @@ async function gradeLinkedTask(
   task: LinkedTask,
   content: string,
   result: { percent: number; missed: string[]; missedLabel: string; needsReview?: boolean },
+  // Screenshots or a site snapshot for the mentor (lib/lab-artifacts).
+  artifacts: LabArtifacts | null = null,
 ): Promise<LabTaskResult> {
   const prisma = getPrisma();
-  if (task.kind !== "INDIVIDUAL")
+  const discard = () => deleteArtifacts(artifactKeys(artifacts));
+  if (task.kind !== "INDIVIDUAL") {
+    await discard();
     return { taskId: task.id, graded: false, reason: "Group tasks can't be graded from the Practice Lab." };
+  }
   const existing = await prisma.taskSubmission.findFirst({
     where: { taskId: task.id, userId, groupId: null },
-    select: { id: true, status: true },
+    select: { id: true, status: true, labArtifacts: true },
   });
   const blocked = submissionBlockedReason({
     task,
@@ -1064,7 +1070,10 @@ async function gradeLinkedTask(
     group: null,
     userId,
   });
-  if (blocked) return { taskId: task.id, graded: false, reason: blocked };
+  if (blocked) {
+    await discard();
+    return { taskId: task.id, graded: false, reason: blocked };
+  }
 
   const grade: LabTaskGrade = gradeLabTask({
     percent: result.percent,
@@ -1084,6 +1093,7 @@ async function gradeLinkedTask(
     reviewedAt: now,
     // Graded automatically, not by a person.
     reviewedById: null,
+    labArtifacts: artifacts ?? Prisma.DbNull,
   };
   await prisma.$transaction(async (tx) => {
     const saved = existing
@@ -1104,6 +1114,9 @@ async function gradeLinkedTask(
       await awardTaskAchievements(tx, userId, saved.id);
     }
   });
+  // The previous submission's screenshots or snapshot are replaced.
+  const kept = new Set(artifactKeys(artifacts));
+  await deleteArtifacts(artifactKeys(existing?.labArtifacts).filter((key) => !kept.has(key)));
   await recomputeInternProgress(userId, task.module.programId).catch((error) =>
     console.error("[practice-lab] Progress update failed.", error),
   );
@@ -1130,6 +1143,8 @@ export async function submitLab(
     checkResults: unknown;
     taskId?: string | null;
     runIndex?: number | null;
+    /** Web, React and WordPress: screenshots or a site snapshot already uploaded. */
+    artifacts?: unknown;
   },
 ): Promise<
   | {
@@ -1146,6 +1161,10 @@ export async function submitLab(
   if (!scenario) return { error: "Exercise not found.", status: 404 };
   const prisma = getPrisma();
   const task = await linkedTask(userId, scenarioId, input.taskId);
+  // Only a task submission keeps them (that's where mentors look).
+  const artifacts = parseArtifacts(userId, input.artifacts);
+  const usesArtifacts = scenario.kind === "WEB" || scenario.kind === "REACT" || scenario.kind === "WORDPRESS";
+  if (artifacts && (!task || !usesArtifacts)) await deleteArtifacts(artifactKeys(artifacts));
 
   // Backend APIs: every test, hidden ones included, runs in a worker thread
   // here on the server.
@@ -1245,6 +1264,7 @@ export async function submitLab(
             missedLabel: "checks",
             needsReview: flags.length > 0,
           },
+          artifacts,
         )
       : null;
     return { attempt: attemptView({ ...saved, review: null }), taskResult };
@@ -1401,6 +1421,8 @@ export async function submitLab(
           missedLabel: "checks",
           needsReview: flags.length > 0,
         },
+        // The code as submitted, so mentors can run the site later.
+        { ...(artifacts ?? {}), files },
       )
     : null;
   return { attempt: attemptView({ ...attempt, review: null }), taskResult };

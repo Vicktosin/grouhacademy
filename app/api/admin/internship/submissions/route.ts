@@ -77,6 +77,7 @@ export async function GET(request: Request) {
             title: true,
             maxScore: true,
             labScenarioId: true,
+            labScenario: { select: { kind: true } },
             module: { select: { title: true } },
             cohort: { select: { name: true, program: { select: { name: true } } } },
           },
@@ -120,6 +121,7 @@ export async function GET(request: Request) {
         content: row.content,
         // Only link to web URLs; never render javascript: or data: links.
         fileUrl: row.fileUrl && /^https?:\/\//i.test(row.fileUrl) ? row.fileUrl : null,
+        siteReview: ["WEB", "REACT", "WORDPRESS"].includes(row.task.labScenario?.kind ?? ""),
         submittedLabel: row.submittedAt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }),
         submittedAt: row.submittedAt.toISOString(),
         status: row.status,

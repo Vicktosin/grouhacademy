@@ -38,6 +38,8 @@ import type {
   LabTaskResult,
 } from "@/lib/practice-lab";
 import { checkForAchievements } from "@/lib/achievement-events";
+import { captureLabScreenshots } from "@/lib/lab-screenshots";
+import { uploadLabArtifact } from "@/lib/lab-artifact-upload";
 
 /** Save this long after the intern stops typing. */
 const AUTOSAVE_MS = 2500;
@@ -643,12 +645,16 @@ function WordPressExercise({
         config={lab.wp}
         // The site is kept in this browser, one per exercise.
         storageKey={`wp-lab:${lab.id}`}
-        onSubmit={async ({ results, summary, files }) => {
+        snapshotForReview={Boolean(lab.task)}
+        onSubmit={async ({ results, summary, files, snapshot }) => {
           setMessage(null);
+          // For a task, mentors can open the site itself.
+          const key = snapshot ? await uploadLabArtifact(id, "snapshot", snapshot) : null;
           const result = await sendSubmission(id, {
             files: { summary, files },
             checkResults: results,
             taskId,
+            artifacts: key && snapshot ? { snapshot: { key, bytes: snapshot.size } } : undefined,
           });
           if (result.attempt) setSubmitted(true);
           setMessage(result.message);
@@ -684,7 +690,20 @@ function CodeExercise({
   const submit = useCallback(
     async (checkResults: LabCheckResult[]) => {
       setMessage(null);
-      const result = await sendSubmission(id, { files, checkResults, taskId });
+      // For a task, mentors also see the site itself (desktop and phone).
+      let artifacts: { screenshots: Array<{ key: string; label: string; width: number; height: number }> } | undefined;
+      if (lab.task) {
+        const shots = await captureLabScreenshots(lab.kind, files);
+        const uploaded = await Promise.all(
+          shots.map(async (shot) => {
+            const key = await uploadLabArtifact(id, "screenshot", shot.blob);
+            return key ? { key, label: shot.label, width: shot.width, height: shot.height } : null;
+          }),
+        );
+        const screenshots = uploaded.filter((shot) => shot !== null);
+        if (screenshots.length) artifacts = { screenshots };
+      }
+      const result = await sendSubmission(id, { files, checkResults, taskId, artifacts });
       if (result.attempt) {
         dirty.current = false;
         onSaveState("saved");
@@ -692,7 +711,7 @@ function CodeExercise({
       }
       setMessage(result.message);
     },
-    [files, id, taskId, onSaveState],
+    [files, id, taskId, onSaveState, lab.task, lab.kind],
   );
 
   return (

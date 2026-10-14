@@ -11,6 +11,9 @@
 
 export const REACT_VERSION = "19.2.8";
 const REACT = `/lab-runtime/react-${REACT_VERSION}`;
+// Draws the page into an image for submission screenshots (lib/lab-screenshots).
+export const SCREENSHOT_VERSION = "4.7.0";
+const SCREENSHOT = `/lab-runtime/modern-screenshot-${SCREENSHOT_VERSION}/index.mjs`;
 
 const HARNESS = `<!doctype html>
 <html>
@@ -82,6 +85,52 @@ ${JSON.stringify({
     send({ type: "checks", results: results });
   }
 
+  // A picture of the page as it is now, up to maxHeight tall, for mentors.
+  async function screenshot(options) {
+    try {
+      var lib = await import("${SCREENSHOT}");
+      var root = document.documentElement;
+      var height = Math.min(
+        Math.max(root.scrollHeight, document.body.scrollHeight, innerHeight),
+        options.maxHeight || 2400
+      );
+      var background = getComputedStyle(document.body).backgroundColor;
+      var context = await lib.createContext(root, {
+        width: innerWidth,
+        height: height,
+        scale: options.scale || 1,
+        type: "image/webp",
+        quality: options.quality || 0.72,
+        backgroundColor: !background || background === "rgba(0, 0, 0, 0)" ? "#ffffff" : background,
+        timeout: 8000,
+        autoDestruct: true,
+      });
+      // The library reads browser default styles from a hidden iframe, which
+      // this sandboxed page can't reach (it gets an origin of its own). A
+      // shadow root reset with all: initial gives the same defaults.
+      var host = document.createElement("div");
+      host.style.cssText = "all: initial; position: fixed; left: -99999px; top: 0; visibility: hidden";
+      document.documentElement.appendChild(host);
+      var shadowBody = document.createElement("div");
+      host.attachShadow({ mode: "open" }).appendChild(shadowBody);
+      context.sandbox = {
+        contentWindow: {
+          document: {
+            body: shadowBody,
+            createElement: function (name) { return document.createElement(name); },
+            createElementNS: function (ns, name) { return document.createElementNS(ns, name); },
+          },
+          getComputedStyle: function (element, pseudo) { return getComputedStyle(element, pseudo); },
+        },
+        remove: function () { host.remove(); },
+      };
+      var blob = await lib.domToBlob(context);
+      send({ type: "screenshot", blob: blob, width: innerWidth, height: height });
+    } catch (error) {
+      send({ type: "screenshot", error: error && error.message ? error.message : String(error) });
+    }
+  }
+
   addEventListener("message", function (event) {
     var data = event.data;
     if (!data || !data.__lab) return;
@@ -101,6 +150,8 @@ ${JSON.stringify({
         requestAnimationFrame(function () { requestAnimationFrame(window.__labDone); });
     } else if (data.type === "check") {
       runChecks(data.checks || []);
+    } else if (data.type === "screenshot") {
+      screenshot(data);
     }
   });
 

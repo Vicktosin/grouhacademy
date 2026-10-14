@@ -205,7 +205,10 @@ const nextConfig: NextConfig = {
               "img-src data: blob: https:",
               "font-src data: https:",
               "media-src data: blob: https:",
-              "connect-src 'none'",
+              // Screenshots (lib/lab-screenshots) embed the page's images and
+              // fonts by downloading them. The frame has no origin, so these
+              // requests carry no cookies or credentials of this site.
+              "connect-src data: blob: https:",
               "frame-ancestors 'self'",
             ].join("; "),
           },
@@ -228,6 +231,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
       },
       {
+        // Reviewing a submission: WordPress sites run in Playground there too.
+        source: "/lab-review/:path*",
+        headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+      },
+      {
         source: "/_next/static/:path*",
         headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
       },
@@ -238,6 +246,14 @@ const nextConfig: NextConfig = {
         // everyone (see lib/backend-sim/browser-worker.ts).
         source: "/lab-runtime/:file*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // The screenshot library for the lab preview (same reason as React).
+        source: "/lab-runtime/modern-screenshot-:version/:file*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
       },
       {
         // React for the lab preview. The preview is a sandboxed frame with
