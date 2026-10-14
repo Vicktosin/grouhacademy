@@ -61,7 +61,9 @@ export default function PreviewBanner() {
   return (
     <div className="z-40 flex shrink-0 flex-wrap items-center gap-2 bg-[#B45309] px-3 py-2 text-white sm:px-6 lg:px-8" role="status">
       <Eye className="h-4 w-4 shrink-0" />
-      <p className="min-w-0 flex-1 text-[11px] leading-4 sm:text-xs">
+      {/* Phones: just the label, so the bar stays one short row. */}
+      <p className="flex-1 text-[11px] font-bold sm:hidden">Preview</p>
+      <p className="hidden min-w-0 flex-1 text-[11px] leading-4 sm:block sm:text-xs">
         <strong>Preview:</strong> you&apos;re seeing the internship as an intern in <strong>{where}</strong>. What you do
         here is hidden from everyone else.
       </p>
@@ -72,7 +74,7 @@ export default function PreviewBanner() {
         {busy === "reset" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />} Reset
       </button>
       <button type="button" disabled={busy !== null} onClick={() => void act("exit")} className={button}>
-        {busy === "exit" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />} Exit preview
+        {busy === "exit" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />} Exit<span className="hidden sm:inline"> preview</span>
       </button>
     </div>
   );

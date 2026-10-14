@@ -185,7 +185,8 @@ export default function AdminInternPreviewPage() {
           )}
         </section>
 
-        <section className="rounded-2xl bg-white p-5 text-xs leading-5 text-slate-600 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
+        {/* Long for a phone screen: shown from tablet width up. */}
+        <section className="hidden rounded-2xl bg-white p-5 text-xs leading-5 text-slate-600 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:block">
           <p className="font-semibold text-[#1C1D52]">How it works</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>Everything works as for a real intern, submitting tasks and Practice Lab work included.</li>
