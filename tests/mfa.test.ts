@@ -5,6 +5,7 @@ import {
   getPostAuthDestination,
   isAllowedPostAuthPath,
   isMfaVerificationPending,
+  isPasswordRecoveryPath,
 } from "../lib/supabase/mfa";
 
 type Claims = { aal?: string } | null;
@@ -76,6 +77,13 @@ test("only internal recovery and internship paths are allowed after auth", () =>
 });
 
 test("password recovery stays on the reset form, including for staff", () => {
+  assert.equal(isPasswordRecoveryPath("/reset-password"), true);
+  assert.equal(isPasswordRecoveryPath("/reset-password?track=courses"), true);
+  assert.equal(isPasswordRecoveryPath("/student"), false);
+  assert.equal(
+    isPasswordRecoveryPath("https://evil.example/reset-password"),
+    false,
+  );
   assert.equal(
     getPostAuthDestination("/reset-password", "/admin"),
     "/reset-password",

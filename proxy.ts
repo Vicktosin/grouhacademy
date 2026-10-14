@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  isPasswordRecoveryPath,
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
@@ -13,7 +14,8 @@ import { PATH_HEADER } from "@/lib/request-path";
 
 // Paths the app has never served that bots keep requesting: spam "profile"
 // pages and WordPress endpoints. 410 Gone tells crawlers to drop them for good.
-const GONE_PATH = /^\/(profile(\/|$)|xmlrpc\.php$|wp-(admin|login\.php|content|includes)(\/|$))/;
+const GONE_PATH =
+  /^\/(profile(\/|$)|xmlrpc\.php$|wp-(admin|login\.php|content|includes)(\/|$))/;
 
 export async function proxy(request: NextRequest) {
   if (GONE_PATH.test(request.nextUrl.pathname)) {
@@ -21,6 +23,19 @@ export async function proxy(request: NextRequest) {
       status: 410,
       headers: { "X-Robots-Tag": "noindex" },
     });
+  }
+
+  const code = request.nextUrl.searchParams.get("code");
+  const recoveryPath = request.nextUrl.searchParams.get("next");
+  if (
+    request.nextUrl.pathname === "/" &&
+    code &&
+    isPasswordRecoveryPath(recoveryPath)
+  ) {
+    const callbackUrl = new URL("/auth/callback", request.url);
+    callbackUrl.searchParams.set("code", code);
+    callbackUrl.searchParams.set("next", recoveryPath);
+    return NextResponse.redirect(callbackUrl);
   }
 
   // Server code reads the path from this (e.g. an admin previewing the
