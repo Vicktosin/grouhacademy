@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { NotificationType } from "@/generated/prisma/client";
-import { getCurrentUserId } from "@/lib/route-guards";
+import { getCurrentUserId, isPreviewSession } from "@/lib/route-guards";
 import { getPrisma } from "@/lib/prisma";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
-import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
+import { getInternTaskContext } from "@/lib/intern-tasks";
+import { getInternTasksWithOfficeLife } from "@/lib/office-life/task-list";
 import { audienceWhere } from "@/lib/learner-audience";
 import type {
   InternshipAlert,
@@ -72,9 +73,10 @@ export async function GET() {
     return NextResponse.json(empty);
   }
 
-  const tasks = await getInternTasks(userId, context);
+  const tasks = await getInternTasksWithOfficeLife(userId, context, await isPreviewSession());
   const stats = {
-    pending: tasks.filter((task) => task.canSubmit).length,
+    // Office Life tasks are still to do while their workday is open.
+    pending: tasks.filter((task) => task.canSubmit || (task.officeLife && !task.submittedAt && task.window === "OPEN")).length,
     submitted: tasks.filter((task) =>
       ["Submitted", "Under review", "Passed"].includes(task.status),
     ).length,

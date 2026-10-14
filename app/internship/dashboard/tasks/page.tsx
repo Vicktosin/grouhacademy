@@ -13,6 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
+import OfficeLifeTaskStatus from "@/components/office-life/OfficeLifeTaskStatus";
 import { bringIntoView } from "@/lib/bring-into-view";
 import { checkForAchievements } from "@/lib/achievement-events";
 import type {
@@ -482,12 +483,7 @@ function TaskCard({
             </div>
           )}
 
-          {task.officeLifeDay && (
-            <p className="mt-4 rounded-lg border border-[#dfeaf8] bg-[#f6f9ff] p-3 text-xs text-[#1C1D52]">
-              This task will be done in a Work-Life session. Open Workday{" "}
-              <span className="font-semibold">{task.officeLifeDay}</span> to complete it.
-            </p>
-          )}
+          {task.officeLife && <OfficeLifeTaskStatus task={task} />}
 
           {task.labScenarioId && (
             <p className="mt-4 text-xs text-slate-500">
@@ -497,15 +493,6 @@ function TaskCard({
               </span>{" "}
               there to pass this task. Submitting grades it straight away.
             </p>
-          )}
-
-          {task.officeLifeDay && (
-            <a
-              href={`/internship/dashboard/office-life?day=${task.officeLifeDay}`}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-xs font-bold text-white"
-            >
-              Open Work-Life session
-            </a>
           )}
 
           {task.labScenarioId && (

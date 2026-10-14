@@ -2,11 +2,13 @@ import { recomputeInternProgress } from "@/lib/internship-progress";
 import { getPrisma } from "@/lib/prisma";
 import { canGrade } from "@/lib/submission-history";
 import { awardTaskAchievements } from "@/lib/achievements";
+import { isOfficeLifeAutoDecision } from "@/lib/office-life/tasks";
 
 // Grading a task submission, the same way for mentors and admins: accept it
 // (optionally with a score) or send it back with feedback so the intern can
 // resubmit. Work waiting for review can be graded by either; a grade
-// already given can be changed by an admin, or by the mentor who gave it.
+// already given can be changed by an admin, or by the mentor who gave it
+// (an Office Life task's automatic acceptance, by any of its mentors).
 // Every grade is kept in the submission's history.
 
 const MAX_FEEDBACK_LENGTH = 5000;
@@ -44,11 +46,11 @@ export async function gradeSubmission(
       status: true,
       reviewedById: true,
       participants: { select: { userId: true } },
-      task: { select: { maxScore: true, module: { select: { programId: true } } } },
+      task: { select: { maxScore: true, officeLifeDay: true, module: { select: { programId: true } } } },
     },
   });
   if (!submission) return { ok: false, error: "Submission not found.", status: 404 };
-  if (!canGrade(grader, submission))
+  if (!canGrade(grader, { ...submission, officeLifeAuto: isOfficeLifeAutoDecision(submission) }))
     return {
       ok: false,
       error:

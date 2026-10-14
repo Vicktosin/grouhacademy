@@ -52,6 +52,23 @@ export type InternshipTaskItem = {
   labPassMark: number;
   /** Work-Life week this task launches, if selected as the task destination. */
   officeLifeDay: number | null;
+  /** Office Life tasks: the linked workday, which decides the task (lib/office-life/tasks). */
+  officeLife: InternshipOfficeLifeInfo | null;
+};
+
+export type InternshipOfficeLifeInfo = {
+  day: number;
+  title: string | null;
+  state: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  /** "Not started", "In progress (X of Y steps done)" or "Completed and submitted". */
+  statusLabel: string;
+  stepsDone: number;
+  stepsTotal: number;
+  /** When the workday is open (null: no cohort yet, or the workday isn't set up). */
+  window: TaskWindow | null;
+  opensLabel: string | null;
+  dueLabel: string | null;
+  completedLabel: string | null;
 };
 
 export type InternshipAlert = {

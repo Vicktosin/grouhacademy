@@ -77,6 +77,7 @@ export async function GET(request: Request) {
             title: true,
             maxScore: true,
             labScenarioId: true,
+            officeLifeDay: true,
             labScenario: { select: { kind: true } },
             module: { select: { title: true } },
             cohort: { select: { name: true, program: { select: { name: true } } } },
@@ -136,7 +137,10 @@ export async function GET(request: Request) {
             : name(row.reviewedBy)
           : graded && row.task.labScenarioId
             ? "the Practice Lab"
-            : null,
+            : graded && row.task.officeLifeDay !== null
+              ? "Office Life (automatic)"
+              : null,
+        autoGrader: row.task.officeLifeDay !== null ? "Office Life" : undefined,
         // Admins can change any grade.
         canChangeGrade: true,
       };
