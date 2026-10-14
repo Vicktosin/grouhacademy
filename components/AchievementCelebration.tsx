@@ -157,6 +157,17 @@ function Confetti({ colors, burst }: { colors: string[]; burst: number }) {
   return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-10 h-full w-full" />;
 }
 
+/**
+ * The card's address on this site. Share links use the canonical domain
+ * (NEXT_PUBLIC_APP_URL), which may differ from the one the page is on
+ * (www or not); a download from the other domain is blocked by the
+ * browser, so the card is always fetched from this one.
+ */
+function onThisSite(url: string) {
+  const parsed = new URL(url, window.location.href);
+  return `${parsed.pathname}${parsed.search}`;
+}
+
 /** Crops a photo to a square JPEG (the card shows it in a circle). */
 async function squarePhoto(file: File) {
   const bitmap = await createImageBitmap(file);
@@ -216,6 +227,8 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
   const [stage, setStage] = useState<"celebrate" | "share">("celebrate");
   const [share, setShare] = useState<Share | null>(null);
   const [cardFile, setCardFile] = useState<File | null>(null);
+  // The card couldn't be downloaded as a file: sharing falls back to the link.
+  const [cardFailed, setCardFailed] = useState(false);
   const [cardLoaded, setCardLoaded] = useState(false);
   const [busy, setBusy] = useState<"" | "prepare" | "photo">("");
   const [message, setMessage] = useState("");
@@ -241,6 +254,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
       setStage("celebrate");
       setShare(null);
       setCardFile(null);
+      setCardFailed(false);
       setMessage("");
       if (soundOn()) playFanfare(data.unlock.raritySnapshot);
       navigator.vibrate?.([40, 60, 40, 60, 120]);
@@ -288,12 +302,15 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
   useEffect(() => {
     if (!share) return;
     let cancelled = false;
-    fetch(share.cardUrl)
+    fetch(onThisSite(share.cardUrl), { signal: AbortSignal.timeout(30_000) })
       .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(`Card ${response.status}`))))
       .then((blob) => {
         if (!cancelled) setCardFile(new File([blob], "grouh-academy-achievement.png", { type: "image/png" }));
       })
-      .catch((error) => console.error("Could not prepare the card image:", error));
+      .catch((error) => {
+        console.error("Could not prepare the card image:", error);
+        if (!cancelled) setCardFailed(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -304,6 +321,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
     setUnlock(null);
     setShare(null);
     setCardFile(null);
+    setCardFailed(false);
     setCardLoaded(false);
     setMessage("");
     // Several can arrive together (a perfect score unlocks a few): show the next.
@@ -329,6 +347,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
       const data = (await response.json()) as Share & { error?: string };
       if (!response.ok) throw new Error(data.error || "Your card couldn't be made. Try again.");
       setCardFile(null);
+      setCardFailed(false);
       setShare(data);
       setCardLoaded(false);
       setStage("share");
@@ -377,7 +396,22 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
 
   /** The phone's share sheet with the card and its link (WhatsApp Status, Instagram Story, anywhere). */
   async function shareCard() {
-    if (!share || !cardFile) return;
+    if (!share) return;
+    if (!cardFile) {
+      if (!cardFailed) return;
+      // No picture to hand over: share the link, whose preview is the card.
+      record("native");
+      if (navigator.share) {
+        try {
+          await navigator.share({ text: share.shareText });
+        } catch (error) {
+          if (!(error instanceof Error && error.name === "AbortError")) void copyLink();
+        }
+      } else {
+        void copyLink();
+      }
+      return;
+    }
     record("native");
     if (!canShareFile) {
       download();
@@ -395,12 +429,14 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
   }
 
   async function shareInstagram() {
-    if (!share || !cardFile) return;
+    if (!share || (!cardFile && !cardFailed)) return;
     record("instagram");
     // Instagram only takes the picture, so the link goes on the clipboard
     // for its Link sticker.
     const copiedLink = await copyLink(true);
-    if (canShareFile) {
+    if (!cardFile) {
+      window.open(onThisSite(share.cardUrl), "_blank", "noopener,noreferrer");
+    } else if (canShareFile) {
       try {
         await navigator.share({ files: [cardFile] });
       } catch (error) {
@@ -436,6 +472,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
       if (!response.ok || !data.cardUrl) throw new Error(data.error || "Your photo couldn't be added.");
       setCardLoaded(false);
       setCardFile(null);
+      setCardFailed(false);
       setShare((current) => current && { ...current, cardUrl: data.cardUrl!, customPhoto: true });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Your photo couldn't be added.");
@@ -454,6 +491,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
       if (response.ok && data.cardUrl) {
         setCardLoaded(false);
         setCardFile(null);
+        setCardFailed(false);
         setShare((current) => current && { ...current, cardUrl: data.cardUrl!, customPhoto: false });
       }
     } finally {
@@ -576,7 +614,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
               <div className="relative mx-auto mt-4 aspect-square w-full max-w-[300px] overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
                 {/* eslint-disable-next-line @next/next/no-img-element -- the generated card */}
                 <img
-                  src={share.cardUrl}
+                  src={onThisSite(share.cardUrl)}
                   alt={`Your achievement card: ${unlock.titleSnapshot}`}
                   width={1080}
                   height={1080}
@@ -622,12 +660,12 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
                 type="button"
                 data-autofocus
                 onClick={() => void shareCard()}
-                disabled={!cardFile}
+                disabled={!cardFile && !cardFailed}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-black text-[#14153F] outline-none transition focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#16174A] active:scale-[0.98] disabled:opacity-60"
                 style={{ backgroundImage: gradient }}
               >
-                {!cardFile ? <Loader2 className="h-5 w-5 animate-spin" /> : canShareFile ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
-                {canShareFile || !cardFile ? "Share my card" : "Download my card"}
+                {!cardFile && !cardFailed ? <Loader2 className="h-5 w-5 animate-spin" /> : canShareFile || cardFailed ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+                {cardFailed ? "Share my link" : canShareFile || !cardFile ? "Share my card" : "Download my card"}
               </button>
               {canShareFile && (
                 <p className="mt-1.5 text-center text-[11px] text-white/50">Pick WhatsApp → My status, Instagram Story, or any app</p>
@@ -654,7 +692,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
                     key={item.label}
                     type="button"
                     onClick={item.action}
-                    disabled={item.needsFile && !cardFile}
+                    disabled={item.needsFile && !cardFile && !cardFailed}
                     className="flex flex-col items-center gap-1 whitespace-nowrap text-[10px] font-semibold tracking-tight text-white/75 disabled:opacity-50"
                   >
                     <span className={`flex h-11 w-11 items-center justify-center rounded-full transition active:scale-95 ${item.style}`}>{item.icon}</span>
