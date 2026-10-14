@@ -10,6 +10,7 @@ import { WhatsAppIcon } from "./CommunityInvite";
 import DashboardBanner from "./DashboardBanner";
 import InternTour from "./onboarding/InternTour";
 import PreviewBanner from "./PreviewBanner";
+import AchievementCelebration from "./AchievementCelebration";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
 // Routes reachable before the acceptance fee is paid — the onboarding →
@@ -208,6 +209,9 @@ export default function InternshipShell({
 
       {/* The guided tour of the menu (started from the welcome or Help). */}
       <InternTour />
+      <AchievementCelebration
+        enabled={Boolean(status?.acceptanceFeePaid && status.assessmentPassed)}
+      />
     </div>
   );
 }

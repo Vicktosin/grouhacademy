@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   Award,
+  Trophy,
+  Megaphone,
   Bell,
   BookOpen,
   Briefcase,
@@ -81,6 +83,8 @@ const internshipItems = [
   { label: "Submissions", href: "/admin/internship/submissions", icon: FileCheck2 },
   { label: "Practice Lab", href: "/admin/internship/lab", icon: FlaskConical },
   { label: "Office Life", href: "/admin/internship/office-life", icon: Briefcase },
+  { label: "Achievements", href: "/admin/internship/achievements", icon: Trophy },
+  { label: "Referrals", href: "/admin/internship/referrals", icon: Megaphone },
   { label: "Interviews", href: "/admin/internship/interviews", icon: Mic },
   { label: "Resources", href: "/admin/internship/resources", icon: BookOpen },
   { label: "Mentors", href: "/admin/internship/mentors", icon: Users },

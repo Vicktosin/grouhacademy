@@ -87,6 +87,8 @@ const nextConfig: NextConfig = {
       "./node_modules/sql.js/dist/sql-wasm.wasm",
       "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/emscripten-module.wasm",
     ],
+    // Achievement share cards are drawn with these.
+    "/brag/[code]/card": ["./assets/fonts/*.ttf", "./public/logo-white.png"],
   },
   images: {
     remotePatterns: [

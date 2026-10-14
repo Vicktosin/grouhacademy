@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireInternApi } from "@/lib/lab-api";
 import { submitLab } from "@/lib/practice-lab";
+import { awardLabAchievement } from "@/lib/achievements";
 
 // Backend API exercises run their tests on submit (well under a minute).
 export const maxDuration = 60;
@@ -24,7 +25,8 @@ export async function POST(
   } | null;
   if (!body)
     return NextResponse.json({ error: "Nothing to submit." }, { status: 400 });
-  const result = await submitLab(userId, (await params).id, {
+  const scenarioId = (await params).id;
+  const result = await submitLab(userId, scenarioId, {
     files: body.files,
     checkResults: body.checkResults,
     taskId: typeof body.taskId === "string" ? body.taskId : null,
@@ -32,5 +34,8 @@ export async function POST(
   });
   if ("error" in result)
     return NextResponse.json({ error: result.error }, { status: result.status });
+  await awardLabAchievement(userId, scenarioId).catch((error) =>
+    console.error("[practice-lab] Achievement check failed.", error),
+  );
   return NextResponse.json(result);
 }

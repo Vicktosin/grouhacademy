@@ -5,6 +5,7 @@ import { mediaSrc } from "@/lib/lab-media-shared";
 import { getSiteUrl } from "@/lib/site-url";
 import { Prisma, type LabScenario } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { awardTaskAchievements, awardTaskSubmittedAchievements } from "@/lib/achievements";
 import { getInternTrackAccess } from "@/lib/intern-resources";
 import { getInternTaskContext } from "@/lib/intern-tasks";
 import {
@@ -1090,6 +1091,7 @@ async function gradeLinkedTask(
       : await tx.taskSubmission.create({ data: { taskId: task.id, userId, ...data }, select: { id: true } });
     // History: the work, then the automatic grade.
     await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
+    await awardTaskSubmittedAchievements(tx, saved.id);
     await recordSubmissionEvent(tx, {
       submissionId: saved.id,
       kind: "AUTO_GRADED",
@@ -1098,6 +1100,9 @@ async function gradeLinkedTask(
       feedback: grade.feedback,
       actorRole: "SYSTEM",
     });
+    if (grade.status === "ACCEPTED") {
+      await awardTaskAchievements(tx, userId, saved.id);
+    }
   });
   await recomputeInternProgress(userId, task.module.programId).catch((error) =>
     console.error("[practice-lab] Progress update failed.", error),
