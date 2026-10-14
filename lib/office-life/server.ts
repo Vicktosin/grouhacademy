@@ -4,6 +4,7 @@ import { gradeStep, type Feedback, type Submission } from "@/lib/office-life/gra
 import { castFromOfficeLifeContent, defaultOfficeLifeContent, parseOfficeLifeContent, personalizeOfficeLifeContent, type OfficeLifeContent } from "@/lib/office-life/content";
 import { scheduleToDate } from "@/lib/task-schedule";
 import { awardOfficeLifeAchievement, awardOfficeLifeClockIn, awardOfficeLifeStep } from "@/lib/achievements";
+import { submitOfficeLifeTasks } from "@/lib/office-life/tasks";
 import {
   castFor,
   workdaysFor,
@@ -308,6 +309,11 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
       });
     if (finished) await awardOfficeLifeAchievement(tx, { ...event, score });
   });
+  // Finishing the workday submits (and passes) the tasks linked to it.
+  if (finished)
+    await submitOfficeLifeTasks({ userId, programId: context.programId, levelId: context.levelId, day }).catch((error) =>
+      console.error("[office-life] Linked task submission failed.", error instanceof Error ? error.message : error),
+    );
   return officeLifeDay(userId, day, preview);
 }
 

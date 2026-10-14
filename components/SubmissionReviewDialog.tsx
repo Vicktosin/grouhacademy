@@ -27,6 +27,8 @@ export type ReviewableSubmission = {
   gradedBy: string | null;
   /** Whether this viewer may change a grade already given. */
   canChangeGrade: boolean;
+  /** What gives this task its automatic grade (default: the Practice Lab). */
+  autoGrader?: string;
 };
 
 export const isAwaitingReview = (row: { status: ReviewableSubmission["status"] }) =>
@@ -256,7 +258,7 @@ export default function SubmissionReviewDialog({
             ) : (
               <ol className="mt-3 space-y-2">
                 {[...history].reverse().map((event) => (
-                  <HistoryItem key={event.id} event={event} maxScore={submission.maxScore} />
+                  <HistoryItem key={event.id} event={event} maxScore={submission.maxScore} autoGrader={submission.autoGrader} />
                 ))}
               </ol>
             ))}
@@ -266,7 +268,7 @@ export default function SubmissionReviewDialog({
   );
 }
 
-function HistoryItem({ event, maxScore }: { event: SubmissionHistoryEntry; maxScore: number }) {
+function HistoryItem({ event, maxScore, autoGrader = "the Practice Lab" }: { event: SubmissionHistoryEntry; maxScore: number; autoGrader?: string }) {
   const [open, setOpen] = useState(false);
   const when = dateTime.format(new Date(event.at));
   const who = event.actorName ? `${event.actorName}${event.actorRole ? ` (${ROLE[event.actorRole]})` : ""}` : null;
@@ -310,7 +312,7 @@ function HistoryItem({ event, maxScore }: { event: SubmissionHistoryEntry; maxSc
         {event.score !== null && <span>· {event.score}/{maxScore}</span>}
         <span>
           {event.kind === "AUTO_GRADED"
-            ? "· by the Practice Lab"
+            ? `· by ${autoGrader}`
             : event.kind === "SENT_FOR_REVIEW"
               ? "· automatically"
               : who

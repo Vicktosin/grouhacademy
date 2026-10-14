@@ -66,11 +66,19 @@ export async function POST(request: Request) {
         opensAt: true,
         dueDate: true,
         cohortId: true,
+        officeLifeDay: true,
       },
     });
     // Interns only see, and may only submit, their own cohort's tasks.
     if (!context?.cohortId || !task || task.cohortId !== context.cohortId)
       return NextResponse.json({ error: "Task not found." }, { status: 404 });
+    // Office Life tasks are submitted for the intern when they finish the
+    // workday (lib/office-life/tasks), never by hand.
+    if (task.officeLifeDay !== null)
+      return NextResponse.json(
+        { error: `This task is done in Office Life. Finish workday ${task.officeLifeDay} and it's submitted for you.` },
+        { status: 409 },
+      );
 
     const { group } = context;
     const groupTask = task.kind === "GROUP";

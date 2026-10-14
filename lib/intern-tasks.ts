@@ -15,7 +15,7 @@ function displayName(user: { name: string | null; email: string }) {
   return user.name?.trim() || user.email;
 }
 
-function durationLabel(ms: number) {
+export function durationLabel(ms: number) {
   if (ms < MS_PER_HOUR)
     return `${Math.max(1, Math.round(ms / (1000 * 60)))} minutes`;
   if (ms < MS_PER_DAY) return `${Math.round(ms / MS_PER_HOUR)} hours`;
@@ -160,6 +160,7 @@ export async function getInternTasks(
       labScenarioId: task.labScenarioId,
       labPassMark: task.labPassMark,
       officeLifeDay: task.officeLifeDay,
+      officeLife: null,
       weekLabel: `Week ${task.opensWeek}`,
       weekNumber: task.opensWeek,
       window,

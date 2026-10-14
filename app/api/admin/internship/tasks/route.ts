@@ -14,6 +14,7 @@ import {
   parseLabPassMark,
 } from "@/lib/lab-task-grading";
 import { REAL_USER } from "@/lib/real-user";
+import { submitOfficeLifeTasks } from "@/lib/office-life/tasks";
 import { defaultOfficeLifeContent, parseOfficeLifeContent } from "@/lib/office-life/content";
 
 const MAX_TITLE_LENGTH = 200;
@@ -243,6 +244,8 @@ export async function POST(request: Request) {
     },
   });
   await recomputeCohortProgress(parsed.cohort.id);
+  // Interns who already finished the linked workday have done this task.
+  if (task.officeLifeDay !== null) await submitOfficeLifeTasks({ taskId: task.id });
   return NextResponse.json({ success: true, taskId: task.id }, { status: 201 });
 }
 
@@ -313,6 +316,7 @@ export async function PUT(request: Request) {
     await recomputeCohortProgress(existing.cohortId);
     await recomputeCohortProgress(parsed.data.cohortId);
   }
+  if (parsed.data.officeLifeDay !== null) await submitOfficeLifeTasks({ taskId: id });
   return NextResponse.json({ success: true, taskId: id });
 }
 

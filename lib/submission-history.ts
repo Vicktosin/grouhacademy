@@ -19,15 +19,17 @@ const GRADED: SubmissionStatus[] = ["ACCEPTED", "REJECTED"];
 
 /**
  * Whether this person may grade the submission now: anything waiting for
- * review, or a grade already given if they're an admin or gave it.
+ * review, or a grade already given if they're an admin or gave it. An
+ * Office Life task's automatic acceptance (`officeLifeAuto`, see
+ * lib/office-life/tasks) can be changed by a mentor too.
  */
 export function canGrade(
   who: { role: "ADMIN" | "MENTOR"; userId: string },
-  submission: { status: SubmissionStatus; reviewedById: string | null },
+  submission: { status: SubmissionStatus; reviewedById: string | null; officeLifeAuto?: boolean },
 ) {
   if (submission.status === "SUBMITTED" || submission.status === "UNDER_REVIEW") return true;
   if (!GRADED.includes(submission.status)) return false;
-  return who.role === "ADMIN" || submission.reviewedById === who.userId;
+  return who.role === "ADMIN" || submission.reviewedById === who.userId || submission.officeLifeAuto === true;
 }
 
 /** The submission's history, oldest first, with who did each thing. */

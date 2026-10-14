@@ -8,6 +8,7 @@ import {
   SUBMISSION_LABELS,
   submissionsForInterns,
 } from "@/lib/mentor-data";
+import { isOfficeLifeAutoDecision } from "@/lib/office-life/tasks";
 import { getPrisma } from "@/lib/prisma";
 import { requireRouteAccess } from "@/lib/route-guards";
 
@@ -60,6 +61,7 @@ export default async function MentorSubmissionsPage({
         select: {
           title: true,
           maxScore: true,
+          officeLifeDay: true,
           labScenario: { select: { kind: true } },
           module: { select: { title: true } },
         },
@@ -118,9 +120,13 @@ export default async function MentorSubmissionsPage({
                 ? "you"
                 : submission.reviewedBy
                   ? submission.reviewedBy.name?.trim() || submission.reviewedBy.email
-                  : null,
-            // Mentors may change grades they gave (see lib/submission-grading).
-            canChangeGrade: submission.reviewedById === mentorId,
+                  : isOfficeLifeAutoDecision(submission) && submission.status === "ACCEPTED"
+                    ? "Office Life (automatic)"
+                    : null,
+            autoGrader: submission.task.officeLifeDay !== null ? "Office Life" : undefined,
+            // Mentors may change grades they gave, and Office Life's
+            // automatic ones (see lib/submission-grading).
+            canChangeGrade: submission.reviewedById === mentorId || isOfficeLifeAutoDecision(submission),
           }))}
         />
       </section>
