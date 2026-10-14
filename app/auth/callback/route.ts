@@ -15,6 +15,7 @@ import {
   parseTrack,
   trackForPath,
 } from "@/lib/learner-tracks";
+import { recordReferralRegistration } from "@/lib/referrals";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -39,6 +40,16 @@ export async function GET(request: NextRequest) {
           )
         : null;
       if (userId && track) await grantTrackRole(userId, track);
+      if (userId) {
+        try {
+          const referralClick = next
+            ? new URL(next, request.url).searchParams.get("referralClick")
+            : null;
+          await recordReferralRegistration(request, userId, referralClick);
+        } catch (referralError) {
+          console.error("Failed to attribute internship registration:", referralError);
+        }
+      }
 
       // Staff (admins, instructors, mentors) always land in their workspace:
       // a learner destination from a learner login page doesn't apply.

@@ -146,6 +146,9 @@ enum AuditActionType {
   COURSE_REJECTED
   APPLICATION_REVIEWED
   PAYMENT_UPDATED
+  ACHIEVEMENT_CREATED
+  ACHIEVEMENT_UPDATED
+  ACHIEVEMENT_DEACTIVATED
 }
 
 // Which learner side a notification or announcement belongs to. Null means
@@ -333,6 +336,11 @@ model User {
   labAttempts                  LabAttempt[]
   officeLifeDays               OfficeLifeDay[]
 
+  earnedAchievements AchievementUnlock[]   @relation("AchievementRecipient")
+  createdAchievementShares AchievementShare[] @relation("AchievementShareReferrer")
+  referralAttribution ReferralAttribution? @relation("ReferralRecipient")
+  referredRegistrations ReferralAttribution[] @relation("ReferralReferrer")
+
   @@index([status])
 }
 
@@ -433,6 +441,7 @@ model InternshipProgram {
   internshipCertificates InternshipCertificate[]
   groups                 InternshipGroup[]
   officeLifeContent      OfficeLifeContent[]
+  achievements           AchievementDefinition[]
 }
 
 model InternshipOnboardingQuestion {
@@ -1659,6 +1668,136 @@ model InternshipLevel {
   recommendations InternResourceRecommendation[]
   interviewSetups InterviewSetup[]
   labScenarios    LabScenario[]
+  achievements    AchievementDefinition[]
+}
+
+enum AchievementTrigger {
+  TASK_SUBMITTED
+  TASK_ACCEPTED
+  GROUP_LEADERSHIP
+  PERFECT_SCORE
+  SCORE_THRESHOLD
+  PRACTICE_LAB_COMPLETE
+  WEEK_COMPLETE
+  TASK_COUNT
+  OFFICE_LIFE_COMPLETE
+  LEVEL_UP
+  OFFICE_LIFE_CLOCK_IN
+  OFFICE_LIFE_STEP
+}
+
+enum AchievementRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+// Administrators configure safe, structured rules; trigger conditions are
+// validated against the trigger-specific allowlist in lib/achievements.
+model AchievementDefinition {
+  id                String              @id @default(cuid())
+  title             String
+  description       String
+  congratulatoryMessage String
+  category          String
+  trigger           AchievementTrigger
+  conditions        Json                @default("{}")
+  programId         String?
+  levelId           String?
+  isRepeatable      Boolean             @default(false)
+  rarity            AchievementRarity   @default(COMMON)
+  icon              String              @default("award")
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  program InternshipProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  level   InternshipLevel?   @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  unlocks AchievementUnlock[]
+
+  @@index([isActive, trigger])
+  @@index([programId, levelId])
+}
+
+// An immutable snapshot of what the intern earned. The activity key makes
+// both one-time and explicitly repeatable awards idempotent under concurrency.
+model AchievementUnlock {
+  id                    String   @id @default(cuid())
+  definitionId          String
+  userId                String   @db.Uuid
+  activityKey           String
+  titleSnapshot         String
+  descriptionSnapshot   String
+  messageSnapshot       String
+  categorySnapshot      String
+  raritySnapshot        AchievementRarity
+  iconSnapshot          String
+  accomplishment        Json
+  unlockedAt            DateTime @default(now())
+  celebratedAt          DateTime?
+
+  definition AchievementDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  user       User                  @relation("AchievementRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  share      AchievementShare?
+
+  @@unique([definitionId, userId, activityKey])
+  @@index([userId, celebratedAt, unlockedAt])
+  @@index([definitionId, unlockedAt])
+}
+
+model AchievementShare {
+  id                 String   @id @default(cuid())
+  code               String   @unique @default(cuid())
+  achievementUnlockId String  @unique
+  referrerId         String   @db.Uuid
+  // The intern's own photo for the card, in lab-media storage (share-photos/…).
+  // Null: their profile picture (or their initials).
+  photoKey           String?
+  // Where they sent it (whatsapp, instagram, linkedin, native, download, copy).
+  channels           String[] @default([])
+  createdAt          DateTime @default(now())
+
+  achievementUnlock AchievementUnlock @relation(fields: [achievementUnlockId], references: [id], onDelete: Cascade)
+  referrer          User              @relation("AchievementShareReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  clicks            ReferralClick[]
+  attributions      ReferralAttribution[]
+
+  @@index([referrerId, createdAt])
+}
+
+// One row per share link and browser-generated first-party visitor token.
+// Repeat visits update lastVisitedAt rather than inflating unique click counts.
+model ReferralClick {
+  id         String   @id @default(cuid())
+  shareId    String
+  visitorKey String
+  firstVisitedAt DateTime @default(now())
+  lastVisitedAt  DateTime @default(now())
+  registrationStartedAt DateTime?
+
+  share       AchievementShare      @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  attribution ReferralAttribution?
+
+  @@unique([shareId, visitorKey])
+  @@index([shareId, firstVisitedAt])
+}
+
+model ReferralAttribution {
+  id               String   @id @default(cuid())
+  shareId          String
+  clickId          String?  @unique
+  referrerId       String   @db.Uuid
+  referredUserId   String   @unique @db.Uuid
+  registeredAt    DateTime @default(now())
+
+  share       AchievementShare @relation(fields: [shareId], references: [id], onDelete: Restrict)
+  click       ReferralClick?   @relation(fields: [clickId], references: [id], onDelete: SetNull)
+  referrer    User             @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Restrict)
+  referredUser User            @relation("ReferralRecipient", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([shareId, registeredAt])
+  @@index([referrerId, registeredAt])
 }
 
 // A track's acceptance fee at a level above Entry. Entry keeps using

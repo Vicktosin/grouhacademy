@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,15 +30,64 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const referralClickRef = useRef<string | null>(null);
+  const referralCapture = useRef<Promise<string | null> | null>(null);
+  // Who shared the achievement card that brought them here.
+  const [invite, setInvite] = useState<{ name: string; title: string; track: string | null; cardUrl: string } | null>(null);
   const router = useRouter();
 
+  function captureReferralIfNeeded() {
+    if (track !== "internship") return Promise.resolve(null);
+    referralCapture.current ??= (async () => {
+      const code = new URLSearchParams(window.location.search).get("ref");
+      if (!code) return null;
+      const response = await fetch("/api/referrals/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      if (!response.ok) throw new Error("Unable to record this referral link.");
+      const data = (await response.json()) as { clickId?: unknown; invite?: typeof invite };
+      if (data.invite) setInvite(data.invite);
+      if (typeof data.clickId !== "string") return null;
+      referralClickRef.current = data.clickId;
+      return data.clickId;
+    })().catch((captureError: unknown) => {
+      referralCapture.current = null;
+      throw captureError;
+    });
+    return referralCapture.current;
+  }
+
+  async function markReferralRegistrationStarted(clickId: string | null) {
+    if (!clickId) return;
+    const response = await fetch("/api/referrals/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clickId }),
+    });
+    if (!response.ok) throw new Error("Unable to record referral registration start.");
+  }
+
+  useEffect(() => {
+    // Once, on arrival (captureReferralIfNeeded keeps a single request).
+    void captureReferralIfNeeded().catch((captureError: unknown) =>
+      console.error("Referral tracking is unavailable:", captureError),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track]);
+
   function nextPath() {
-    return (
+    const destination =
       requestedPathForTrack(
         track,
         new URLSearchParams(window.location.search).get("next"),
-      ) ?? config.home
-    );
+      ) ?? config.home;
+    const clickId = referralClickRef.current;
+    if (track !== "internship" || !clickId) return destination;
+    const url = new URL(destination, window.location.origin);
+    url.searchParams.set("referralClick", clickId);
+    return `${url.pathname}${url.search}${url.hash}`;
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -58,6 +107,14 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
     }
 
     setIsSubmitting(true);
+
+    let clickId = referralClickRef.current;
+    try {
+      clickId = (await captureReferralIfNeeded()) ?? clickId;
+      await markReferralRegistrationStarted(clickId);
+    } catch (referralError) {
+      console.error("Referral tracking could not be completed:", referralError);
+    }
 
     const supabase = createSupabaseBrowserClient();
     const destination = nextPath();
@@ -90,7 +147,9 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
 
     if (data.session) {
       // Adds the new account to this side before entering it.
-      await fetch(`/api/auth/redirect?track=${track}`, { cache: "no-store" });
+      const redirectQuery = new URLSearchParams({ track });
+      if (clickId) redirectQuery.set("referralClick", clickId);
+      await fetch(`/api/auth/redirect?${redirectQuery}`, { cache: "no-store" });
       router.push(destination);
       router.refresh();
       return;
@@ -104,6 +163,13 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
 
   const handleOAuth = async () => {
     setError(null);
+    let clickId = referralClickRef.current;
+    try {
+      clickId = (await captureReferralIfNeeded()) ?? clickId;
+      await markReferralRegistrationStarted(clickId);
+    } catch (referralError) {
+      console.error("Referral tracking could not be completed:", referralError);
+    }
     const supabase = createSupabaseBrowserClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -133,6 +199,17 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
                       className="mb-3 h-10 w-auto"
                     />
                   </Link>
+                  {invite && (
+                    <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#5FBB46]/30 bg-[#5FBB46]/10 p-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- the generated card */}
+                      <img src={invite.cardUrl} alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-xl" />
+                      <p className="text-sm leading-5 text-[#1c1d52]">
+                        <span className="font-bold">{invite.name}</span> just unlocked{" "}
+                        <span className="font-bold">“{invite.title}”</span>
+                        {invite.track ? ` in our ${invite.track} internship` : " here"}. Your turn: start below.
+                      </p>
+                    </div>
+                  )}
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#4d9d39]">
                     {config.name}
                   </p>

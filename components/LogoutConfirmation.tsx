@@ -23,7 +23,9 @@ export default function LogoutConfirmation({
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    // This browser only: Supabase's default ("global") would also sign the
+    // account out on every other device and tab, mid-work.
+    const { error } = await supabase.auth.signOut({ scope: "local" });
     clearCachedJson();
 
     if (error) {

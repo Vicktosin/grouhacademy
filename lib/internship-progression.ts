@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
+import { awardLevelUpAchievement } from "@/lib/achievements";
 import { computeInternProgress } from "@/lib/internship-progress";
 import { cohortTimeline } from "@/lib/task-schedule";
 import { getAcceptanceFee } from "@/lib/internship-levels";
@@ -308,6 +309,8 @@ export async function activatePromotion(applicationId: string) {
       programId: true,
       cohortId: true,
       createdAt: true,
+      level: { select: { id: true, name: true } },
+      program: { select: { name: true } },
       payment: { select: { status: true } },
       promotedFrom: { select: { createdAt: true } },
     },
@@ -343,5 +346,13 @@ export async function activatePromotion(applicationId: string) {
       await tx.internshipGroupMember.delete({ where: { id: membership.id } });
       await reassignLeaderIfNeeded(tx, membership.groupId);
     }
+    await awardLevelUpAchievement(tx, {
+      userId: application.studentId,
+      programId: application.programId,
+      levelId: application.level.id,
+      levelName: application.level.name,
+      trackName: application.program.name,
+      applicationId: application.id,
+    });
   });
 }
