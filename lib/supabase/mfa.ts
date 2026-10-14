@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { isStaffWorkspace } from "@/lib/learner-tracks";
 import { isSafeInternalPath } from "@/lib/safe-redirect";
 
 export const MFA_CHALLENGE_PATH = "/auth/mfa";
@@ -16,6 +17,20 @@ export function isAllowedPostAuthPath(path: string | null): path is string {
     pathname === "/student" ||
     pathname.startsWith("/student/")
   );
+}
+
+export function getPostAuthDestination(
+  next: string | null,
+  home: string | null,
+): string | null {
+  if (
+    isAllowedPostAuthPath(next) &&
+    new URL(next, "http://placeholder.invalid").pathname === "/reset-password"
+  ) {
+    return next;
+  }
+  if (isStaffWorkspace(home)) return home;
+  return isAllowedPostAuthPath(next) ? next : home;
 }
 
 /**

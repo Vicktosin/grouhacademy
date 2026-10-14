@@ -4,6 +4,7 @@ import {
   getAuthorizedHomeRouteForUserId,
 } from "@/lib/supabase/auth";
 import {
+  getPostAuthDestination,
   isAllowedPostAuthPath,
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
@@ -11,7 +12,6 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
 import {
-  isStaffWorkspace,
   parseTrack,
   trackForPath,
 } from "@/lib/learner-tracks";
@@ -56,12 +56,7 @@ export async function GET(request: NextRequest) {
       const home = userId
         ? await getAuthorizedHomeRouteForUserId(userId, track)
         : null;
-      const destination =
-        home && isStaffWorkspace(home)
-          ? home
-          : isAllowedPostAuthPath(next)
-            ? next
-            : home;
+      const destination = getPostAuthDestination(next, home);
 
       // Users with MFA enrolled must complete the second factor before being
       // sent anywhere, including the registration and recovery destinations.

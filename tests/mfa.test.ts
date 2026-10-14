@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getPostAuthDestination,
   isAllowedPostAuthPath,
   isMfaVerificationPending,
 } from "../lib/supabase/mfa";
@@ -72,4 +73,19 @@ test("only internal recovery and internship paths are allowed after auth", () =>
   assert.equal(isAllowedPostAuthPath("/admin"), false);
   assert.equal(isAllowedPostAuthPath("https://evil.example"), false);
   assert.equal(isAllowedPostAuthPath(null), false);
+});
+
+test("password recovery stays on the reset form, including for staff", () => {
+  assert.equal(
+    getPostAuthDestination("/reset-password", "/admin"),
+    "/reset-password",
+  );
+  assert.equal(
+    getPostAuthDestination("/reset-password?track=courses", "/mentor"),
+    "/reset-password?track=courses",
+  );
+});
+
+test("staff sign-in still prioritizes the staff workspace", () => {
+  assert.equal(getPostAuthDestination("/student", "/admin"), "/admin");
 });
