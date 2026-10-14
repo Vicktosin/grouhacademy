@@ -6,6 +6,7 @@ import {
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
+import { getSupabaseCookieOptions } from "@/lib/supabase/cookie-options";
 import {
   DEV_AUTH_COOKIE_NAME,
   isDevelopmentBypassEnabled,
@@ -52,6 +53,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: getSupabaseCookieOptions(request.nextUrl.hostname),
       cookies: {
         getAll() {
           return request.cookies.getAll();
