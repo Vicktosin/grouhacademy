@@ -19,16 +19,18 @@ export function isAllowedPostAuthPath(path: string | null): path is string {
   );
 }
 
+export function isPasswordRecoveryPath(path: string | null): path is string {
+  return (
+    isAllowedPostAuthPath(path) &&
+    new URL(path, "http://placeholder.invalid").pathname === "/reset-password"
+  );
+}
+
 export function getPostAuthDestination(
   next: string | null,
   home: string | null,
 ): string | null {
-  if (
-    isAllowedPostAuthPath(next) &&
-    new URL(next, "http://placeholder.invalid").pathname === "/reset-password"
-  ) {
-    return next;
-  }
+  if (isPasswordRecoveryPath(next)) return next;
   if (isStaffWorkspace(home)) return home;
   return isAllowedPostAuthPath(next) ? next : home;
 }
