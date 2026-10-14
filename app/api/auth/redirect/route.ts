@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
 import { parseTrack } from "@/lib/learner-tracks";
@@ -11,13 +11,14 @@ import {
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordReferralRegistration } from "@/lib/referrals";
 
 /**
  * Called right after sign-in. `?track=internship|courses` names the side
  * whose login or sign-up page was used: the user is added to that side and
  * sent to it. Without a track, they go to their usual workspace.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const track = parseTrack(new URL(request.url).searchParams.get("track"));
   const loginPath = track === "courses" ? "/courses/login" : "/login";
   try {
@@ -35,6 +36,15 @@ export async function GET(request: Request) {
       track ? TRACK_ROLE[track] : undefined,
     );
     if (track) await grantTrackRole(userId, track);
+    try {
+      await recordReferralRegistration(
+        request,
+        userId,
+        new URL(request.url).searchParams.get("referralClick"),
+      );
+    } catch (referralError) {
+      console.error("Failed to attribute internship registration:", referralError);
+    }
 
     if (await isMfaVerificationPending(supabase, data.user)) {
       return NextResponse.json({ redirectTo: MFA_CHALLENGE_PATH });

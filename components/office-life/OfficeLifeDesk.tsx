@@ -7,6 +7,7 @@ import MailApp from "./MailApp";
 import MeetApp from "./MeetApp";
 import ReportsApp from "./ReportsApp";
 import type { Act, DayData, StepView } from "./shared";
+import { checkForAchievements } from "@/lib/achievement-events";
 
 // A Office Life workday: clock in, then work through the day's steps in
 // order using Mail, Meet and Reports, as at a real job.
@@ -51,6 +52,7 @@ export default function OfficeLifeDesk({ initial, onBack }: { initial: DayData; 
       const after = next.steps.find((step) => step.available);
       if (after && after.id !== before) setApp(appFor(after));
       setDay(next);
+      checkForAchievements();
       return null;
     },
     [day],

@@ -1,8 +1,10 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { LogIn, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AdminContext } from "@/lib/admin-context";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
 
@@ -13,8 +15,12 @@ export default function AdminShell({
   workspace: "student" | "internship";
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [admin, setAdmin] = useState<AdminContext | null>(null);
+  // The sign-in was ended elsewhere (e.g. logged out on another device):
+  // pages here don't re-check it, so every request would just be refused.
+  const [signedOut, setSignedOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,6 +30,10 @@ export default function AdminShell({
         const response = await fetch("/api/admin/context", {
           cache: "no-store",
         });
+        if (response.status === 403) {
+          if (!cancelled) setSignedOut(true);
+          return;
+        }
         if (!response.ok) return;
 
         const context = (await response.json()) as AdminContext;
@@ -39,6 +49,13 @@ export default function AdminShell({
       cancelled = true;
     };
   }, []);
+
+  async function signInAgain() {
+    // Clears the ended session from this browser, then back here after signing in.
+    await createSupabaseBrowserClient().auth.signOut({ scope: "local" }).catch(() => undefined);
+    router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    router.refresh();
+  }
 
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#edf3ff] text-[#1C1D52]">
@@ -70,6 +87,20 @@ export default function AdminShell({
           </>
         )}
         <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto py-2">
+          {signedOut && (
+            <div role="alert" className="mx-auto mb-4 flex max-w-3xl flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                <strong>Your sign-in has ended</strong> (this account may have logged out on another device or tab). Sign in again to keep working.
+              </p>
+              <button
+                type="button"
+                onClick={() => void signInAgain()}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1C1D52] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                <LogIn className="h-4 w-4" /> Sign in again
+              </button>
+            </div>
+          )}
           {children}
         </main>
       </div>
