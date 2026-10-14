@@ -11,10 +11,7 @@ import {
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
-import {
-  parseTrack,
-  trackForPath,
-} from "@/lib/learner-tracks";
+import { parseTrack, trackForPath } from "@/lib/learner-tracks";
 import { recordReferralRegistration } from "@/lib/referrals";
 
 export async function GET(request: NextRequest) {
@@ -28,6 +25,9 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.error("Failed to exchange Supabase auth callback code:", error);
+    }
     if (!error) {
       const {
         data: { user },
@@ -47,7 +47,10 @@ export async function GET(request: NextRequest) {
             : null;
           await recordReferralRegistration(request, userId, referralClick);
         } catch (referralError) {
-          console.error("Failed to attribute internship registration:", referralError);
+          console.error(
+            "Failed to attribute internship registration:",
+            referralError,
+          );
         }
       }
 

@@ -23,7 +23,7 @@ export default function ForgotPasswordView({ track }: { track: LearnerTrack }) {
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${getSiteUrl()}/?next=${encodeURIComponent(resetPath)}`,
+        redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(resetPath)}`,
       },
     );
     if (resetError) {
