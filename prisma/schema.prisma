@@ -898,6 +898,9 @@ model AssignmentSubmission {
   userId       String           @db.Uuid
   content      String?
   fileUrl      String?
+  // Practice Lab task submissions: screenshots of the intern's site or a
+  // WordPress site snapshot, in storage (lib/lab-artifacts).
+  labArtifacts Json?
   score        Int?
   feedback     String?
   status       SubmissionStatus @default(SUBMITTED)
@@ -1221,6 +1224,9 @@ model TaskSubmission {
   groupId      String?
   content      String?
   fileUrl      String?
+  // Practice Lab task submissions: screenshots of the intern's site or a
+  // WordPress site snapshot, in storage (lib/lab-artifacts).
+  labArtifacts Json?
   score        Int?
   feedback     String?
   status       SubmissionStatus @default(SUBMITTED)
@@ -1254,6 +1260,9 @@ model TaskSubmissionEvent {
   // SUBMITTED: the work as it was then.
   content      String?
   fileUrl      String?
+  // Practice Lab task submissions: screenshots of the intern's site or a
+  // WordPress site snapshot, in storage (lib/lab-artifacts).
+  labArtifacts Json?
   // REVIEWED / AUTO_GRADED / SENT_FOR_REVIEW: the decision.
   status       SubmissionStatus?
   score        Int?

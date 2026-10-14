@@ -60,6 +60,7 @@ export default async function MentorSubmissionsPage({
         select: {
           title: true,
           maxScore: true,
+          labScenario: { select: { kind: true } },
           module: { select: { title: true } },
         },
       },
@@ -104,6 +105,7 @@ export default async function MentorSubmissionsPage({
               submission.fileUrl && /^https?:\/\//i.test(submission.fileUrl)
                 ? submission.fileUrl
                 : null,
+            siteReview: ["WEB", "REACT", "WORDPRESS"].includes(submission.task.labScenario?.kind ?? ""),
             submittedLabel: formatSubmitted(submission.submittedAt),
             status: submission.status,
             statusLabel: SUBMISSION_LABELS[submission.status].label,

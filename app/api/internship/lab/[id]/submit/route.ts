@@ -22,6 +22,7 @@ export async function POST(
     checkResults?: unknown;
     taskId?: unknown;
     runIndex?: unknown;
+    artifacts?: unknown;
   } | null;
   if (!body)
     return NextResponse.json({ error: "Nothing to submit." }, { status: 400 });
@@ -31,6 +32,7 @@ export async function POST(
     checkResults: body.checkResults,
     taskId: typeof body.taskId === "string" ? body.taskId : null,
     runIndex: typeof body.runIndex === "number" ? body.runIndex : null,
+    artifacts: body.artifacts,
   });
   if ("error" in result)
     return NextResponse.json({ error: result.error }, { status: result.status });

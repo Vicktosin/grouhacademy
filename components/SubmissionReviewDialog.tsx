@@ -15,6 +15,8 @@ export type ReviewableSubmission = {
   moduleTitle: string;
   content: string | null;
   fileUrl: string | null;
+  /** A Practice Lab website task: their site can be opened (app/lab-review). */
+  siteReview?: boolean;
   submittedLabel: string;
   status: "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
   statusLabel: string;
@@ -131,6 +133,16 @@ export default function SubmissionReviewDialog({
         {submission.fileUrl && (
           <a href={submission.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[10px] font-bold text-blue-600">
             Open attached file
+          </a>
+        )}
+        {submission.siteReview && (
+          <a
+            href={`/lab-review/${submission.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#1C1D52] px-3 py-2 text-xs font-bold text-white"
+          >
+            View their site (screenshots and live preview)
           </a>
         )}
 

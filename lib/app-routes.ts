@@ -4,7 +4,7 @@
  * hidden on these routes and everything nested beneath them.
  */
 /** Marketing pages that hide the site header but aren't part of the app. */
-const MARKETING_LANDING_PAGES = ["/landingpage", "/ad-redirect"];
+const MARKETING_LANDING_PAGES = ["/landingpage", "/ad-redirect", "/brag"];
 
 const APP_ROUTE_SECTIONS = [
   // Installed-app start page: sends people to their workspace or login.
@@ -15,6 +15,8 @@ const APP_ROUTE_SECTIONS = [
   "/instructor",
   "/mentor",
   "/student",
+  // A mentor or admin looking at an intern's submitted site.
+  "/lab-review",
 
   // Authentication and account recovery
   "/auth",

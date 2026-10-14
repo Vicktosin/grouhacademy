@@ -58,6 +58,8 @@ export type WpSubmission = {
   summary: WpSiteSummary | null;
   /** Files the intern created or edited in the editor (path → contents). */
   files: Record<string, string>;
+  /** With snapshotForReview: the whole site, compact, for mentors (null if it failed). */
+  snapshot?: Blob | null;
 };
 
 const REMOTE_URL = "https://playground.wordpress.net/remote.html";
@@ -76,12 +78,15 @@ export default function WordPressLab({
   storageKey,
   onSubmit,
   submitLabel = "Submit",
+  snapshotForReview = false,
 }: {
   config: WpConfig;
   /** Where the site is saved in this browser; null = start fresh each time. */
   storageKey: string | null;
   onSubmit?: (submission: WpSubmission) => Promise<void> | void;
   submitLabel?: string;
+  /** Also send a snapshot of the site (a task submission: mentors open it). */
+  snapshotForReview?: boolean;
 }) {
   const iframe = useRef<HTMLIFrameElement>(null);
   // Full screen (Practice Lab): the site fills the screen.
@@ -283,7 +288,17 @@ export default function WordPressLab({
         }
       }
       await save();
-      await onSubmit({ results: latest, summary, files });
+      let snapshot: Blob | null = null;
+      if (snapshotForReview) {
+        try {
+          const { buildWpSnapshot } = await import("@/lib/wp-sim/snapshot");
+          snapshot = await buildWpSnapshot(wp, edited.current);
+        } catch (snapshotError) {
+          // Mentors still get the summary and files.
+          console.error("Couldn't make the site snapshot:", snapshotError);
+        }
+      }
+      await onSubmit({ results: latest, summary, files, snapshot });
     } catch (submitError) {
       console.error("Couldn't submit:", submitError);
       setCheckError("Your site couldn't be checked for submitting. Try again in a moment.");
