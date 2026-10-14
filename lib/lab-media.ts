@@ -177,3 +177,32 @@ export async function labImageResponse(key: string, thumb: boolean): Promise<Res
     },
   });
 }
+
+// Achievement share cards: an intern's own photo for the card (instead of
+// their profile picture). One per share; replacing it deletes the old one.
+
+/** Stores a share-card photo; returns its storage key. */
+export async function saveSharePhoto(userId: string, bytes: Uint8Array, previousKey?: string | null) {
+  if (!isLabMediaEnabled()) throw new MediaError("Photo uploads aren't set up yet. Use your profile picture instead.");
+  if (!bytes.length || bytes.length > MAX_MEDIA_BYTES)
+    throw new MediaError("That photo is too big. Try again; the page shrinks photos for you.");
+  // The card renderer draws JPG and PNG (not WebP).
+  const extension = sniff(bytes);
+  if (extension !== "jpg" && extension !== "png") throw new MediaError("Upload a JPG or PNG photo.");
+  const key = `share-photos/${userId}/${randomUUID()}.${extension}`;
+  await put(key, bytes, TYPES[extension]);
+  if (previousKey?.startsWith(`share-photos/${userId}/`)) {
+    if (local()) await rm(path.join(LOCAL_DIR, previousKey), { force: true });
+    else await (await bucket()).remove([previousKey]);
+  }
+  return key;
+}
+
+/** A share-card photo as a data URL, for drawing the card (null if it's gone). */
+export async function readSharePhoto(key: string) {
+  if (!key.startsWith("share-photos/") || !isLabMediaEnabled()) return null;
+  const bytes = await get(key);
+  if (!bytes) return null;
+  const type = TYPES[key.split(".").pop() as Extension] ?? "image/jpeg";
+  return `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
+}

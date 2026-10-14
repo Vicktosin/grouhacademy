@@ -37,6 +37,7 @@ import type {
   InternLab,
   LabTaskResult,
 } from "@/lib/practice-lab";
+import { checkForAchievements } from "@/lib/achievement-events";
 
 /** Save this long after the intern stops typing. */
 const AUTOSAVE_MS = 2500;
@@ -256,6 +257,7 @@ async function sendSubmission(
       attempt: null,
       message: { text: body?.error ?? "Unable to submit.", error: true },
     };
+  checkForAchievements();
   const attempt = body.attempt as Attempt;
   const run = body.run as InternAutomationLab["runs"][number] | undefined;
   const backendRun = body.backendRun as InternBackendLab["runs"][number] | undefined;

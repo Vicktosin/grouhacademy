@@ -1,6 +1,7 @@
 import { recomputeInternProgress } from "@/lib/internship-progress";
 import { getPrisma } from "@/lib/prisma";
 import { canGrade } from "@/lib/submission-history";
+import { awardTaskAchievements } from "@/lib/achievements";
 
 // Grading a task submission, the same way for mentors and admins: accept it
 // (optionally with a score) or send it back with feedback so the intern can
@@ -86,6 +87,11 @@ export async function gradeSubmission(
       },
       select: { id: true },
     });
+    if (grade.decision === "ACCEPTED") {
+      for (const internId of creditedInterns(submission)) {
+        await awardTaskAchievements(tx, internId, submissionId);
+      }
+    }
     return true;
   });
   if (!saved)

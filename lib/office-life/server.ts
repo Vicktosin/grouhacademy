@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { gradeStep, type Feedback, type Submission } from "@/lib/office-life/grade";
 import { castFromOfficeLifeContent, defaultOfficeLifeContent, parseOfficeLifeContent, personalizeOfficeLifeContent, type OfficeLifeContent } from "@/lib/office-life/content";
 import { scheduleToDate } from "@/lib/task-schedule";
+import { awardOfficeLifeAchievement, awardOfficeLifeClockIn, awardOfficeLifeStep } from "@/lib/achievements";
 import {
   castFor,
   workdaysFor,
@@ -239,9 +240,13 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
   if (!availability(context, workday, preview).open) return { error: "This workday is outside its scheduled window.", status: 403 } as const;
   const cast = state.cast ?? (state.clockedInAt ? castFor(context.track) : castFromOfficeLifeContent(content));
   const now = new Date().toISOString();
+  // What to celebrate once it's saved: a first clock-in or a graded step.
+  let clockedIn = false;
+  let doneStep: { id: string; kind: string; title: string; score: number | null } | null = null;
 
   if (input.action === "clock-in") {
     if (!state.clockedInAt) {
+      clockedIn = true;
       state.clockedInAt = now;
       state.workday = defaultWorkday;
       state.cast = castFromOfficeLifeContent(content);
@@ -256,6 +261,8 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
     state.workday = workday;
     state.cast = cast;
     state.steps[step.id] = { at: now, ...result };
+    if (step.kind !== "inbox")
+      doneStep = { id: step.id, kind: step.kind, title: step.title, score: state.steps[step.id]?.feedback?.score ?? null };
   }
 
   const graded = workday.steps.filter((step) => step.kind !== "inbox");
@@ -263,22 +270,43 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
   const scores = graded.map((step) => state.steps[step.id]?.feedback?.score).filter((score): score is number => typeof score === "number");
   const score = finished && scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null;
 
-  await prisma.officeLifeDay.upsert({
-    where: key,
-    create: {
+  await prisma.$transaction(async (tx) => {
+    await tx.officeLifeDay.upsert({
+      where: key,
+      create: {
+        userId,
+        programId: context.programId,
+        levelId: context.levelId,
+        day,
+        state: state as unknown as Prisma.InputJsonValue,
+        score,
+        completedAt: finished ? new Date() : null,
+      },
+      update: {
+        state: state as unknown as Prisma.InputJsonValue,
+        score,
+        ...(finished ? { completedAt: new Date() } : {}),
+      },
+    });
+    if (preview) return;
+    const event = {
       userId,
       programId: context.programId,
       levelId: context.levelId,
       day,
-      state: state as unknown as Prisma.InputJsonValue,
-      score,
-      completedAt: finished ? new Date() : null,
-    },
-    update: {
-      state: state as unknown as Prisma.InputJsonValue,
-      score,
-      ...(finished ? { completedAt: new Date() } : {}),
-    },
+      track: context.track,
+      level: context.level.name,
+    };
+    if (clockedIn) await awardOfficeLifeClockIn(tx, event);
+    if (doneStep)
+      await awardOfficeLifeStep(tx, {
+        ...event,
+        stepId: doneStep.id,
+        stepKind: doneStep.kind,
+        stepTitle: doneStep.title,
+        score: doneStep.score,
+      });
+    if (finished) await awardOfficeLifeAchievement(tx, { ...event, score });
   });
   return officeLifeDay(userId, day, preview);
 }

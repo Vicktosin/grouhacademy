@@ -25,7 +25,7 @@ export default function FlowExitBar({
   const router = useRouter();
 
   async function signOut() {
-    await createSupabaseBrowserClient().auth.signOut();
+    await createSupabaseBrowserClient().auth.signOut({ scope: "local" });
     clearCachedJson();
     router.replace("/login");
     router.refresh();

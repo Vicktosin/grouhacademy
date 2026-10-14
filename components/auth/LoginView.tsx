@@ -51,7 +51,13 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
 
   /** Adds the signed-in account to this side and goes there. */
   async function enterTrack() {
-    const response = await fetch(`/api/auth/redirect?track=${track}`, {
+    const requested = requestedPath();
+    const referralClick = requested
+      ? new URL(requested, window.location.origin).searchParams.get("referralClick")
+      : null;
+    const query = new URLSearchParams({ track });
+    if (referralClick) query.set("referralClick", referralClick);
+    const response = await fetch(`/api/auth/redirect?${query}`, {
       cache: "no-store",
     });
     const data = (await response.json().catch(() => ({}))) as {
@@ -59,7 +65,6 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
     };
     if (!response.ok) throw new Error("Unable to determine your workspace.");
 
-    const requested = requestedPath();
     if (data.redirectTo === MFA_CHALLENGE_PATH) {
       // After the second factor, continue to this side.
       const next = requested ?? (track === "courses" ? config.home : null);
@@ -126,7 +131,7 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
   };
 
   const handleSignOut = async () => {
-    await createSupabaseBrowserClient().auth.signOut();
+    await createSupabaseBrowserClient().auth.signOut({ scope: "local" });
     clearCachedJson();
     setSignedInEmail(null);
   };

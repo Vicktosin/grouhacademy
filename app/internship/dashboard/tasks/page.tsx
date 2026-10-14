@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import InternshipShell from "@/components/InternshipShell";
 import { bringIntoView } from "@/lib/bring-into-view";
+import { checkForAchievements } from "@/lib/achievement-events";
 import type {
   InternshipTaskItem,
   InternshipTaskListResponse,
@@ -399,6 +400,7 @@ function TaskCard({
       if (!response.ok)
         throw new Error(body?.error ?? "Unable to submit your work.");
       setMessage({ ok: true, text: "Submitted. Your mentor will review it." });
+      checkForAchievements();
       await onSubmitted();
     } catch (submitError) {
       setMessage({

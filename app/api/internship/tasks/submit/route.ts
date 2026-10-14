@@ -8,6 +8,7 @@ import {
   MAX_SUBMISSION_LENGTH,
   submissionBlockedReason,
 } from "@/lib/task-submission";
+import { awardTaskSubmittedAchievements } from "@/lib/achievements";
 
 /**
  * Submits (or resubmits) a task. Individual tasks: one submission per intern.
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
             });
         // History keeps every version (see lib/submission-history).
         await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
+        await awardTaskSubmittedAchievements(tx, saved.id);
         return saved;
       });
       return NextResponse.json({ id: submission.id, success: true });
@@ -141,6 +143,7 @@ export async function POST(request: Request) {
         })),
       });
       await recordSubmissionEvent(tx, { submissionId: saved.id, kind: "SUBMITTED", content, actorId: userId, actorRole: "INTERN" });
+      await awardTaskSubmittedAchievements(tx, saved.id);
       return saved;
     });
     return NextResponse.json({ id: submission.id, success: true });
