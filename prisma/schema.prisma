@@ -222,6 +222,11 @@ model PlatformSettings {
   notifyStudentOnEnrollment  Boolean @default(true)
   notifyStudentOnCertificate Boolean @default(true)
 
+  // Demo videos at the top of the "How it works" guides (YouTube or Google
+  // Drive links; lib/guide-video). Null: no video.
+  officeLifeGuideVideoUrl  String?
+  practiceLabGuideVideoUrl String?
+
   // Audit
   updatedById String? @db.Uuid
   updatedBy   User?   @relation("PlatformSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)

@@ -4,6 +4,7 @@ import { Code2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import GuideVideoSetting from "@/components/admin/GuideVideoSetting";
 
 type Scenario = {
   id: string;
@@ -60,6 +61,8 @@ export default function AdminPracticeLabPage() {
             <Plus className="h-4 w-4" /> New exercise
           </Link>
         </header>
+
+        <GuideVideoSetting guide="practice-lab" area="Practice Lab" />
 
         {!reviewEnabled && (
           <p className="rounded-lg bg-sky-50 px-4 py-3 text-xs text-sky-800">

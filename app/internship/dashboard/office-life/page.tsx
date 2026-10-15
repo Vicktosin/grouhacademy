@@ -6,8 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import FullscreenFrame from "@/components/FullscreenFrame";
 import InternshipShell from "@/components/InternshipShell";
+import HowItWorksGuide from "@/components/onboarding/HowItWorksGuide";
 import OfficeLifeDesk from "@/components/office-life/OfficeLifeDesk";
 import type { DayData } from "@/components/office-life/shared";
+import { OFFICE_LIFE_GUIDE } from "@/lib/how-it-works";
 import type { officeLifeOverview } from "@/lib/office-life/server";
 
 // Office Life: scheduled workdays at a company during the internship.
@@ -55,6 +57,9 @@ function OfficeLifePageContent() {
 
   return (
     <InternshipShell>
+      <div className="mb-3">
+        <HowItWorksGuide guide={OFFICE_LIFE_GUIDE} />
+      </div>
       {day ? (
         <FullscreenFrame ownControls>
           <OfficeLifeDesk

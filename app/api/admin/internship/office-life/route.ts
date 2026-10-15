@@ -3,6 +3,7 @@ import { requireAdminApi } from "@/lib/api-guards";
 import { defaultOfficeLifeContent, parseOfficeLifeContent } from "@/lib/office-life/content";
 import { getPrisma } from "@/lib/prisma";
 import { listLevels } from "@/lib/internship-levels";
+import { saveOfficeLifeContent } from "@/lib/office-life/admin";
 
 export async function GET(request: Request) {
   const adminId = await requireAdminApi();
@@ -58,31 +59,8 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.programId !== "string" || typeof body.levelId !== "string")
     return NextResponse.json({ error: "Choose a track and level." }, { status: 400 });
-  const content = parseOfficeLifeContent(body.content);
-  if (!content)
-    return NextResponse.json({ error: "Check the workday schedule, unique day/step numbers, and meeting participants." }, { status: 400 });
-
-  const prisma = getPrisma();
-  const [track, level] = await Promise.all([
-    prisma.internshipProgram.findUnique({ where: { id: body.programId }, select: { id: true } }),
-    prisma.internshipLevel.findUnique({ where: { id: body.levelId }, select: { id: true, rank: true } }),
-  ]);
-  if (!track) return NextResponse.json({ error: "Track not found." }, { status: 404 });
-  if (!level) return NextResponse.json({ error: "Level not found." }, { status: 404 });
-  const scenarioIds = [...new Set(content.workdays.flatMap((day) => day.steps.flatMap((step) => step.kind === "work" && step.labScenarioId ? [step.labScenarioId] : [])))];
-  if (scenarioIds.length) {
-    const matching = await prisma.labScenario.findMany({
-      where: { id: { in: scenarioIds }, programId: track.id, published: true, level: { rank: { lte: level.rank } } },
-      select: { id: true },
-    });
-    if (matching.length !== scenarioIds.length)
-      return NextResponse.json({ error: "Every linked Practice Lab exercise must be published, belong to this track, and be available at this level." }, { status: 400 });
-  }
-  await prisma.officeLifeContent.upsert({
-    where: { programId_levelId: { programId: track.id, levelId: level.id } },
-    create: { programId: track.id, levelId: level.id, content },
-    update: { content },
-  });
+  const result = await saveOfficeLifeContent(body.programId, body.levelId, body.content);
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ ok: true });
 }
 

@@ -1,38 +1,53 @@
--- Preserve the existing level IDs and every foreign-key association while
--- changing the shared internship ladder to Beginner → Professional.
+-- Preserve existing IDs and foreign-key associations while normalizing both
+-- the original three-level ladder and databases that already have five levels.
+UPDATE "InternshipLevel" SET "rank" = "rank" + 100000;
 
 UPDATE "InternshipLevel"
-SET "rank" = "rank" + 100;
-
-UPDATE "InternshipLevel"
-SET
-    "name" = 'Beginner',
-    "rank" = 1,
-    "description" = 'The first level for new interns.',
-    "updatedAt" = CURRENT_TIMESTAMP
+SET "name" = 'Beginner', "description" = 'The first level for new interns.', "updatedAt" = CURRENT_TIMESTAMP
 WHERE "id" = 'level-entry';
 
 UPDATE "InternshipLevel"
-SET
-    "name" = 'Intermediate',
-    "rank" = 3,
-    "description" = 'Build on the foundations from Novice level.',
-    "updatedAt" = CURRENT_TIMESTAMP
-WHERE "id" = 'level-intermediate';
+SET "name" = 'Intermediate', "description" = 'Build on the foundations from Novice level.', "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'level-intermediate'
+  AND NOT EXISTS (
+      SELECT 1 FROM "InternshipLevel" WHERE "name" = 'Intermediate' AND "id" <> 'level-intermediate'
+  );
+
+UPDATE "InternshipLevel"
+SET "name" = 'Advanced', "description" = 'Apply advanced skills developed through Intermediate level.', "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'level-senior'
+  AND NOT EXISTS (
+      SELECT 1 FROM "InternshipLevel" WHERE "name" = 'Advanced' AND "id" <> 'level-senior'
+  );
+
+INSERT INTO "InternshipLevel" ("id", "name", "rank", "description", "createdAt", "updatedAt")
+SELECT 'level-novice', 'Novice', -100000, 'Develop core skills after Beginner level.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM "InternshipLevel" WHERE "name" = 'Novice')
+  AND NOT EXISTS (SELECT 1 FROM "InternshipLevel" WHERE "id" = 'level-novice');
+
+INSERT INTO "InternshipLevel" ("id", "name", "rank", "description", "createdAt", "updatedAt")
+SELECT 'level-professional', 'Professional', -100001, 'Demonstrate professional-level expertise after Advanced level.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM "InternshipLevel" WHERE "name" = 'Professional')
+  AND NOT EXISTS (SELECT 1 FROM "InternshipLevel" WHERE "id" = 'level-professional');
 
 UPDATE "InternshipLevel"
 SET
-    "name" = 'Advanced',
-    "rank" = 4,
-    "description" = 'Apply advanced skills developed through Intermediate level.',
+    "rank" = CASE "name"
+        WHEN 'Beginner' THEN 1
+        WHEN 'Novice' THEN 2
+        WHEN 'Intermediate' THEN 3
+        WHEN 'Advanced' THEN 4
+        WHEN 'Professional' THEN 5
+    END,
     "updatedAt" = CURRENT_TIMESTAMP
-WHERE "id" = 'level-senior';
+WHERE "name" IN ('Beginner', 'Novice', 'Intermediate', 'Advanced', 'Professional');
 
--- Keep any additional custom levels after the five standard levels.
-UPDATE "InternshipLevel"
-SET "rank" = "rank" - 98
-WHERE "id" NOT IN ('level-entry', 'level-intermediate', 'level-senior');
-
-INSERT INTO "InternshipLevel" ("id", "name", "rank", "description", "createdAt", "updatedAt") VALUES
-    ('level-novice', 'Novice', 2, 'Develop core skills after Beginner level.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('level-professional', 'Professional', 5, 'Demonstrate professional-level expertise after Advanced level.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+WITH custom_levels AS (
+    SELECT "id", ROW_NUMBER() OVER (ORDER BY "rank", "id") + 5 AS "rank"
+    FROM "InternshipLevel"
+    WHERE "name" NOT IN ('Beginner', 'Novice', 'Intermediate', 'Advanced', 'Professional')
+)
+UPDATE "InternshipLevel" AS level
+SET "rank" = custom_levels."rank"
+FROM custom_levels
+WHERE level."id" = custom_levels."id";

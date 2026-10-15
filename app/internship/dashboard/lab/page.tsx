@@ -1,6 +1,7 @@
 "use client";
 
-import PageGuide from "@/components/onboarding/PageGuide";
+import HowItWorksGuide from "@/components/onboarding/HowItWorksGuide";
+import { PRACTICE_LAB_GUIDE } from "@/lib/how-it-works";
 import {
   ChevronRight,
   Code2,
@@ -51,7 +52,9 @@ export default function PracticeLabPage() {
   return (
     <InternshipShell>
       <div className="space-y-5">
-        <PageGuide section="lab" />
+        <div>
+          <HowItWorksGuide guide={PRACTICE_LAB_GUIDE} visited="lab" />
+        </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#1C1D52]">
             Practice Lab

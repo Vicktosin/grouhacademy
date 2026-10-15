@@ -41,7 +41,7 @@ export function isUploadedVideo(videoUrl: string) {
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const VIDEO_FILE = /\.(mp4|webm|ogg|ogv|mov|m4v)$/i;
 
-function parseUrl(raw: string): URL | null {
+export function parseUrl(raw: string): URL | null {
   const value = raw.trim();
   if (!value) return null;
   try {
@@ -64,7 +64,7 @@ function startSeconds(value: string | null) {
   return Number(h) * 3600 + Number(m) * 60 + Number(s);
 }
 
-function youtubeId(url: URL) {
+export function youtubeId(url: URL) {
   const host = url.hostname.replace(/^(www\.|m\.|music\.)/, "");
   const parts = url.pathname.split("/").filter(Boolean);
   let id: string | undefined;
@@ -78,7 +78,7 @@ function youtubeId(url: URL) {
 
 const DRIVE_ID = /^[A-Za-z0-9_-]{20,}$/;
 
-function driveId(url: URL) {
+export function driveId(url: URL) {
   const host = url.hostname.replace(/^www\./, "");
   if (host !== "drive.google.com" && host !== "docs.google.com") return null;
   const parts = url.pathname.split("/").filter(Boolean);

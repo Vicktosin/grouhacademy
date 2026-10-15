@@ -12,6 +12,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
+import HowItWorksGuide from "@/components/onboarding/HowItWorksGuide";
+import { PRACTICE_LAB_GUIDE } from "@/lib/how-it-works";
 import LabWorkspace from "@/components/LabWorkspace";
 import AdsSimulator from "@/components/AdsSimulator";
 import SocialSimulator from "@/components/SocialSimulator";
@@ -100,6 +102,9 @@ export default function LabExercisePage({
           <ArrowLeft className="h-4 w-4" />
           {lab?.task ? "Back to tasks" : "Back to Practice Lab"}
         </Link>
+        <div>
+          <HowItWorksGuide guide={PRACTICE_LAB_GUIDE} />
+        </div>
 
         {error && (
           <p
