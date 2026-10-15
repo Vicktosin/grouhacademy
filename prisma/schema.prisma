@@ -182,6 +182,16 @@ enum PremiumTier {
   TIER_400K
 }
 
+enum FinanceEntryType {
+  AD_SPEND
+  STAFF_PAYMENT
+  BUSINESS_SAVINGS
+  CAPITAL_INVESTMENT
+  UNPLANNED_EXPENSE
+  SUBSCRIPTION
+  OTHER
+}
+
 model PlatformSettings {
   id String @id @default("singleton")
 
@@ -288,6 +298,7 @@ model User {
   enrollments   Enrollment[]
   courseReviews CourseReview[]
   payments      Payment[]
+  financeEntries FinanceEntry[] @relation("FinanceEntryCreator")
   certificates  Certificate[]
 
   courseProgress CourseProgress[]
@@ -1099,6 +1110,27 @@ model Payment {
   @@index([userId])
   @@index([courseId])
   @@index([programId])
+}
+
+model FinanceEntry {
+  id               String           @id @default(cuid())
+  type             FinanceEntryType
+  description      String
+  amount           Int
+  currency         String           @default("NGN")
+  occurredAt       DateTime         @default(now())
+  source           String?
+  adType           String?
+  campaignName     String?
+  conversions      Int?
+  attributedRevenue Int?
+  createdById      String           @db.Uuid
+  createdBy        User             @relation("FinanceEntryCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([type, occurredAt])
+  @@index([createdById])
 }
 
 model InternshipTrack {

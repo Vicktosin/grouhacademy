@@ -48,6 +48,7 @@ const studentItems = [
     icon: GraduationCap,
   },
   { label: "Payments", href: "/admin/student/payments", icon: CreditCard },
+  { label: "Finance & Inventory", href: "/admin/finance", icon: WalletCards },
   { label: "Certificates", href: "/admin/student/certificates", icon: Award },
   { label: "Instructors", href: "/admin/student/instructors", icon: Users },
   { label: "Notifications", href: "/admin/student/notifications", icon: Bell },
@@ -89,6 +90,7 @@ const internshipItems = [
   { label: "Resources", href: "/admin/internship/resources", icon: BookOpen },
   { label: "Mentors", href: "/admin/internship/mentors", icon: Users },
   { label: "Payments", href: "/admin/internship/payments", icon: WalletCards },
+  { label: "Finance & Inventory", href: "/admin/finance", icon: WalletCards },
   {
     label: "Certificates",
     href: "/admin/internship/certificates",
