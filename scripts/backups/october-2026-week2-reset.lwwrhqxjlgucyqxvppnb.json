@@ -1,0 +1,240 @@
+{
+  "savedAt": "2026-10-14T21:27:16.066Z",
+  "UNDO": [
+    "Cohorts: in Admin > Cohorts, set each cohort's start and end date back to startDate/endDate below. Saving moves its tasks' windows back with it; then set any task listed under tasks back to its week/day/time values below.",
+    "Office Life plans: officeLifeContent lists the saved plans that existed before (none means the built-in default was in use). For a track and level not listed, press 'Restore defaults' in Admin > Office Life for that track and level (it removes the saved plan, nothing else).",
+    "Office Life progress: officeLifeDaySchedules has each record's workday schedule before the change; only these six fields were changed in state.workday.",
+    "Week 2 tasks: listed in the report; delete them in Admin > Tasks only if no intern has submitted them."
+  ],
+  "cohorts": [
+    {
+      "id": "cmua5zs3t000104iaj9wlrryo",
+      "name": "October AI for Content Creation",
+      "slug": "october-ai-for-content-creation-mujy45o1",
+      "status": "UPCOMING",
+      "programId": "cmua5y9qm000004iad60pkf3p",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-10T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuxwlroy000104l9re7j06pc",
+          "title": "MEET UP (AI/Content)",
+          "moduleId": "cmuxwlrmi000004l9tl2q2zxk",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-10T08:00:00.000Z",
+          "dueDate": "2026-10-16T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmua50zlp000204jppwg0cc70",
+      "name": "October AI Automation",
+      "slug": "october-ai-automation-mumi7w12",
+      "status": "UPCOMING",
+      "programId": "cmua3wfa9000004ld77ptfvnv",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-11T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuwxfhh5000q04l5mnhh7qcm",
+          "title": "MEET YOUR TEAM (AI/Automation)",
+          "moduleId": "cmuwx9i28000004i0yln60hje",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-11T08:00:00.000Z",
+          "dueDate": "2026-10-17T22:59:00.000Z"
+        },
+        {
+          "id": "cmuxxwy55000004jw705tjrj4",
+          "title": "MEET YOUR TEAM (Back end)",
+          "moduleId": "cmuwx9i28000004i0yln60hje",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-11T08:00:00.000Z",
+          "dueDate": "2026-10-17T22:59:00.000Z"
+        },
+        {
+          "id": "cmv7hhm75000a1byexnf7w3a9",
+          "title": "kdhbo",
+          "moduleId": "cmuwx9i28000004i0yln60hje",
+          "opensWeek": 1,
+          "opensDay": 3,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-13T08:00:00.000Z",
+          "dueDate": "2026-10-17T22:59:00.000Z"
+        },
+        {
+          "id": "cmv801e7o00003yedo2bchwig",
+          "title": "Site review test (web)",
+          "moduleId": "cmuwx9i28000004i0yln60hje",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "00:00",
+          "dueWeek": 8,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-10T23:00:00.000Z",
+          "dueDate": "2026-12-05T22:59:00.000Z"
+        },
+        {
+          "id": "cmv801hi800043yed160uegrp",
+          "title": "Site review test (wp)",
+          "moduleId": "cmuwx9i28000004i0yln60hje",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "00:00",
+          "dueWeek": 8,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-10T23:00:00.000Z",
+          "dueDate": "2026-12-05T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmua5l4iz000404jpwjkutmb0",
+      "name": "October Front-End Development",
+      "slug": "october-front-end-development-mutaqig0",
+      "status": "UPCOMING",
+      "programId": "cmua5j6ju000304jp89a6t5rj",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-08T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuxxt8mc000104jvyki07fsm",
+          "title": "MEET YOUR TEAM (Front End)",
+          "moduleId": "cmuxxt8jz000004jvnoqkxjyi",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-08T08:00:00.000Z",
+          "dueDate": "2026-10-14T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmu80ulmx001901yeofhjtxez",
+      "name": "October Digital Marketing Cohort",
+      "slug": "october-digital-marketing-cohort-mutarb8l",
+      "status": "UPCOMING",
+      "programId": "cmua2rb1c000004jp0jt3ljor",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-08T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuxya0l2000b04jv84v76bi9",
+          "title": "MEET YOUR TEAM (Digital Marketer)",
+          "moduleId": "cmuxya0ii000a04jvba0bk25n",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-08T08:00:00.000Z",
+          "dueDate": "2026-10-14T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmuaakcs0000204ilby88if7v",
+      "name": "October WordPress Development",
+      "slug": "october-wordpress-development-mutary2t",
+      "status": "UPCOMING",
+      "programId": "cmua34l88000h04jpt8nq9e7r",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-09T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuxwo66u001f04l9us47tm6c",
+          "title": "MEET YOUR TEAM (Wordpress)",
+          "moduleId": "cmuxwnamp001604l9l0r2vucr",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-09T08:00:00.000Z",
+          "dueDate": "2026-10-15T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmua882af000004lb80kxb3bp",
+      "name": "October Social Media Marketing Cohort",
+      "slug": "october-social-media-marketing-cohort-mutctikv",
+      "status": "UPCOMING",
+      "programId": "cmu9vjew1000004l2r3c206wj",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-08T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": [
+        {
+          "id": "cmuwx7n9t000104l5gv8lzim8",
+          "title": "MEET YOUR TEAM (SMM)",
+          "moduleId": "cmuwx7n76000004l5sngep39c",
+          "opensWeek": 1,
+          "opensDay": 1,
+          "opensTime": "09:00",
+          "dueWeek": 1,
+          "dueDay": 7,
+          "dueTime": "23:59",
+          "opensAt": "2026-10-08T08:00:00.000Z",
+          "dueDate": "2026-10-14T22:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "cmua6pz32000004id51retkvv",
+      "name": "October Back-End Engineering",
+      "slug": "october-back-end-engineering-muy24apr",
+      "status": "ACTIVE",
+      "programId": "cmua3lf2a000004jxlmcg5icx",
+      "levelId": "level-entry",
+      "description": null,
+      "startDate": "2026-10-07T00:00:00.000Z",
+      "endDate": "2026-10-31T00:00:00.000Z",
+      "certificatePassMark": 70,
+      "tasks": []
+    }
+  ],
+  "officeLifeContent": [],
+  "officeLifeDaySchedules": []
+}
