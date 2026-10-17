@@ -5,6 +5,7 @@ import type {
   TaskStatusLabel,
   TaskTone,
 } from "@/lib/internship-data";
+import { compareInternshipTaskOrder } from "@/lib/internship-task-order";
 import { formatWat, taskWindowState } from "@/lib/task-schedule";
 import { submissionBlockedReason } from "@/lib/task-submission";
 
@@ -116,7 +117,7 @@ export async function getInternTasks(
   });
 
   const now = new Date();
-  return tasks.map((task) => {
+  return [...tasks].sort(compareInternshipTaskOrder).map((task) => {
     const submission =
       task.kind === "GROUP"
         ? task.submissions.find((s) => group && s.groupId === group.id)
