@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { postTeamMessage } from "@/lib/group-chat";
 
 /**
@@ -7,8 +7,8 @@ import { postTeamMessage } from "@/lib/group-chat";
  * Body: { groupIds: string[], content: string }.
  */
 export async function POST(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const body = (await request.json().catch(() => null)) as {
     groupIds?: unknown;
     content?: unknown;
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     ? body.groupIds.filter((id): id is string => typeof id === "string").slice(0, 500)
     : [];
   const result = await postTeamMessage(
-    adminId,
+    access.userId,
     groupIds,
     typeof body?.content === "string" ? body.content : "",
   );

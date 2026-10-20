@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireAdminApi, requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 
 // Internship levels, managed by admins. Order (rank) decides which level an
@@ -32,8 +32,8 @@ async function levelsWithUsage() {
 }
 
 export async function GET() {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   return NextResponse.json({ levels: await levelsWithUsage() });
 }
 

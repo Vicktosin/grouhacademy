@@ -25,6 +25,7 @@ enum RoleName {
   INSTRUCTOR
   MENTOR
   ADMIN
+  SUPPORT_ADMIN
 }
 
 enum InternshipProgramStatus {
@@ -1563,6 +1564,8 @@ model DashboardBanner {
 
 enum InternResourceStatus {
   DRAFT
+  // Sent by a Support Admin; only an admin can publish it.
+  PENDING_REVIEW
   PUBLISHED
 }
 
@@ -1575,6 +1578,10 @@ model InternResource {
   status      InternResourceStatus @default(DRAFT)
   levelId     String
   createdById String?              @db.Uuid
+  // Set when a Support Admin sends it for review; the admin's reason when
+  // they send it back as a draft.
+  submittedForReviewAt DateTime?
+  reviewNote           String?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
 

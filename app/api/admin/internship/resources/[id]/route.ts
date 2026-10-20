@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { adminOnly, requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 import { resolveLevelId } from "@/lib/internship-levels";
 import {
   getResourceById,
   internResourceInclude,
+  notifyAdminsOfReview,
   parseResourceInput,
+  reviewFieldsFor,
   serializeAdminResource,
+  supportAdminCanEdit,
+  supportAdminResourceError,
   syncResourceCurriculum,
   unknownTrackIds,
 } from "@/lib/intern-resources";
@@ -18,22 +22,24 @@ const notFound = () =>
   NextResponse.json({ error: "Resource not found." }, { status: 404 });
 
 export async function GET(_request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
-
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const resource = await getResourceById((await params).id);
   if (!resource) return notFound();
-  return NextResponse.json(serializeAdminResource(resource));
+  return NextResponse.json({
+    ...serializeAdminResource(resource),
+    canEdit: access.isMainAdmin || supportAdminCanEdit(access.userId, resource),
+  });
 }
 
 /**
- * Partial update: any of title, description, thumbnail, status, trackIds and
- * modules. The resource list's publish/unpublish toggle sends only status.
+ * Partial update: any of title, description, thumbnail, status, reviewNote,
+ * trackIds and modules. The resource list's publish/unpublish and review
+ * buttons send only status (and reviewNote).
  */
 export async function PATCH(request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
-
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const existing = await getResourceById((await params).id);
   if (!existing) return notFound();
 
@@ -44,6 +50,10 @@ export async function PATCH(request: Request, { params }: Params) {
   if ("error" in parsed)
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   const { input } = parsed;
+  const refusal = access.isMainAdmin
+    ? null
+    : supportAdminResourceError(access.userId, input, existing);
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
 
   const prisma = getPrisma();
   if (input.trackIds && (await unknownTrackIds(prisma, input.trackIds)).length)
@@ -78,6 +88,7 @@ export async function PATCH(request: Request, { params }: Params) {
           description: input.description,
           thumbnail: input.thumbnail,
           status: input.status,
+          ...reviewFieldsFor(input.status, existing.status, input.reviewNote),
           levelId: input.levelId,
         },
       });
@@ -110,12 +121,25 @@ export async function PATCH(request: Request, { params }: Params) {
     { timeout: 30_000 },
   );
 
-  return NextResponse.json(serializeAdminResource(resource));
+  if (
+    !access.isMainAdmin &&
+    resource.status === "PENDING_REVIEW" &&
+    existing.status !== "PENDING_REVIEW"
+  )
+    await notifyAdminsOfReview(resource.title, access.userId).catch((error) =>
+      console.error("Failed to notify admins of a resource review:", error),
+    );
+
+  return NextResponse.json({
+    ...serializeAdminResource(resource),
+    canEdit: access.isMainAdmin || supportAdminCanEdit(access.userId, resource),
+  });
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
+  if (!access.isMainAdmin) return adminOnly("delete resources");
 
   const existing = await getResourceById((await params).id);
   if (!existing) return notFound();

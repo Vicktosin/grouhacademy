@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminShell, { useAdminBasePath } from "@/components/AdminShell";
 
 type Option = { id: string; name: string };
 type ResourceItem = {
   id: string;
   title: string;
-  status: "DRAFT" | "PUBLISHED";
+  status: "DRAFT" | "PENDING_REVIEW" | "PUBLISHED";
   levelName: string;
 };
 type Payload = {
@@ -28,6 +28,7 @@ type Payload = {
 };
 
 export default function RecommendedResourcesPage() {
+  const basePath = useAdminBasePath();
   const [tracks, setTracks] = useState<Option[]>([]);
   const [levels, setLevels] = useState<Option[]>([]);
   const [programId, setProgramId] = useState("");
@@ -122,7 +123,7 @@ export default function RecommendedResourcesPage() {
     <AdminShell workspace="internship">
       <div className="mx-auto max-w-[1100px] space-y-5">
         <Link
-          href="/admin/internship/resources"
+          href={`${basePath}/resources`}
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -309,7 +310,7 @@ function ResourceLabel({ item }: { item: ResourceItem }) {
       </span>
       <span className="text-[10px] text-slate-400">
         {item.levelName} level
-        {item.status === "DRAFT" && " · Draft (hidden until published)"}
+        {item.status !== "PUBLISHED" && " · Not published yet (hidden until published)"}
       </span>
     </span>
   );

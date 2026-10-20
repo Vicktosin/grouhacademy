@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { FollowUpStatus } from "@/generated/prisma/client";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ applicationId: string }> };
 
 /** Body: any of { status, note, nextFollowUpAt (ISO date or null) }. */
 export async function PATCH(request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const { applicationId } = await params;
 
   const body = (await request.json().catch(() => null)) as Record<

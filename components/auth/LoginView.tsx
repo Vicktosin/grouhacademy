@@ -31,7 +31,14 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  // Back from a Support Admin invitation link (app/auth/support-invite).
+  const [invite, setInvite] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the browser-only URL once
+    setInvite(new URLSearchParams(window.location.search).get("invite"));
+  }, []);
 
   // Someone already signed in (e.g. an intern opening the courses login)
   // can continue into this side without typing their password again.
@@ -208,6 +215,17 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
                       Not you? Sign out
                     </button>
                   </div>
+                )}
+
+                {invite && (
+                  <p
+                    role="status"
+                    className={`mb-5 rounded-xl px-4 py-3 text-sm ${invite === "confirmed" ? "bg-[#e8f7eb] text-[#397d3a]" : "bg-amber-50 text-amber-900"}`}
+                  >
+                    {invite === "confirmed"
+                      ? "Your email is confirmed. Sign in with the password your administrator gave you."
+                      : "This invitation link has expired or was already used. Ask your administrator to resend it, or sign in if you've already confirmed your email."}
+                  </p>
                 )}
 
                 <form className="space-y-5" onSubmit={handleSubmit}>

@@ -32,6 +32,7 @@ type Message = {
   isMine: boolean;
   /** Posted by the academy team (an admin), not a group member. */
   fromTeam?: boolean;
+  teamRole?: "ADMIN" | "SUPPORT_ADMIN" | null;
 };
 type Meeting = {
   title: string;
@@ -379,9 +380,11 @@ export default function DiscussionPage() {
                     <div className={`flex items-center gap-2 text-xs font-bold text-[#1C1D52] ${message.isMine ? "justify-end" : ""}`}>
                       {message.fromTeam ? (
                         <span className="inline-flex items-center gap-1.5">
-                          Grouh Academy team
+                          {message.teamRole === "SUPPORT_ADMIN"
+                            ? "Support Admin"
+                            : "Grouh Academy team"}
                           <span className="rounded-full bg-[#1C1D52] px-2 py-0.5 text-[9px] font-semibold text-white">
-                            Admin
+                            {message.teamRole === "SUPPORT_ADMIN" ? "Support" : "Admin"}
                           </span>
                         </span>
                       ) : (

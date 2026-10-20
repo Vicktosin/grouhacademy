@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 import { listLevels } from "@/lib/internship-levels";
 import { getRecommendations, setRecommendations } from "@/lib/intern-resources";
@@ -9,8 +9,8 @@ import { getRecommendations, setRecommendations } from "@/lib/intern-resources";
  * pair's recommended resources and the resources that can be added.
  */
 export async function GET(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
 
   const params = new URL(request.url).searchParams;
   const programId = params.get("programId");
@@ -34,8 +34,8 @@ export async function GET(request: Request) {
 
 /** Body: { programId, levelId, resourceIds } in display order. */
 export async function PUT(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
 
   const body = (await request.json().catch(() => null)) as Record<
     string,

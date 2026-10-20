@@ -13,6 +13,7 @@ const roles: RoleName[] = [
   RoleName.INSTRUCTOR,
   RoleName.MENTOR,
   RoleName.ADMIN,
+  RoleName.SUPPORT_ADMIN,
 ];
 
 const permissions = [
@@ -148,6 +149,12 @@ const rolePermissions: Record<RoleName, readonly string[]> = {
     "notification:view",
   ],
   ADMIN: permissions,
+  SUPPORT_ADMIN: [
+    "internship:view",
+    "intern:view",
+    "application:view",
+    "notification:view",
+  ],
 };
 
 async function main() {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { listFollowUps } from "@/lib/internship-follow-ups";
 import { followUpCardImage } from "@/lib/follow-up-card";
 
@@ -9,8 +9,8 @@ import { followUpCardImage } from "@/lib/follow-up-card";
 type Params = { params: Promise<{ applicationId: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
 
   const [row] = await listFollowUps((await params).applicationId);
   if (!row)

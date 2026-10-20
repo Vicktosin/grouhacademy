@@ -2,11 +2,26 @@
 
 import { LogIn, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { AdminContext } from "@/lib/admin-context";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
+
+/**
+ * Whether this page is open in the Support Admin workspace (/support). The
+ * internship pages Support Admins share with admins use it to hide what only
+ * admins may do; the APIs refuse those actions either way.
+ */
+export function useAdminSupportMode() {
+  const pathname = usePathname() ?? "";
+  return pathname === "/support" || pathname.startsWith("/support/");
+}
+
+/** Where the shared internship pages live for this workspace. */
+export function useAdminBasePath() {
+  return useAdminSupportMode() ? "/support" : "/admin/internship";
+}
 
 export default function AdminShell({
   workspace,
@@ -16,6 +31,7 @@ export default function AdminShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const supportAdmin = useAdminSupportMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [admin, setAdmin] = useState<AdminContext | null>(null);
   // The sign-in was ended elsewhere (e.g. logged out on another device):
@@ -60,7 +76,7 @@ export default function AdminShell({
   return (
     <div className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#edf3ff] text-[#1C1D52]">
       <div className="relative z-30 shrink-0">
-        <AdminHeader workspace={workspace} admin={admin} />
+        <AdminHeader workspace={workspace} admin={admin} supportAdmin={supportAdmin} />
         <button
           type="button"
           onClick={() => setMobileOpen((current) => !current)}
@@ -76,14 +92,14 @@ export default function AdminShell({
       </div>
 
       <div className="flex min-h-0 flex-1 gap-5 overflow-hidden px-3 pb-3 sm:px-5 lg:gap-6 lg:px-6">
-        <AdminSidebar workspace={workspace} admin={admin} />
+        <AdminSidebar workspace={workspace} admin={admin} supportAdmin={supportAdmin} />
         {mobileOpen && (
           <>
             <div
               className="fixed inset-0 z-30 bg-[#1C1D52]/50 md:hidden"
               onClick={() => setMobileOpen(false)}
             />
-            <AdminSidebar workspace={workspace} admin={admin} mobile />
+            <AdminSidebar workspace={workspace} admin={admin} mobile supportAdmin={supportAdmin} />
           </>
         )}
         <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto py-2">

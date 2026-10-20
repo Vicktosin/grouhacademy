@@ -30,11 +30,12 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  // Internship resources are admin-only; courses are also built by
-  // instructors.
+  // Internship resources are built by admins and Support Admins; courses
+  // by admins and instructors.
   const { roles } = await getUserRBAC(userId);
   const allowed =
     roles.includes(RoleName.ADMIN) ||
+    (folder === "resources" && roles.includes(RoleName.SUPPORT_ADMIN)) ||
     (folder === "courses" && roles.includes(RoleName.INSTRUCTOR));
   if (!allowed)
     return NextResponse.json(

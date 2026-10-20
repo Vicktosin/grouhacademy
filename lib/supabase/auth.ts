@@ -11,6 +11,7 @@ export type SupabaseAuthUser = {
 
 const rolePriority: RoleName[] = [
   RoleName.ADMIN,
+  RoleName.SUPPORT_ADMIN,
   RoleName.INSTRUCTOR,
   RoleName.MENTOR,
   RoleName.INTERN,
@@ -23,6 +24,8 @@ export function getAuthorizedHomeRouteForRoles(roles: RoleName[]): string {
       switch (role) {
         case RoleName.ADMIN:
           return "/admin/student";
+        case RoleName.SUPPORT_ADMIN:
+          return "/support";
         case RoleName.INSTRUCTOR:
           return "/instructor";
         case RoleName.MENTOR:

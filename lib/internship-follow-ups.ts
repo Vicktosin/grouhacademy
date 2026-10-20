@@ -1,4 +1,4 @@
-import { FollowUpStage } from "@/generated/prisma/client";
+import { FollowUpStage, RoleName } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { loadAcceptanceFees } from "@/lib/internship-levels";
 import { getSiteUrl } from "@/lib/site-url";
@@ -75,6 +75,68 @@ export function firstAnswer(answers: Record<string, unknown>, ids: string[]) {
   return null;
 }
 
+/** Who reached out: the admin team or a Support Admin. */
+export type ContactRole = "ADMIN" | "SUPPORT_ADMIN";
+
+export type FollowUpContact = {
+  name: string;
+  role: ContactRole;
+  count: number;
+  lastAt: string;
+};
+
+/**
+ * Everyone who has contacted these applicants, newest first, so admins and
+ * Support Admins can see who is already handling whom.
+ */
+export async function followUpContacts(
+  applicationIds: string[],
+): Promise<Map<string, FollowUpContact[]>> {
+  if (!applicationIds.length) return new Map();
+  const prisma = getPrisma();
+  const logs = await prisma.internshipFollowUpLog.findMany({
+    where: { applicationId: { in: applicationIds }, adminId: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: {
+      applicationId: true,
+      adminId: true,
+      createdAt: true,
+      admin: { select: { name: true, email: true } },
+    },
+  });
+  // Someone with both roles counts as the admin team.
+  const roleOf = new Map<string, ContactRole>();
+  for (const { userId, role } of await prisma.userRole.findMany({
+    where: {
+      userId: { in: [...new Set(logs.map((log) => log.adminId!))] },
+      role: { name: { in: [RoleName.ADMIN, RoleName.SUPPORT_ADMIN] } },
+    },
+    select: { userId: true, role: { select: { name: true } } },
+  }))
+    if (roleOf.get(userId) !== "ADMIN")
+      roleOf.set(userId, role.name === RoleName.ADMIN ? "ADMIN" : "SUPPORT_ADMIN");
+
+  // Logs are newest first, so each person's first log is their latest.
+  const byApplication = new Map<string, Map<string, FollowUpContact>>();
+  for (const log of logs) {
+    const adminId = log.adminId!;
+    const people = byApplication.get(log.applicationId) ?? new Map();
+    const contact = people.get(adminId);
+    if (contact) contact.count += 1;
+    else
+      people.set(adminId, {
+        name: log.admin?.name?.trim() || log.admin?.email || "Former team member",
+        role: roleOf.get(adminId) ?? "ADMIN",
+        count: 1,
+        lastAt: log.createdAt.toISOString(),
+      });
+    byApplication.set(log.applicationId, people);
+  }
+  return new Map(
+    [...byApplication].map(([id, people]) => [id, [...people.values()]]),
+  );
+}
+
 export type FollowUpRow = {
   applicationId: string;
   stage: FollowUpStageKey;
@@ -107,6 +169,8 @@ export type FollowUpRow = {
     lastContactedAt: string | null;
     lastContactedBy: string | null;
     contactCount: number;
+    /** Each person who reached out, most recent first. */
+    contactedBy: FollowUpContact[];
   };
   values: FollowUpValues;
 };
@@ -207,6 +271,7 @@ export async function listFollowUps(
     ).map((group) => [group.studentId, group._max.createdAt?.getTime()]),
   );
 
+  const contacts = await followUpContacts(applications.map((a) => a.id));
   const loginLink = `${publicSiteUrl()}/login`;
   const rows: FollowUpRow[] = [];
   for (const application of applications) {
@@ -291,6 +356,7 @@ export async function listFollowUps(
           followUp?.lastContactedBy?.email ??
           null,
         contactCount: followUp?.contactCount ?? 0,
+        contactedBy: contacts.get(application.id) ?? [],
       },
       values: {
         firstName,

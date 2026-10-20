@@ -12,6 +12,7 @@ const APP_ROUTE_SECTIONS = [
 
   // Workspaces
   "/admin",
+  "/support",
   "/instructor",
   "/mentor",
   "/student",

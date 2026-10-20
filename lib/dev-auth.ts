@@ -13,6 +13,7 @@ export { DEV_AUTH_COOKIE_NAME, isDevelopmentBypassEnabled };
 
 export const DEVELOPMENT_TEST_ROLES = [
   RoleName.ADMIN,
+  RoleName.SUPPORT_ADMIN,
   RoleName.STUDENT,
   RoleName.INTERN,
   RoleName.INSTRUCTOR,
