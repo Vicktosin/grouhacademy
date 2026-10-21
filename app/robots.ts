@@ -11,6 +11,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/admin/",
           "/support/",
+          "/affiliate/",
+          "/invite/",
           "/api/",
           "/auth/",
           "/dev/",

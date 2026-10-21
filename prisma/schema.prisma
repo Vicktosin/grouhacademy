@@ -138,6 +138,12 @@ enum NotificationType {
   ERROR
 }
 
+enum AffiliatePayoutStatus {
+  PENDING
+  PAID
+  REJECTED
+}
+
 enum AuditActionType {
   USER_CREATED
   USER_SUSPENDED
@@ -219,6 +225,10 @@ model PlatformSettings {
   defaultAssessmentPassScore    Int     @default(70)
   maxGroupSize                  Int     @default(12)
   internshipApplicationsEnabled Boolean @default(true)
+  // Affiliate Program: commission on each internship payment an affiliate
+  // brings in, and the smallest balance (naira) that can be cashed out.
+  affiliateCommissionPercent    Int     @default(10)
+  affiliatePayoutMinimum        Int     @default(5000)
 
   // Certificate settings
   certificateIssuerName        String  @default("Grouh Academy")
@@ -352,6 +362,8 @@ model User {
   createdAchievementShares AchievementShare[] @relation("AchievementShareReferrer")
   referralAttribution ReferralAttribution? @relation("ReferralRecipient")
   referredRegistrations ReferralAttribution[] @relation("ReferralReferrer")
+  affiliateProfile    AffiliateProfile?
+  affiliateReferredBy AffiliateReferral?  @relation("AffiliateReferredUser")
 
   @@index([status])
 }
@@ -547,6 +559,8 @@ model InternshipPayment {
   paidAt        DateTime?
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
+
+  affiliateCommission AffiliateCommission?
 }
 
 model AssessmentAttempt {
@@ -2132,4 +2146,100 @@ model OfficeLifeContent {
   level     InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
 
   @@unique([programId, levelId])
+}
+
+// ---------------------------------------------------------------------------
+// Affiliate Program (lib/affiliates). Separate from referrals (achievement
+// "brag" shares): interns who join get a code to invite people on purpose,
+// and earn a commission on each internship payment those people make.
+// ---------------------------------------------------------------------------
+
+model AffiliateProfile {
+  userId            String   @id @db.Uuid
+  code              String   @unique
+  bankName          String?
+  accountNumber     String?
+  accountName       String?
+  // Cash out the whole balance automatically at the end of each month
+  // (still only when it has reached the minimum).
+  autoMonthlyPayout Boolean  @default(false)
+  joinedAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks      AffiliateClick[]
+  referrals   AffiliateReferral[]
+  commissions AffiliateCommission[]
+  payouts     AffiliatePayout[]
+}
+
+// One per visitor (cookie) per affiliate; repeat visits only update lastVisitedAt.
+model AffiliateClick {
+  id             String   @id @default(cuid())
+  affiliateId    String   @db.Uuid
+  visitorKey     String
+  firstVisitedAt DateTime @default(now())
+  lastVisitedAt  DateTime @default(now())
+
+  affiliate AffiliateProfile   @relation(fields: [affiliateId], references: [userId], onDelete: Cascade)
+  referral  AffiliateReferral?
+
+  @@unique([affiliateId, visitorKey])
+  @@index([affiliateId, firstVisitedAt])
+}
+
+// Someone who created their account after opening an affiliate's link.
+model AffiliateReferral {
+  id             String   @id @default(cuid())
+  affiliateId    String   @db.Uuid
+  referredUserId String   @unique @db.Uuid
+  clickId        String?  @unique
+  registeredAt   DateTime @default(now())
+
+  affiliate    AffiliateProfile      @relation(fields: [affiliateId], references: [userId], onDelete: Cascade)
+  referredUser User                  @relation("AffiliateReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+  click        AffiliateClick?       @relation(fields: [clickId], references: [id], onDelete: SetNull)
+  commissions  AffiliateCommission[]
+
+  @@index([affiliateId, registeredAt])
+}
+
+// Earned once per paid internship payment, at the percentage set then.
+model AffiliateCommission {
+  id                  String   @id @default(cuid())
+  affiliateId         String   @db.Uuid
+  referralId          String
+  internshipPaymentId String   @unique
+  paymentAmount       Int
+  percent             Int
+  amount              Int
+  createdAt           DateTime @default(now())
+
+  affiliate         AffiliateProfile  @relation(fields: [affiliateId], references: [userId], onDelete: Cascade)
+  referral          AffiliateReferral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  internshipPayment InternshipPayment @relation(fields: [internshipPaymentId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, createdAt])
+}
+
+// A cash-out of the whole balance. The bank details are copied from the
+// profile when it is requested, so the admin pays what was asked for.
+model AffiliatePayout {
+  id            String                @id @default(cuid())
+  affiliateId   String                @db.Uuid
+  amount        Int
+  status        AffiliatePayoutStatus @default(PENDING)
+  bankName      String
+  accountNumber String
+  accountName   String
+  // Requested by the end-of-month run rather than by the intern.
+  automatic     Boolean               @default(false)
+  requestedAt   DateTime              @default(now())
+  processedAt   DateTime?
+  adminNote     String?
+
+  affiliate AffiliateProfile @relation(fields: [affiliateId], references: [userId], onDelete: Cascade)
+
+  @@index([affiliateId, requestedAt])
+  @@index([status, requestedAt])
 }

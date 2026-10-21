@@ -13,6 +13,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
 import { parseTrack, trackForPath } from "@/lib/learner-tracks";
 import { recordReferralRegistration } from "@/lib/referrals";
+import { recordAffiliateRegistration } from "@/lib/affiliates";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -52,6 +53,9 @@ export async function GET(request: NextRequest) {
             referralError,
           );
         }
+        await recordAffiliateRegistration(request, userId).catch((affiliateError) =>
+          console.error("Failed to credit an affiliate sign-up:", affiliateError),
+        );
       }
 
       // Staff (admins, instructors, mentors) always land in their workspace:
