@@ -1,4 +1,5 @@
 import { assignApplicationCohort } from "@/lib/internship-cohort";
+import { recordAffiliateCommission } from "@/lib/affiliates";
 
 export type PaystackWebhookEvent = {
   event?: string;
@@ -152,6 +153,7 @@ export async function settleSuccessfulPaystackPayment(
         where: { id: internshipPayment.id },
         data: { status: "PAID", paidAt: new Date(), reference },
       });
+      await recordAffiliateCommission(internshipPayment.id);
 
       updatedInternshipPayment = true;
 

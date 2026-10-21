@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
 
 export async function GET() {
-  const userId = await requireAdminApi();
-  if (userId instanceof NextResponse) return userId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
+  const { userId } = access;
 
   const prisma = getPrisma();
 

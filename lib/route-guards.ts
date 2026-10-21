@@ -95,7 +95,8 @@ async function loadSignedInUser(): Promise<CurrentUser | null> {
       passedMfa ? false : hasVerifiedFactorInDatabase(claims.sub),
     ]);
 
-    if (user.roles.includes(RoleName.ADMIN)) {
+    const isAdmin = user.roles.includes(RoleName.ADMIN);
+    if (isAdmin || user.roles.includes(RoleName.SUPPORT_ADMIN)) {
       const {
         data: { user: authUser },
         error: userError,
@@ -103,10 +104,15 @@ async function loadSignedInUser(): Promise<CurrentUser | null> {
       if (userError || !authUser || authUser.id !== claims.sub) {
         return null;
       }
+      // A Support Admin is only let in once they've opened the invitation
+      // sent to their (company) email, whatever the project's email
+      // confirmation setting is.
+      if (!isAdmin && !authUser.email_confirmed_at) return null;
       return {
         userId: user.id,
         mfaPending: await isMfaVerificationPending(supabase, authUser),
-        isAdmin: true,
+        // Only full admins can experience the internship as an intern.
+        isAdmin,
       };
     }
 

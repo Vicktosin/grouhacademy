@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminApi } from "@/lib/api-guards";
+import { adminOnly, requireSupportOrAdminApi } from "@/lib/api-guards";
 import {
   lockCohortGroups,
   nextGroupNumber,
@@ -50,8 +50,8 @@ function requireString(value: unknown, label: string) {
 }
 
 export async function GET(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
 
   try {
     return await loadGroups(request);
@@ -214,15 +214,20 @@ async function loadGroups(request: Request) {
   });
 }
 
+/** What Support Admins may do to groups; the rest is for admins only. */
+const SUPPORT_ADMIN_ACTIONS = new Set(["setDiscussion", "setCohortDiscussion"]);
+
 export async function POST(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
 
   const body = (await request.json().catch(() => null)) as Record<
     string,
     unknown
   > | null;
   const action = body?.action;
+  if (!access.isMainAdmin && !SUPPORT_ADMIN_ACTIONS.has(String(action)))
+    return adminOnly("change group members, leaders or capacity");
   const prisma = getPrisma();
 
   try {

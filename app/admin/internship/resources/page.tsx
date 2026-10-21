@@ -1,15 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { EyeOff, Pencil, Plus, Search, Send, Star, Trash2 } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  Star,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminShell, {
+  useAdminBasePath,
+  useAdminSupportMode,
+} from "@/components/AdminShell";
+
+type ResourceStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED";
 
 type ResourceRow = {
   id: string;
   slug: string;
   title: string;
-  status: "DRAFT" | "PUBLISHED";
+  status: ResourceStatus;
+  createdBy: string | null;
+  reviewNote: string | null;
+  submittedForReviewAt: string | null;
+  /** Support Admins: only their own resources until they're published. */
+  canEdit: boolean;
   level: { id: string; name: string; rank: number };
   updatedAt: string;
   tracks: Array<{ id: string; name: string }>;
@@ -17,7 +37,20 @@ type ResourceRow = {
   lessonCount: number;
 };
 
+const STATUS_LABEL: Record<ResourceStatus, string> = {
+  DRAFT: "Draft",
+  PENDING_REVIEW: "Waiting for review",
+  PUBLISHED: "Published",
+};
+const STATUS_TONE: Record<ResourceStatus, string> = {
+  DRAFT: "bg-slate-100 text-slate-600",
+  PENDING_REVIEW: "bg-amber-100 text-amber-800",
+  PUBLISHED: "bg-[#e8f7eb] text-[#397d3a]",
+};
+
 export default function AdminResourcesPage() {
+  const supportMode = useAdminSupportMode();
+  const basePath = useAdminBasePath();
   const [resources, setResources] = useState<ResourceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -67,31 +100,61 @@ export default function AdminResourcesPage() {
     [resources, query, status, track, level],
   );
 
-  async function setPublished(resource: ResourceRow, publish: boolean) {
-    const nextStatus = publish ? "PUBLISHED" : "DRAFT";
+  const pendingCount = resources.filter(
+    (resource) => resource.status === "PENDING_REVIEW",
+  ).length;
+
+  /** Publish, unpublish, send for review, or (with a note) send back. */
+  async function changeStatus(
+    resource: ResourceRow,
+    nextStatus: ResourceStatus,
+    reviewNote?: string,
+  ) {
     const response = await fetch(
       `/api/admin/internship/resources/${resource.id}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({
+          status: nextStatus,
+          ...(reviewNote !== undefined ? { reviewNote } : {}),
+        }),
       },
     );
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
       setMessage(payload?.error ?? "Unable to update the resource.");
       return;
     }
     setResources((items) =>
       items.map((item) =>
-        item.id === resource.id ? { ...item, status: nextStatus } : item,
+        item.id === resource.id
+          ? {
+              ...item,
+              status: nextStatus,
+              reviewNote: payload?.reviewNote ?? null,
+              canEdit: payload?.canEdit ?? item.canEdit,
+            }
+          : item,
       ),
     );
     setMessage(
-      publish
+      nextStatus === "PUBLISHED"
         ? `“${resource.title}” is now visible to interns on its tracks.`
-        : `“${resource.title}” is hidden from interns.`,
+        : nextStatus === "PENDING_REVIEW"
+          ? `“${resource.title}” was sent to the administrators for review.`
+          : resource.status === "PENDING_REVIEW"
+            ? `“${resource.title}” was sent back as a draft.`
+            : `“${resource.title}” is hidden from interns.`,
     );
+  }
+
+  function sendBack(resource: ResourceRow) {
+    const note = window.prompt(
+      `Send “${resource.title}” back as a draft? Tell the Support Admin what to change:`,
+    );
+    if (note === null) return;
+    void changeStatus(resource, "DRAFT", note);
   }
 
   async function remove(resource: ResourceRow) {
@@ -125,18 +188,20 @@ export default function AdminResourcesPage() {
             <p className="mt-2 text-xs text-slate-500">
               Learning material for interns. Each resource is only visible to
               interns on the tracks it is assigned to.
+              {supportMode &&
+                " Add resources and send them for review; an administrator publishes them."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/admin/internship/resources/recommended"
+              href={`${basePath}/resources/recommended`}
               className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52]"
             >
               <Star className="h-4 w-4 text-[#5FBB46]" />
               Recommended
             </Link>
             <Link
-              href="/admin/internship/resources/new"
+              href={`${basePath}/resources/new`}
               className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-semibold text-[#14204f]"
             >
               <Plus className="h-4 w-4" />
@@ -144,6 +209,17 @@ export default function AdminResourcesPage() {
             </Link>
           </div>
         </header>
+
+        {!supportMode && pendingCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setStatus("PENDING_REVIEW")}
+            className="w-full rounded-lg bg-amber-50 px-4 py-3 text-left text-xs font-semibold text-amber-900"
+          >
+            {pendingCount} resource{pendingCount === 1 ? " is" : "s are"} waiting
+            for your review. Show {pendingCount === 1 ? "it" : "them"}
+          </button>
+        )}
 
         {message && (
           <p
@@ -197,6 +273,7 @@ export default function AdminResourcesPage() {
             >
               <option value="All">All statuses</option>
               <option value="PUBLISHED">Published</option>
+              <option value="PENDING_REVIEW">Waiting for review</option>
               <option value="DRAFT">Draft</option>
             </select>
           </div>
@@ -217,11 +294,14 @@ export default function AdminResourcesPage() {
                 {visible.map((resource) => (
                   <tr key={resource.id} className="border-t border-slate-100">
                     <td className="px-3 py-3.5 font-semibold">
-                      <Link
-                        href={`/admin/internship/resources/${resource.id}/edit`}
-                      >
+                      <Link href={`${basePath}/resources/${resource.id}/edit`}>
                         {resource.title}
                       </Link>
+                      {resource.createdBy && (
+                        <span className="block text-[10px] font-normal text-slate-400">
+                          By {resource.createdBy}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3.5">
                       <div className="flex flex-wrap gap-1">
@@ -246,53 +326,89 @@ export default function AdminResourcesPage() {
                     </td>
                     <td className="px-3 py-3.5">
                       <span
-                        className={`rounded-full px-2 py-1 text-[9px] font-semibold ${
-                          resource.status === "PUBLISHED"
-                            ? "bg-[#e8f7eb] text-[#397d3a]"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
+                        className={`rounded-full px-2 py-1 text-[9px] font-semibold ${STATUS_TONE[resource.status]}`}
                       >
-                        {resource.status === "PUBLISHED"
-                          ? "Published"
-                          : "Draft"}
+                        {STATUS_LABEL[resource.status]}
                       </span>
+                      {resource.status === "DRAFT" && resource.reviewNote && (
+                        <span
+                          className="mt-1 block max-w-[220px] text-[10px] text-amber-800"
+                          title={resource.reviewNote}
+                        >
+                          Sent back: {resource.reviewNote}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3.5">
                       <div className="flex justify-end gap-1">
                         <Link
-                          href={`/admin/internship/resources/${resource.id}/edit`}
+                          href={`${basePath}/resources/${resource.id}/edit`}
                           className="inline-flex items-center gap-1 rounded-lg px-2 py-2 font-semibold text-blue-600 hover:bg-blue-50"
                         >
-                          <Pencil className="h-3 w-3" />
-                          Edit
+                          {resource.canEdit ? (
+                            <Pencil className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                          {resource.canEdit ? "Edit" : "View"}
                         </Link>
-                        {resource.status === "PUBLISHED" ? (
-                          <button
-                            type="button"
-                            onClick={() => void setPublished(resource, false)}
-                            className="inline-flex items-center gap-1 rounded-lg px-2 py-2 font-semibold text-slate-600 hover:bg-slate-100"
-                          >
-                            <EyeOff className="h-3 w-3" />
-                            Unpublish
-                          </button>
+                        {supportMode ? (
+                          resource.canEdit &&
+                          resource.status === "DRAFT" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void changeStatus(resource, "PENDING_REVIEW")
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg bg-[#5FBB46] px-2 py-2 font-bold text-[#14204f]"
+                            >
+                              <Send className="h-3 w-3" />
+                              Send for review
+                            </button>
+                          )
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => void setPublished(resource, true)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-[#5FBB46] px-2 py-2 font-bold text-[#14204f]"
-                          >
-                            <Send className="h-3 w-3" />
-                            Publish
-                          </button>
+                          <>
+                            {resource.status === "PENDING_REVIEW" && (
+                              <button
+                                type="button"
+                                onClick={() => sendBack(resource)}
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 font-semibold text-amber-700 hover:bg-amber-50"
+                              >
+                                <Undo2 className="h-3 w-3" />
+                                Send back
+                              </button>
+                            )}
+                            {resource.status === "PUBLISHED" ? (
+                              <button
+                                type="button"
+                                onClick={() => void changeStatus(resource, "DRAFT")}
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 font-semibold text-slate-600 hover:bg-slate-100"
+                              >
+                                <EyeOff className="h-3 w-3" />
+                                Unpublish
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void changeStatus(resource, "PUBLISHED")
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg bg-[#5FBB46] px-2 py-2 font-bold text-[#14204f]"
+                              >
+                                <Send className="h-3 w-3" />
+                                Publish
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => void remove(resource)}
+                              className="rounded-lg px-2 py-2 text-red-600 hover:bg-red-50"
+                              aria-label={`Delete ${resource.title}`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => void remove(resource)}
-                          className="rounded-lg px-2 py-2 text-red-600 hover:bg-red-50"
-                          aria-label={`Delete ${resource.title}`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
                       </div>
                     </td>
                   </tr>

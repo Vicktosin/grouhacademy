@@ -26,6 +26,7 @@ import {
   useCurriculum,
 } from "@/components/CurriculumEditor";
 import type { AdminInternResource } from "@/lib/intern-resources";
+import { useAdminBasePath, useAdminSupportMode } from "@/components/AdminShell";
 
 // The internship Resource Builder: the Course Builder's curriculum editor,
 // saved to the internship's own Resource API and assigned to tracks rather
@@ -34,6 +35,18 @@ import type { AdminInternResource } from "@/lib/intern-resources";
 type TrackOption = { id: string; name: string };
 type LevelOption = { id: string; name: string };
 type Status = AdminInternResource["status"];
+type LoadedResource = AdminInternResource & { canEdit?: boolean };
+
+const STATUS_LABEL: Record<Status, string> = {
+  DRAFT: "Draft",
+  PENDING_REVIEW: "Waiting for review",
+  PUBLISHED: "Published",
+};
+const STATUS_TONE: Record<Status, string> = {
+  DRAFT: "bg-slate-100 text-slate-600",
+  PENDING_REVIEW: "bg-amber-100 text-amber-800",
+  PUBLISHED: "bg-[#e8f7eb] text-[#397d3a]",
+};
 
 const steps = [
   { label: "Details", icon: FileText },
@@ -47,6 +60,8 @@ export default function ResourceBuilder({
   /** Omit to create a new resource. */
   resourceId?: string;
 }) {
+  const supportMode = useAdminSupportMode();
+  const basePath = useAdminBasePath();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [details, setDetails] = useState({
@@ -56,6 +71,9 @@ export default function ResourceBuilder({
   });
   const [trackIds, setTrackIds] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("DRAFT");
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
+  // Support Admins can't change published resources or other people's.
+  const [canEdit, setCanEdit] = useState(true);
   const [tracks, setTracks] = useState<TrackOption[]>([]);
   const [levels, setLevels] = useState<LevelOption[]>([]);
   const [levelId, setLevelId] = useState("");
@@ -96,7 +114,7 @@ export default function ResourceBuilder({
       );
   }, []);
 
-  const applySaved = (resource: AdminInternResource) => {
+  const applySaved = (resource: LoadedResource) => {
     setDetails({
       title: resource.title,
       description: resource.description ?? "",
@@ -105,6 +123,8 @@ export default function ResourceBuilder({
     setTrackIds(resource.tracks.map((track) => track.id));
     setLevelId(resource.levelId);
     setStatus(resource.status);
+    setReviewNote(resource.reviewNote);
+    setCanEdit(resource.canEdit !== false);
     setModules(hydrateCurriculum(resource.modules));
   };
 
@@ -115,7 +135,7 @@ export default function ResourceBuilder({
       cache: "no-store",
     })
       .then(async (response) => {
-        const data = (await response.json()) as AdminInternResource & {
+        const data = (await response.json()) as LoadedResource & {
           error?: string;
         };
         if (cancelled) return;
@@ -147,8 +167,12 @@ export default function ResourceBuilder({
         : [...current, id],
     );
 
-  /** Saves everything; `publish` also makes it visible to interns. */
-  const save = async (publish: boolean) => {
+  /**
+   * Saves everything, and moves it to `nextStatus` when given: PUBLISHED
+   * makes it visible to interns (admins only), PENDING_REVIEW sends a
+   * Support Admin's resource to the admins.
+   */
+  const save = async (nextStatus?: Status) => {
     if (!details.title.trim()) {
       setCurrentStep(0);
       setMessage({ text: "Give the resource a title.", error: true });
@@ -175,7 +199,7 @@ export default function ResourceBuilder({
         modules: curriculumPayload(modules),
         // Plain saves keep the current status, so editing a published
         // resource doesn't hide it.
-        ...(publish ? { status: "PUBLISHED" } : {}),
+        ...(nextStatus ? { status: nextStatus } : {}),
       };
       const response = await fetch(
         resourceId
@@ -187,7 +211,7 @@ export default function ResourceBuilder({
           body: JSON.stringify(payload),
         },
       );
-      const data = (await response.json()) as AdminInternResource & {
+      const data = (await response.json()) as LoadedResource & {
         error?: string;
       };
       if (!response.ok) {
@@ -200,13 +224,16 @@ export default function ResourceBuilder({
 
       applySaved(data);
       setMessage({
-        text: publish
-          ? "Resource published. Interns on the selected tracks can now open it."
-          : "Resource saved.",
+        text:
+          nextStatus === "PUBLISHED"
+            ? "Resource published. Interns on the selected tracks can now open it."
+            : nextStatus === "PENDING_REVIEW"
+              ? "Sent for review. An administrator will publish it or send it back with a note."
+              : "Resource saved.",
         error: false,
       });
       if (!resourceId)
-        router.replace(`/admin/internship/resources/${data.id}/edit`);
+        router.replace(`${basePath}/resources/${data.id}/edit`);
     } catch {
       setMessage({ text: "Unable to save the resource.", error: true });
     } finally {
@@ -232,7 +259,7 @@ export default function ResourceBuilder({
       <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-center justify-between">
           <Link
-            href="/admin/internship/resources"
+            href={`${basePath}/resources`}
             className="inline-flex items-center gap-2 text-xs font-semibold text-[#1C1D52]"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -255,34 +282,45 @@ export default function ResourceBuilder({
               <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
                 Build learning material for interns. Only interns on the tracks
                 you assign can see it, and only once it is published.
+                {supportMode &&
+                  " When it's ready, send it for review: an administrator publishes it."}
               </p>
             </div>
 
             <div className="flex items-center gap-3">
               <span
-                className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${
-                  status === "PUBLISHED"
-                    ? "bg-[#e8f7eb] text-[#397d3a]"
-                    : "bg-slate-100 text-slate-600"
-                }`}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${STATUS_TONE[status]}`}
               >
-                {status === "PUBLISHED" ? "Published" : "Draft"}
+                {STATUS_LABEL[status]}
               </span>
-              <button
+              {canEdit && <button
                 type="button"
                 disabled={saving}
-                onClick={() => void save(false)}
+                onClick={() => void save()}
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {saving
                   ? "Saving..."
-                  : status === "PUBLISHED"
-                    ? "Save Changes"
-                    : "Save Draft"}
-              </button>
+                  : status === "DRAFT"
+                    ? "Save Draft"
+                    : "Save Changes"}
+              </button>}
             </div>
           </div>
+
+          {!canEdit && (
+            <p className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-xs font-semibold text-slate-600">
+              {status === "PUBLISHED"
+                ? "This resource is published. Only an administrator can change it."
+                : "Only the Support Admin who created this resource, or an administrator, can change it."}
+            </p>
+          )}
+          {reviewNote && status === "DRAFT" && (
+            <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-900">
+              <strong>Sent back by an administrator:</strong> {reviewNote}
+            </p>
+          )}
 
           {message && (
             <p
@@ -465,13 +503,17 @@ export default function ResourceBuilder({
                   )}
                 />
               </div>
-              <div className="mt-6 rounded-xl bg-[#e8f7eb] p-4">
+              {canEdit && <div className="mt-6 rounded-xl bg-[#e8f7eb] p-4">
                 <p className="text-xs font-semibold text-[#397d3a]">
-                  {status === "PUBLISHED"
-                    ? "This resource is published. Saving updates it for interns straight away."
-                    : "Publishing makes this resource visible to interns on the selected tracks."}
+                  {supportMode
+                    ? status === "PENDING_REVIEW"
+                      ? "This resource is waiting for an administrator to review it. You can still save changes."
+                      : "Sending for review asks an administrator to publish it. You can keep editing until it's published."
+                    : status === "PUBLISHED"
+                      ? "This resource is published. Saving updates it for interns straight away."
+                      : "Publishing makes this resource visible to interns on the selected tracks."}
                 </p>
-              </div>
+              </div>}
             </>
           )}
         </section>
@@ -498,19 +540,25 @@ export default function ResourceBuilder({
               Next
               <ChevronRight className="h-4 w-4" />
             </button>
-          ) : (
+          ) : canEdit && (
             <button
               type="button"
               disabled={saving}
-              onClick={() => void save(status !== "PUBLISHED")}
+              onClick={() =>
+                void save(
+                  supportMode
+                    ? status === "DRAFT" ? "PENDING_REVIEW" : undefined
+                    : status === "PUBLISHED" ? undefined : "PUBLISHED",
+                )
+              }
               className="inline-flex items-center gap-2 rounded-lg bg-[#5FBB46] px-4 py-2.5 text-xs font-bold text-[#14204f] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Check className="h-4 w-4" />
               {saving
                 ? "Saving..."
-                : status === "PUBLISHED"
-                  ? "Save Changes"
-                  : "Publish Resource"}
+                : supportMode
+                  ? status === "DRAFT" ? "Send for Review" : "Save Changes"
+                  : status === "PUBLISHED" ? "Save Changes" : "Publish Resource"}
             </button>
           )}
         </div>

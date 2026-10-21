@@ -3,9 +3,12 @@ import {
   FollowUpChannel,
   FollowUpStatus,
 } from "@/generated/prisma/client";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { getPrisma } from "@/lib/prisma";
-import { isFollowUpStage } from "@/lib/internship-follow-ups";
+import {
+  followUpContacts,
+  isFollowUpStage,
+} from "@/lib/internship-follow-ups";
 
 type Params = { params: Promise<{ applicationId: string }> };
 
@@ -14,8 +17,9 @@ type Params = { params: Promise<{ applicationId: string }> };
  * Body: { channel: "WHATSAPP" | "CALL", stage: "PASSED_UNPAID" | "FAILED" | "NO_EXAM" }.
  */
 export async function POST(request: Request, { params }: Params) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
+  const adminId = access.userId;
   const { applicationId } = await params;
 
   const body = (await request.json().catch(() => null)) as {
@@ -79,6 +83,7 @@ export async function POST(request: Request, { params }: Params) {
         followUp.lastContactedBy?.email ??
         null,
       contactCount: followUp.contactCount,
+      contactedBy: (await followUpContacts([applicationId])).get(applicationId) ?? [],
     },
   });
 }

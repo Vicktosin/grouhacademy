@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminShell, { useAdminSupportMode } from "@/components/AdminShell";
 import {
   DEFAULT_TEMPLATES,
   PLACEHOLDERS,
@@ -20,7 +20,11 @@ import {
   whatsAppLink,
   type FollowUpStageKey,
 } from "@/lib/follow-up-templates";
-import type { FollowUpRow } from "@/lib/internship-follow-ups";
+import type {
+  ContactRole,
+  FollowUpContact,
+  FollowUpRow,
+} from "@/lib/internship-follow-ups";
 
 type Templates = Record<FollowUpStageKey, string>;
 type Status = FollowUpRow["followUp"]["status"];
@@ -63,6 +67,30 @@ const PAYMENT_TONE: Record<string, string> = {
   CANCELLED: "bg-slate-100 text-slate-600",
 };
 
+/**
+ * "Contacted by" filter: admins and Support Admins follow up the same list,
+ * so each can see who the other has already reached.
+ */
+const CONTACTED_BY: Record<string, string> = {
+  NOBODY: "Nobody yet",
+  ADMIN: "Admin team",
+  SUPPORT_ADMIN: "Support Admin",
+};
+const ROLE_LABEL: Record<ContactRole, string> = {
+  ADMIN: "Admin",
+  SUPPORT_ADMIN: "Support Admin",
+};
+const ROLE_TONE: Record<ContactRole, string> = {
+  ADMIN: "bg-[#eef3ff] text-[#1C1D52]",
+  SUPPORT_ADMIN: "bg-violet-100 text-violet-800",
+};
+
+function contactedByMatches(contacts: FollowUpContact[], filter: string) {
+  if (filter === "All") return true;
+  if (filter === "NOBODY") return contacts.length === 0;
+  return contacts.some((contact) => contact.role === filter);
+}
+
 const STAGES: Array<{ key: FollowUpStageKey; label: string }> = [
   { key: "PASSED_UNPAID", label: "Passed, not paid" },
   { key: "FAILED", label: "Failed exam" },
@@ -91,6 +119,7 @@ const endOfToday = () => {
 };
 
 export default function FollowUpsPage() {
+  const supportMode = useAdminSupportMode();
   const [rows, setRows] = useState<FollowUpRow[]>([]);
   const [templates, setTemplates] = useState<Templates>(DEFAULT_TEMPLATES);
   const [loading, setLoading] = useState(true);
@@ -110,6 +139,7 @@ export default function FollowUpsPage() {
   /** "All", "PENDING", "FAILED", "CANCELLED" or "NONE" (never started paying). */
   const [payment, setPayment] = useState("All");
   const [whatsAppOnly, setWhatsAppOnly] = useState(false);
+  const [contactedBy, setContactedBy] = useState("All");
   const [sort, setSort] = useState("newest");
 
   useEffect(() => {
@@ -121,7 +151,7 @@ export default function FollowUpsPage() {
           templates: Templates;
         };
         setRows(data.rows);
-        setTemplates(data.templates);
+        setTemplates(data.templates ?? DEFAULT_TEMPLATES);
       })
       .catch((loadError: unknown) =>
         setError(
@@ -166,7 +196,8 @@ export default function FollowUpsPage() {
             new Date(row.followUp.nextFollowUpAt).getTime() <= due)) &&
         (payment === "All" ||
           (payment === "NONE" ? row.paymentStatus === null : row.paymentStatus === payment)) &&
-        (!whatsAppOnly || row.whatsappNumber !== null)
+        (!whatsAppOnly || row.whatsappNumber !== null) &&
+        contactedByMatches(row.followUp.contactedBy, contactedBy)
       );
     });
     const time = (iso: string | null) => (iso ? new Date(iso).getTime() : 0);
@@ -191,6 +222,7 @@ export default function FollowUpsPage() {
     dueOnly,
     payment,
     whatsAppOnly,
+    contactedBy,
     sort,
   ]);
 
@@ -204,6 +236,7 @@ export default function FollowUpsPage() {
     setDueOnly(false);
     setPayment("All");
     setWhatsAppOnly(false);
+    setContactedBy("All");
     setSort("newest");
   };
 
@@ -246,14 +279,14 @@ export default function FollowUpsPage() {
               been contacted. Anyone who pays leaves the list automatically.
             </p>
           </div>
-          <button
+          {!supportMode && <button
             type="button"
             onClick={() => setEditingTemplates(true)}
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#1C1D52]"
           >
             <MessageSquareText className="h-4 w-4 text-[#5FBB46]" />
             Message templates
-          </button>
+          </button>}
         </header>
 
         {error && (
@@ -297,6 +330,31 @@ export default function FollowUpsPage() {
           )}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-semibold text-slate-500">Contacted by:</span>
+          {Object.entries(CONTACTED_BY).map(([key, label]) => {
+            const count = stageRows.filter((row) =>
+              contactedByMatches(row.followUp.contactedBy, key),
+            ).length;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() =>
+                  setContactedBy((current) => (current === key ? "All" : key))
+                }
+                className={`rounded-full px-3 py-1.5 font-semibold ${
+                  contactedBy === key
+                    ? "bg-[#1C1D52] text-white"
+                    : "bg-white text-slate-600 shadow-[0_4px_12px_rgba(28,29,82,0.06)]"
+                }`}
+              >
+                {label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
         <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
           <div className="grid gap-3 border-b border-slate-100 pb-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex items-center gap-2 rounded-lg bg-[#f3f6fb] px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">
@@ -333,6 +391,13 @@ export default function FollowUpsPage() {
               onChange={setPayment}
               options={stage === "NO_EXAM" ? ["PENDING", "FAILED", "CANCELLED"] : ["PENDING", "FAILED", "CANCELLED", "NONE"]}
               labelFor={(value) => PAYMENT_LABEL[value] ?? value}
+            />
+            <FilterSelect
+              label="Contacted by"
+              value={contactedBy}
+              onChange={setContactedBy}
+              options={Object.keys(CONTACTED_BY)}
+              labelFor={(value) => CONTACTED_BY[value] ?? value}
             />
             <label className="text-[10px] font-semibold text-slate-500">
               {stage === "PASSED_UNPAID" ? "Passed from" : stage === "FAILED" ? "Failed from" : "Started paying from"}
@@ -468,10 +533,7 @@ export default function FollowUpsPage() {
                         {row.followUp.lastContactedAt ? (
                           <>
                             {daysAgo(row.followUp.lastContactedAt)}
-                            <span className="block text-[10px] text-slate-400">
-                              {row.followUp.lastContactedBy ?? ""} ·{" "}
-                              {row.followUp.contactCount}×
-                            </span>
+                            <ContactChips contacts={row.followUp.contactedBy} />
                           </>
                         ) : (
                           "—"
@@ -517,6 +579,7 @@ export default function FollowUpsPage() {
         <FollowUpPanel
           row={selected}
           template={templates[selected.stage]}
+          supportMode={supportMode}
           onClose={() => setSelected(null)}
           onChange={(followUp) => patchRow(selected.applicationId, followUp)}
           onMoved={() =>
@@ -530,7 +593,7 @@ export default function FollowUpsPage() {
           }
         />
       )}
-      {editingTemplates && (
+      {!supportMode && editingTemplates && (
         <TemplateEditor
           templates={templates}
           sampleRows={rows}
@@ -539,6 +602,23 @@ export default function FollowUpsPage() {
         />
       )}
     </AdminShell>
+  );
+}
+
+/** Who reached out to this person, by role. */
+function ContactChips({ contacts }: { contacts: FollowUpContact[] }) {
+  return (
+    <span className="mt-1 flex flex-wrap gap-1">
+      {contacts.map((contact) => (
+        <span
+          key={`${contact.role}-${contact.name}`}
+          title={`${ROLE_LABEL[contact.role]} · last ${shortDate(contact.lastAt)}`}
+          className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${ROLE_TONE[contact.role]}`}
+        >
+          {ROLE_LABEL[contact.role]} · {contact.name} · {contact.count}×
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -602,12 +682,14 @@ function Check({
 function FollowUpPanel({
   row,
   template,
+  supportMode,
   onClose,
   onChange,
   onMoved,
 }: {
   row: FollowUpRow;
   template: string;
+  supportMode: boolean;
   onClose: () => void;
   onChange: (followUp: Partial<FollowUpRow["followUp"]>) => void;
   onMoved: () => void;
@@ -804,6 +886,24 @@ function FollowUpPanel({
                   : `scored ${row.score ?? "—"}% (pass mark ${row.passMark ?? "—"}%)`}{" "}
               · {daysAgo(row.examDate).toLowerCase()}
             </p>
+            {row.followUp.contactedBy.length > 0 && (
+              <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                <strong>Already contacted by:</strong>{" "}
+                {row.followUp.contactedBy
+                  .map(
+                    (contact) =>
+                      `${contact.name} (${ROLE_LABEL[contact.role]}, ${contact.count}×, ${daysAgo(contact.lastAt).toLowerCase()})`,
+                  )
+                  .join("; ")}
+                {row.followUp.contactedBy.some(
+                  (contact) =>
+                    contact.role !== (supportMode ? "SUPPORT_ADMIN" : "ADMIN"),
+                ) &&
+                  (supportMode
+                    ? ". The admin team is already following this person up."
+                    : ". A Support Admin is already following this person up.")}
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -919,7 +1019,7 @@ function FollowUpPanel({
           </div>
         </div>
 
-        <ChangeTrack row={row} onMoved={onMoved} />
+        {!supportMode && <ChangeTrack row={row} onMoved={onMoved} />}
 
         <div className="mx-5 mb-5 space-y-3 rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.06)]">
           <h3 className="text-sm font-bold text-[#1C1D52]">Follow-up record</h3>

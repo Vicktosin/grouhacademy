@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminShell, { useAdminSupportMode } from "@/components/AdminShell";
 import { BannerSlide } from "@/components/DashboardBanner";
 
 type Banner = {
@@ -74,6 +74,7 @@ function formatDate(iso: string) {
 }
 
 export default function InternshipBannersPage() {
+  const supportMode = useAdminSupportMode();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -377,14 +378,16 @@ export default function InternshipBannersPage() {
                         <Power className="h-3.5 w-3.5" />
                         {banner.isActive ? "Turn off" : "Turn on"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(banner)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-[10px] font-semibold text-red-600"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </button>
+                      {!supportMode && (
+                        <button
+                          type="button"
+                          onClick={() => remove(banner)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-[10px] font-semibold text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

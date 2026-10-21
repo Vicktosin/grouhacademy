@@ -8,6 +8,7 @@ import {
 } from "@/lib/internship-cohort";
 import { requireAdminApi } from "@/lib/api-guards";
 import { activatePromotion } from "@/lib/internship-progression";
+import { recordAffiliateCommission } from "@/lib/affiliates";
 
 const VALID_STATUSES = new Set<InternshipPaymentStatus>([
   InternshipPaymentStatus.PENDING,
@@ -81,6 +82,7 @@ export async function PATCH(
     );
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(payment.application.id);
+    await recordAffiliateCommission(updatedPayment.id);
   }
 
   return NextResponse.json({

@@ -28,6 +28,35 @@ export async function requireAdminApi(): Promise<string | NextResponse> {
 }
 
 /**
+ * For the endpoints Support Admins share with admins (resources, banners,
+ * groups, follow-ups). Returns who is asking and whether they are a full
+ * admin, so the endpoint can refuse what only admins may do (publishing,
+ * deleting, removing group members…). Everything else stays requireAdminApi.
+ */
+export async function requireSupportOrAdminApi(): Promise<
+  { userId: string; isMainAdmin: boolean } | NextResponse
+> {
+  const userId = await getCurrentUserId();
+  if (userId) {
+    const isMainAdmin = await userHasRole(userId, RoleName.ADMIN);
+    if (isMainAdmin || (await userHasRole(userId, RoleName.SUPPORT_ADMIN)))
+      return { userId, isMainAdmin };
+  }
+  return NextResponse.json(
+    { error: "Administrator access is required." },
+    { status: 403 },
+  );
+}
+
+/** The 403 for what a Support Admin may not do. */
+export function adminOnly(action: string) {
+  return NextResponse.json(
+    { error: `Only an administrator can ${action}.` },
+    { status: 403 },
+  );
+}
+
+/**
  * The mentor equivalent of requireAdminApi(): returns the mentor's user id,
  * or a 403 response. Callers must still check that the intern or record
  * being accessed is assigned to this mentor.

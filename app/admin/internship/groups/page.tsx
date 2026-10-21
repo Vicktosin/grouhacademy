@@ -15,7 +15,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminShell, { useAdminSupportMode } from "@/components/AdminShell";
 import { BroadcastDialog, GroupChatDialog } from "@/components/AdminGroupChat";
 import CohortPicker, { rememberedCohort } from "@/components/admin/CohortPicker";
 
@@ -77,6 +77,9 @@ const PICKER_KEY = "admin-groups";
 const FOLD_ABOVE = 4;
 
 export default function InternshipGroupsPage() {
+  // Support Admins can message groups and open or pause their discussion,
+  // but not change members, leaders, capacity or the groups themselves.
+  const readOnly = useAdminSupportMode();
   const [data, setData] = useState<GroupsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -272,7 +275,7 @@ export default function InternshipGroupsPage() {
           />
         </section>
 
-        {!isLegacy && selected && (
+        {!isLegacy && selected && (readOnly ? groups.length > 0 : true) && (
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -285,6 +288,8 @@ export default function InternshipGroupsPage() {
             }}
             className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(28,29,82,0.09)]"
           >
+            {!readOnly && (
+              <>
             <label className="block text-[10px] font-semibold text-slate-500">
               New group capacity
               <input
@@ -309,6 +314,8 @@ export default function InternshipGroupsPage() {
               Leave capacity empty to use the platform default (
               {data?.defaultCapacity ?? 12}).
             </p>
+              </>
+            )}
             {groups.length > 0 && (
               <div className="ml-auto flex flex-wrap gap-2">
                 <button
@@ -354,7 +361,7 @@ export default function InternshipGroupsPage() {
             Create a cohort first. Groups are organised within cohorts.
           </p>
         ) : (
-          <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+          <div className={`grid gap-5 ${readOnly ? "" : "xl:grid-cols-[1fr_320px]"}`}>
             <section className="grid content-start gap-4 lg:grid-cols-2">
               {groups.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 lg:col-span-2">
@@ -409,6 +416,7 @@ export default function InternshipGroupsPage() {
                       id: other.id,
                       label: `Group ${other.number}`,
                     }))}
+                  readOnly={readOnly}
                   onAct={(payload) => void act(payload)}
                   onRemove={(member) => removeMember(group, member)}
                   onDelete={() => deleteGroup(group)}
@@ -417,7 +425,7 @@ export default function InternshipGroupsPage() {
               ))}
             </section>
 
-            {!isLegacy && (
+            {!readOnly && !isLegacy && (
               <aside className="h-fit rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
                 <h2 className="text-sm font-bold text-[#1C1D52]">
                   Not in a group
@@ -509,6 +517,7 @@ function GroupCard({
   onRemove,
   onDelete,
   onOpenChat,
+  readOnly,
 }: {
   group: GroupRecord;
   isLegacy: boolean;
@@ -522,6 +531,7 @@ function GroupCard({
   onRemove: (member: GroupMember) => void;
   onDelete: () => void;
   onOpenChat: () => void;
+  readOnly: boolean;
 }) {
   const [capacity, setCapacity] = useState(String(group.capacity));
   const isFull = group.members.length >= group.capacity;
@@ -572,7 +582,7 @@ function GroupCard({
 
       {expanded && (
         <div className="border-t border-slate-100 px-5 pb-5 pt-3">
-          <div className="flex flex-wrap items-start justify-end gap-3">
+          {!readOnly && <div className="flex flex-wrap items-start justify-end gap-3">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -604,12 +614,12 @@ function GroupCard({
                 <Save className="h-3.5 w-3.5" />
               </button>
             </form>
-          </div>
+          </div>}
 
           {group.members.length === 0 ? (
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
               <p className="text-[10px] text-slate-500">This group is empty.</p>
-              <button
+              {!readOnly && <button
                 type="button"
                 onClick={onDelete}
                 disabled={busy}
@@ -617,7 +627,7 @@ function GroupCard({
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete group
-              </button>
+              </button>}
             </div>
           ) : (
             <ul className="mt-4 divide-y divide-slate-100">
@@ -642,7 +652,7 @@ function GroupCard({
                         {member.email}
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    {!readOnly && <div className="flex flex-wrap items-center gap-2">
                       {!isLeader && !isLegacy && (
                         <button
                           type="button"
@@ -681,7 +691,7 @@ function GroupCard({
                       >
                         <UserMinus className="h-3.5 w-3.5" />
                       </button>
-                    </div>
+                    </div>}
                   </li>
                 );
               })}

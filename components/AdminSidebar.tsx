@@ -17,6 +17,7 @@ import {
   FlaskConical,
   GalleryHorizontalEnd,
   GraduationCap,
+  HandCoins,
   LayoutDashboard,
   Layers,
   LogOut,
@@ -86,6 +87,7 @@ const internshipItems = [
   { label: "Office Life", href: "/admin/internship/office-life", icon: Briefcase },
   { label: "Achievements", href: "/admin/internship/achievements", icon: Trophy },
   { label: "Referrals", href: "/admin/internship/referrals", icon: Megaphone },
+  { label: "Affiliates", href: "/admin/internship/affiliates", icon: HandCoins },
   { label: "Interviews", href: "/admin/internship/interviews", icon: Mic },
   { label: "Resources", href: "/admin/internship/resources", icon: BookOpen },
   { label: "Mentors", href: "/admin/internship/mentors", icon: Users },
@@ -107,7 +109,19 @@ const internshipItems = [
     icon: GalleryHorizontalEnd,
   },
   { label: "Settings", href: "/admin/internship/settings", icon: Settings },
+  { label: "Support Admins", href: "/admin/internship/support-admins", icon: ShieldCheck },
   { label: "Profile", href: "/admin/internship/profile", icon: UserCircle2 },
+  { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
+];
+
+// The Support Admin workspace (app/support): no money, settings or people
+// management.
+const supportItems = [
+  { label: "Dashboard", href: "/support", icon: LayoutDashboard },
+  { label: "Resources", href: "/support/resources", icon: BookOpen },
+  { label: "Dashboard Banners", href: "/support/banners", icon: GalleryHorizontalEnd },
+  { label: "Groups", href: "/support/groups", icon: UsersRound },
+  { label: "Follow-ups", href: "/support/follow-ups", icon: PhoneCall },
   { label: "Security", href: "/auth/mfa/setup", icon: ShieldCheck },
 ];
 
@@ -115,13 +129,18 @@ export default function AdminSidebar({
   workspace,
   admin,
   mobile = false,
+  supportAdmin = false,
 }: {
   workspace: "student" | "internship";
   admin: AdminContext | null;
   mobile?: boolean;
+  supportAdmin?: boolean;
 }) {
-  const pathname = usePathname() || `/admin/${workspace}`;
-  const items = workspace === "student" ? studentItems : internshipItems;
+  const home = supportAdmin ? "/support" : `/admin/${workspace}`;
+  const pathname = usePathname() || home;
+  const items = supportAdmin
+    ? supportItems
+    : workspace === "student" ? studentItems : internshipItems;
 
   return (
     <aside
@@ -140,7 +159,9 @@ export default function AdminSidebar({
         <h3 className="text-sm font-semibold tracking-tight">
           {admin?.name ?? "Administrator"}
         </h3>
-        <p className="mt-1 text-xs font-medium text-white/55">Administrator</p>
+        <p className="mt-1 text-xs font-medium text-white/55">
+          {supportAdmin ? "Support Admin" : "Administrator"}
+        </p>
       </div>
       <nav
         aria-label="Admin navigation"
@@ -150,7 +171,7 @@ export default function AdminSidebar({
           {items.map((item) => {
             const Icon = item.icon;
             const active =
-              item.href === `/admin/${workspace}`
+              item.href === home
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
             return (
@@ -171,7 +192,7 @@ export default function AdminSidebar({
         </ul>
       </nav>
       <Link
-        href="/admin/logout"
+        href={supportAdmin ? "/support/logout" : "/admin/logout"}
         prefetch={false}
         className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-white/90 hover:bg-white/10"
       >

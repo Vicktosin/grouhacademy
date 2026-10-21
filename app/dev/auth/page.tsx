@@ -38,7 +38,7 @@ export default async function DevelopmentAuthPage() {
                 type="submit"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-[#1c1d52] transition hover:border-[#5FBB46] hover:bg-[#f3fbf0]"
               >
-                {role}
+                {role === "SUPPORT_ADMIN" ? "Support Admin" : role}
               </button>
             </form>
           ))}

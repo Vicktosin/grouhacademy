@@ -1,7 +1,7 @@
 import { InternshipProgramStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireAdminApi, requireSupportOrAdminApi } from "@/lib/api-guards";
 
 const statuses = new Set(Object.values(InternshipProgramStatus));
 
@@ -67,8 +67,17 @@ function parseTrack(body: Record<string, unknown>) {
 }
 
 export async function GET() {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
+
+  // Support Admins only pick tracks (for resources): no fees or settings.
+  if (!access.isMainAdmin)
+    return NextResponse.json({
+      tracks: await getPrisma().internshipProgram.findMany({
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, status: true },
+      }),
+    });
 
   const tracks = await getPrisma().internshipProgram.findMany({
     orderBy: { createdAt: "asc" },

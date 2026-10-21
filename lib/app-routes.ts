@@ -12,6 +12,10 @@ const APP_ROUTE_SECTIONS = [
 
   // Workspaces
   "/admin",
+  "/support",
+  // The Affiliate Program's app, and its invite links.
+  "/affiliate",
+  "/invite",
   "/instructor",
   "/mentor",
   "/student",

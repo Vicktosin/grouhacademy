@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { getPlatformSettings } from "@/lib/platform-settings";
-import { requireAdminApi } from "@/lib/api-guards";
+import { requireSupportOrAdminApi } from "@/lib/api-guards";
 import { bannerStorage, ensureBannerBucket } from "@/lib/dashboard-banners";
 
 const types: Record<string, string> = {
@@ -12,8 +12,8 @@ const types: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File) || !types[file.type])

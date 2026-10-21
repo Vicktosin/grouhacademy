@@ -9,9 +9,12 @@ import type { AdminContext } from "@/lib/admin-context";
 export default function AdminHeader({
   workspace,
   admin,
+  supportAdmin = false,
 }: {
   workspace: "student" | "internship";
   admin: AdminContext | null;
+  /** The Support Admin workspace: no workspace switcher or admin notifications. */
+  supportAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const label = workspace === "student" ? "Student Admin" : "Internship Admin";
@@ -23,7 +26,7 @@ export default function AdminHeader({
 
   return (
     <header className="flex h-[72px] w-full items-center justify-between gap-2 border-b border-[#e0e7f3] bg-[#edf3ff] py-3 pl-16 pr-3 sm:gap-4 sm:px-6 lg:px-8">
-      <Link href={`/admin/${workspace}`} className="shrink-0">
+      <Link href={supportAdmin ? "/support" : `/admin/${workspace}`} className="shrink-0">
         <Image
           src="/logo.png"
           alt="Grouh Academy"
@@ -32,6 +35,11 @@ export default function AdminHeader({
           className="h-8 w-auto object-contain sm:h-12"
         />
       </Link>
+      {supportAdmin ? (
+        <span className="rounded-lg bg-white px-3 py-2 text-[10px] font-semibold text-[#1C1D52] shadow-sm sm:text-xs">
+          Support Admin
+        </span>
+      ) : (
       <div className="relative">
         <button
           type="button"
@@ -66,6 +74,7 @@ export default function AdminHeader({
           </div>
         )}
       </div>
+      )}
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <label className="hidden w-[300px] md:block">
           <span className="sr-only">Search admin workspace</span>
@@ -74,7 +83,7 @@ export default function AdminHeader({
             <input className="w-full bg-transparent outline-none placeholder:text-slate-400" />
           </div>
         </label>
-        <Link
+        {!supportAdmin && <Link
           href={notificationsHref}
           aria-label="Notifications"
           className="relative rounded-full bg-white p-2 text-[#1C1D52] shadow-sm"
@@ -87,7 +96,7 @@ export default function AdminHeader({
                 : admin.unreadNotificationCount}
             </span>
           )}
-        </Link>
+        </Link>}
         <span className="hidden text-xs font-semibold text-[#1C1D52] sm:inline">
           {admin?.name ?? "Administrator"}
         </span>

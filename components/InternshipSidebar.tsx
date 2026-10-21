@@ -14,6 +14,7 @@ import {
   Grid2X2,
   LifeBuoy,
   LogOut,
+  Megaphone,
   MessageCircle,
   Mic,
   Settings,
@@ -55,6 +56,8 @@ const navItems = [
     icon: Mic,
   },
   { label: "Grades", href: "/internship/dashboard/grades", icon: Award },
+  // Its own app (app/affiliate): invite people, earn commission.
+  { label: "Affiliate Program", href: "/affiliate", icon: Megaphone },
   {
     label: "Certificate",
     href: "/internship/dashboard/certificate",

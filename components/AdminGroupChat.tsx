@@ -2,11 +2,18 @@
 
 import { Loader2, Megaphone, Send, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAdminSupportMode } from "@/components/AdminShell";
 import { useChatPolling } from "@/lib/use-chat-polling";
 
 // Admin tools for talking to internship groups: read and post in one
 // group's discussion, or send the same message to several groups. Members
-// see admin posts as "Grouh Academy team" and get a notification.
+// see admin posts as "Grouh Academy team" (Support Admins' as "Support
+// Admin") and get a notification.
+
+/** How members see this workspace's messages. */
+function useSenderName() {
+  return useAdminSupportMode() ? "Support Admin" : "Grouh Academy team";
+}
 
 type ChatMessage = {
   id: string;
@@ -14,6 +21,7 @@ type ChatMessage = {
   createdAt: string;
   senderName: string;
   fromTeam: boolean;
+  teamRole: "ADMIN" | "SUPPORT_ADMIN" | null;
 };
 
 const MAX_LENGTH = 2000;
@@ -61,6 +69,7 @@ export function GroupChatDialog({
   group: { id: string; number: number; members: Array<{ userId: string }> };
   onClose: () => void;
 }) {
+  const senderName = useSenderName();
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -128,7 +137,7 @@ export function GroupChatDialog({
   return (
     <Sheet
       title={`Group ${group.number} discussion`}
-      subtitle={`${group.members.length} member${group.members.length === 1 ? "" : "s"} · your messages appear as “Grouh Academy team” and members are notified`}
+      subtitle={`${group.members.length} member${group.members.length === 1 ? "" : "s"} · your messages appear as “${senderName}” and members are notified`}
       onClose={onClose}
     >
       <div ref={listRef} className="min-h-[240px] flex-1 space-y-3 overflow-y-auto bg-[#fbfdff] px-5 py-4">
@@ -140,7 +149,9 @@ export function GroupChatDialog({
           messages.map((message) => (
             <article key={message.id} className={message.fromTeam ? "ml-auto max-w-[85%] text-right" : "max-w-[85%]"}>
               <p className="text-[11px] font-bold text-[#1C1D52]">
-                {message.fromTeam ? `Grouh Academy team (${message.senderName})` : message.senderName}
+                {message.fromTeam
+                  ? `${message.teamRole === "SUPPORT_ADMIN" ? "Support Admin" : "Grouh Academy team"} (${message.senderName})`
+                  : message.senderName}
                 <span className="ml-2 font-normal text-slate-400">
                   {new Date(message.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -195,6 +206,7 @@ export function BroadcastDialog({
   onClose: () => void;
   onSent: (message: string) => void;
 }) {
+  const senderName = useSenderName();
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(groups.map((g) => g.id)));
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -226,7 +238,7 @@ export function BroadcastDialog({
   }
 
   return (
-    <Sheet title="Message groups" subtitle={`${cohortName} · posts into each group's discussion as “Grouh Academy team”`} onClose={onClose}>
+    <Sheet title="Message groups" subtitle={`${cohortName} · posts into each group's discussion as “${senderName}”`} onClose={onClose}>
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
         <div>
           <div className="flex items-center justify-between">

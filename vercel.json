@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/internship-certificates",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/affiliate-payouts",
+      "schedule": "0 7 1 * *"
     }
   ]
 }

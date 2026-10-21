@@ -5,6 +5,7 @@ import {
   type CohortDb,
 } from "@/lib/internship-cohort";
 import { activatePromotion } from "@/lib/internship-progression";
+import { recordAffiliateCommission } from "@/lib/affiliates";
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get("reference");
@@ -110,11 +111,15 @@ export async function GET(request: Request) {
     // Store the reference that was actually paid. If it's already paid (e.g.
     // the webhook got there first), keep the original paid time.
     const joining = application.payment?.status !== "PAID";
-    if (joining)
-      await prisma.internshipPayment.update({
+    if (joining) {
+      const paid = await prisma.internshipPayment.update({
         where: { applicationId },
         data: { status: "PAID", paidAt: new Date(), reference },
+        select: { id: true },
       });
+      // Whoever invited them through the Affiliate Program earns commission.
+      await recordAffiliateCommission(paid.id);
+    }
 
     // Only a payment being made now picks a cohort to join; revisiting this
     // page later never moves an intern.

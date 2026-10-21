@@ -15,7 +15,9 @@ export function isAllowedPostAuthPath(path: string | null): path is string {
     pathname === "/reset-password" ||
     pathname.startsWith("/internship/") ||
     pathname === "/student" ||
-    pathname.startsWith("/student/")
+    pathname.startsWith("/student/") ||
+    pathname === "/affiliate" ||
+    pathname.startsWith("/affiliate/")
   );
 }
 

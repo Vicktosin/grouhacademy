@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { requireAdminApi } from "@/lib/api-guards";
+import { adminOnly, requireSupportOrAdminApi } from "@/lib/api-guards";
 import {
   BANNER_BUCKET,
   isValidBannerLink,
@@ -65,8 +65,8 @@ function parseBanner(body: Record<string, unknown>) {
 }
 
 export async function GET() {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const banners = await getPrisma().dashboardBanner.findMany({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
   });
@@ -74,8 +74,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object")
     return NextResponse.json(
@@ -90,8 +90,8 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object")
     return NextResponse.json(
@@ -124,9 +124,11 @@ export async function PUT(request: Request) {
   return NextResponse.json({ banner: updated });
 }
 
+// Support Admins upload, edit and switch banners on or off; only admins delete.
 export async function DELETE(request: Request) {
-  const adminId = await requireAdminApi();
-  if (adminId instanceof NextResponse) return adminId;
+  const access = await requireSupportOrAdminApi();
+  if (access instanceof NextResponse) return access;
+  if (!access.isMainAdmin) return adminOnly("delete banners");
   const body = await request.json().catch(() => null);
   const id = String(body?.id ?? "").trim();
   if (!id)

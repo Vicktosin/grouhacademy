@@ -48,7 +48,7 @@ export function parseTrack(value: unknown): LearnerTrack | null {
 export function isStaffWorkspace(path: string | null | undefined) {
   return Boolean(
     path &&
-    ["/admin", "/instructor", "/mentor"].some(
+    ["/admin", "/support", "/instructor", "/mentor"].some(
       (section) => path === section || path.startsWith(`${section}/`),
     ),
   );

@@ -1,4 +1,4 @@
-import { InternResourceStatus } from "@/generated/prisma/client";
+import { InternResourceStatus, RoleName } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
 // Internship Resources: the interns' mini LMS. Interns reach a resource only
@@ -247,6 +247,8 @@ export function serializeAdminResource(resource: InternResourceRecord) {
     description: resource.description,
     thumbnail: resource.thumbnail,
     status: resource.status,
+    createdById: resource.createdById,
+    reviewNote: resource.reviewNote,
     levelId: resource.levelId,
     levelName: resource.level.name,
     updatedAt: resource.updatedAt,
@@ -305,6 +307,8 @@ export type ResourceWriteInput = {
   description?: string | null;
   thumbnail?: string | null;
   status?: InternResourceStatus;
+  /** Why an admin sent a Support Admin's resource back as a draft. */
+  reviewNote?: string | null;
   levelId?: string;
   trackIds?: string[];
   modules?: ResourceModuleInput[];
@@ -378,12 +382,15 @@ export function parseResourceInput(
     input.thumbnail = optionalText(raw.thumbnail);
   if (raw.status !== undefined) {
     if (
-      raw.status !== InternResourceStatus.DRAFT &&
-      raw.status !== InternResourceStatus.PUBLISHED
+      !Object.values(InternResourceStatus).includes(
+        raw.status as InternResourceStatus,
+      )
     )
-      return { error: "Status must be DRAFT or PUBLISHED." };
-    input.status = raw.status;
+      return { error: "Status must be DRAFT, PENDING_REVIEW or PUBLISHED." };
+    input.status = raw.status as InternResourceStatus;
   }
+  if (raw.reviewNote !== undefined)
+    input.reviewNote = optionalText(raw.reviewNote)?.slice(0, 1000) ?? null;
   if (!partial || raw.trackIds !== undefined) {
     const ids = Array.isArray(raw.trackIds)
       ? raw.trackIds.filter((id): id is string => typeof id === "string")
@@ -399,6 +406,79 @@ export function parseResourceInput(
   }
   if (raw.modules !== undefined) input.modules = parseModules(raw.modules);
   return { input };
+}
+
+/**
+ * What a Support Admin may not do with a resource: they create drafts, send
+ * them for review and edit their own until an admin publishes them. Only an
+ * admin publishes, edits someone else's or a published resource, or deletes.
+ * Returns the refusal, or null when it's allowed.
+ */
+export function supportAdminResourceError(
+  userId: string,
+  input: ResourceWriteInput,
+  existing?: { createdById: string | null; status: InternResourceStatus },
+) {
+  if (input.status === InternResourceStatus.PUBLISHED)
+    return "Only an administrator can publish resources. Send it for review instead.";
+  if (input.reviewNote !== undefined)
+    return "Only an administrator can review resources.";
+  if (!existing) return null;
+  if (existing.createdById !== userId)
+    return "Only an administrator can change a resource someone else created.";
+  if (existing.status === InternResourceStatus.PUBLISHED)
+    return "This resource is published. Only an administrator can change it now.";
+  return null;
+}
+
+/** Whether a Support Admin can still edit this resource (see above). */
+export function supportAdminCanEdit(
+  userId: string,
+  resource: { createdById: string | null; status: InternResourceStatus },
+) {
+  return (
+    resource.createdById === userId &&
+    resource.status !== InternResourceStatus.PUBLISHED
+  );
+}
+
+/**
+ * The review fields that go with a status change: sending for review stamps
+ * the time and clears an old review note; publishing clears the note.
+ */
+export function reviewFieldsFor(
+  status: InternResourceStatus | undefined,
+  previous: InternResourceStatus | null,
+  reviewNote: string | null | undefined,
+) {
+  if (status === InternResourceStatus.PENDING_REVIEW && previous !== status)
+    return { submittedForReviewAt: new Date(), reviewNote: null };
+  if (status === InternResourceStatus.PUBLISHED) return { reviewNote: null };
+  return reviewNote === undefined ? {} : { reviewNote };
+}
+
+/** Tells every admin that a Support Admin has sent a resource for review. */
+export async function notifyAdminsOfReview(title: string, senderId: string) {
+  const prisma = getPrisma();
+  const [sender, admins] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: senderId },
+      select: { name: true, email: true },
+    }),
+    prisma.user.findMany({
+      where: { roles: { some: { role: { name: RoleName.ADMIN } } } },
+      select: { id: true },
+    }),
+  ]);
+  if (!admins.length) return;
+  const who = sender?.name?.trim() || sender?.email || "A Support Admin";
+  await prisma.notification.createMany({
+    data: admins.map((admin) => ({
+      userId: admin.id,
+      title: "Resource waiting for review",
+      message: `${who} sent “${title}” for review. Publish it or send it back from Resources.`,
+    })),
+  });
 }
 
 /** Returns the ids that are not real tracks (empty when all are valid). */

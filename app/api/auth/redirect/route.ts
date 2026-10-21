@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/mfa";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordReferralRegistration } from "@/lib/referrals";
+import { recordAffiliateRegistration } from "@/lib/affiliates";
 
 /**
  * Called right after sign-in. `?track=internship|courses` names the side
@@ -45,6 +46,9 @@ export async function GET(request: NextRequest) {
     } catch (referralError) {
       console.error("Failed to attribute internship registration:", referralError);
     }
+    await recordAffiliateRegistration(request, userId).catch((affiliateError) =>
+      console.error("Failed to credit an affiliate sign-up:", affiliateError),
+    );
 
     if (await isMfaVerificationPending(supabase, data.user)) {
       return NextResponse.json({ redirectTo: MFA_CHALLENGE_PATH });
