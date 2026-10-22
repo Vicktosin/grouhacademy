@@ -168,25 +168,18 @@ export async function GET() {
       take: 3,
     });
 
-    const cohortStatus = activeCohort
-      ? "ACTIVE"
-      : nextCohort
-        ? "UPCOMING"
-        : "COMPLETED";
-    const countdownDays = displayCohort
-      ? Math.max(
-          0,
-          Math.ceil(
-            (displayCohort.startDate.getTime() - now.getTime()) /
-              (1000 * 60 * 60 * 24),
-          ),
-        )
+    // The shown cohort's own days (its first to the end of its last, WAT),
+    // not whether some other cohort is running.
+    const displayTimeline = displayCohort
+      ? cohortTimeline(displayCohort.startDate, displayCohort.endDate, now)
       : null;
-    const countdownLabel = displayCohort
-      ? countdownDays === 0
-        ? "Your internship starts today."
-        : `Your internship starts in ${countdownDays} day${countdownDays === 1 ? "" : "s"}.`
-      : "Your internship has concluded.";
+    const cohortStatus = !displayTimeline
+      ? "COMPLETED"
+      : !displayTimeline.started
+        ? "UPCOMING"
+        : displayTimeline.ended
+          ? "COMPLETED"
+          : "ACTIVE";
 
     return NextResponse.json({
       program: { name: program.name, slug: program.slug },
@@ -206,13 +199,15 @@ export async function GET() {
             ended: timeline.ended,
           }
         : null,
-      cohort: displayCohort
+      cohort: displayCohort && displayTimeline
         ? {
             status: cohortStatus,
             name: displayCohort.name,
             startDateLabel: formatDate(displayCohort.startDate),
             endDateLabel: formatDate(displayCohort.endDate),
-            countdownLabel,
+            // For the dashboard's live countdown (to the start, then the end).
+            startsAt: displayTimeline.startsAt.toISOString(),
+            endsAt: displayTimeline.endsAt.toISOString(),
             description: displayCohort.description,
           }
         : null,

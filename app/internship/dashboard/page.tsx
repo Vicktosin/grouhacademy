@@ -5,6 +5,7 @@ import GettingStarted from "@/components/onboarding/GettingStarted";
 import { Activity, Bell, CheckCircle2, Clock3, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CohortCountdown from "@/components/CohortCountdown";
 import InternshipShell from "@/components/InternshipShell";
 import LevelCompleteModal from "@/components/LevelCompleteModal";
 import RecommendedResources from "@/components/RecommendedResources";
@@ -19,7 +20,8 @@ type DashboardData = {
     name: string;
     startDateLabel: string;
     endDateLabel: string;
-    countdownLabel: string;
+    startsAt: string;
+    endsAt: string;
     description: string | null;
   } | null;
   startDateLabel?: string;
@@ -204,9 +206,10 @@ export default function InternshipDashboardPage() {
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#1C1D52]">
                       {data.cohort.name}
                     </p>
-                    <h2 className="mt-2 text-lg font-bold text-[#1C1D52]">
-                      {data.cohort.countdownLabel}
-                    </h2>
+                    <CohortCountdown
+                      startsAt={data.cohort.startsAt}
+                      endsAt={data.cohort.endsAt}
+                    />
                     <p className="mt-1 text-xs text-slate-600">
                       Cohort starts: {data.cohort.startDateLabel} · Ends:{" "}
                       {data.cohort.endDateLabel}

@@ -97,6 +97,7 @@ export function cohortTimeline(start: Date, end: Date, now = new Date()) {
     percent: Math.round((dayNumber / totalDays) * 100),
     started: nowMs >= first,
     ended: nowMs >= endsAt,
+    startsAt: new Date(first),
     endsAt: new Date(endsAt),
   };
 }
