@@ -30,7 +30,13 @@ type Share = {
 };
 
 const SOUND_KEY = "grouh-achievement-sound";
-const CHECK_EVERY_MS = 20_000;
+// Unlocks mostly follow the intern's own actions, which ask for a check at
+// once (checkForAchievements). The regular check only catches the rest (a
+// mentor's review), and only while the tab is visible: every check is a
+// billed serverless call.
+const CHECK_EVERY_MS = 5 * 60_000;
+// Coming back to the tab checks again, but not more often than this.
+const MIN_GAP_MS = 60_000;
 
 function soundOn() {
   try {
@@ -239,9 +245,14 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
   const shown = useRef(new Set<string>());
   const fetching = useRef(false);
   const open = useRef(false);
+  const lastCheck = useRef(0);
 
-  const loadPending = useCallback(async () => {
+  /** `force`: a check asked for on purpose (page open, an action, the next
+   *  of several), not just the tab coming back or the regular check. */
+  const loadPending = useCallback(async (force = false) => {
     if (!enabled || fetching.current || open.current) return;
+    if (!force && Date.now() - lastCheck.current < MIN_GAP_MS) return;
+    lastCheck.current = Date.now();
     fetching.current = true;
     try {
       const response = await fetch("/api/internship/achievements/pending", { cache: "no-store" });
@@ -273,18 +284,21 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
 
   useEffect(() => {
     // A moment after the page opens, so it doesn't land mid-load.
-    const first = window.setTimeout(() => void loadPending(), 800);
-    const interval = window.setInterval(() => void loadPending(), CHECK_EVERY_MS);
+    const first = window.setTimeout(() => void loadPending(true), 800);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadPending();
+    }, CHECK_EVERY_MS);
     const check = () => void loadPending();
+    const checkNow = () => void loadPending(true);
     const onVisible = () => document.visibilityState === "visible" && check();
     window.addEventListener("focus", check);
-    window.addEventListener(ACHIEVEMENT_CHECK_EVENT, check);
+    window.addEventListener(ACHIEVEMENT_CHECK_EVENT, checkNow);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearTimeout(first);
       window.clearInterval(interval);
       window.removeEventListener("focus", check);
-      window.removeEventListener(ACHIEVEMENT_CHECK_EVENT, check);
+      window.removeEventListener(ACHIEVEMENT_CHECK_EVENT, checkNow);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [loadPending]);
@@ -325,7 +339,7 @@ export default function AchievementCelebration({ enabled }: { enabled: boolean }
     setCardLoaded(false);
     setMessage("");
     // Several can arrive together (a perfect score unlocks a few): show the next.
-    window.setTimeout(() => void loadPending(), 700);
+    window.setTimeout(() => void loadPending(true), 700);
   }
 
   function toggleSound() {

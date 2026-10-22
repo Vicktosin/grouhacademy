@@ -55,27 +55,25 @@ export async function GET() {
   }
 
   const prisma = getPrisma();
+  const accessStatusLoad = getInternshipAccessStatus(userId);
   const [workspace, accessStatus, profile, unreadCount, preview] = await Promise.all([
     settle(
       internshipWorkspaceRedirect(userId).then((redirect) => ({ redirect })),
       "workspace access",
     ),
-    settle(getInternshipAccessStatus(userId), "access status"),
+    settle(accessStatusLoad, "access status"),
     settle(
       Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { name: true, avatarUrl: true } }),
-        // Same as /api/internship/profile: the latest application's tier.
-        prisma.internshipApplication.findFirst({
-          where: { studentId: userId },
-          orderBy: { createdAt: "desc" },
-          select: { premiumTier: true },
-        }),
-      ]).then(([user, application]) =>
+        // Same as /api/internship/profile: the latest application's tier,
+        // which the access status has already loaded.
+        accessStatusLoad,
+      ]).then(([user, status]) =>
         user
           ? {
               name: user.name ?? "",
               avatarUrl: user.avatarUrl,
-              tier: application && application.premiumTier !== "NONE" ? ("Premium" as const) : ("Free" as const),
+              tier: status.premiumTier !== "NONE" ? ("Premium" as const) : ("Free" as const),
             }
           : null,
       ),

@@ -19,7 +19,11 @@ export async function getInternshipAccessStatus(
 
   const application = await prisma.internshipApplication.findFirst({
     where: { studentId: userId },
-    include: { program: true, payment: true },
+    include: {
+      program: { select: { name: true } },
+      payment: { select: { status: true, currency: true } },
+      attempts: { where: { status: "PASSED" }, select: { id: true }, take: 1 },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -35,19 +39,17 @@ export async function getInternshipAccessStatus(
     };
   }
 
+  const acceptanceFeePaid = application.payment?.status === "PAID";
   return {
     hasApplication: true,
-    acceptanceFeePaid: application.payment?.status === "PAID",
+    acceptanceFeePaid,
     programName: application.program.name,
-    assessmentPassed:
-      (await prisma.assessmentAttempt.findFirst({
-        where: { applicationId: application.id, status: "PASSED" },
-        select: { id: true },
-      })) !== null,
-    acceptanceFeeAmount: await getAcceptanceFee(
-      application.programId,
-      application.levelId,
-    ),
+    assessmentPassed: application.attempts.length > 0,
+    // Only the paywall shows it, so it isn't looked up once the fee is paid
+    // (this runs on every internship page's shell request).
+    acceptanceFeeAmount: acceptanceFeePaid
+      ? null
+      : await getAcceptanceFee(application.programId, application.levelId),
     currency: application.payment?.currency ?? "NGN",
     premiumTier: application.premiumTier,
   };

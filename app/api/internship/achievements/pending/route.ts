@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
-import { requireInternApi } from "@/lib/lab-api";
 import { getPrisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/route-guards";
+
+// The pop-up checks this often, so it only asks who's signed in: there's no
+// workspace-access query, since only interns ever have unlocks and every
+// query is scoped to the signed-in user's own.
+async function requireUser(): Promise<string | NextResponse> {
+  return (await getCurrentUserId()) ?? NextResponse.json({ error: "Authentication required." }, { status: 401 });
+}
 
 export async function GET() {
-  const userId = await requireInternApi();
+  const userId = await requireUser();
   if (userId instanceof NextResponse) return userId;
   const unlock = await getPrisma().achievementUnlock.findFirst({
     where: { userId, celebratedAt: null },
@@ -26,7 +33,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const userId = await requireInternApi();
+  const userId = await requireUser();
   if (userId instanceof NextResponse) return userId;
   const body: unknown = await request.json().catch(() => null);
   const unlockId =
