@@ -146,7 +146,7 @@ export default function InternshipOnboardingPage() {
                         {program.name}
                       </strong>
                       {program.levels[0] && (
-                        <span className="shrink-0 rounded-full bg-[#e8f7eb] px-2.5 py-1 text-[10px] font-bold text-[#397d3a]">
+                        <span className="shrink-0 rounded-full bg-[#397d3a] px-2.5 py-1 text-[10px] font-bold text-white">
                           ₦
                           {program.levels[0].acceptanceFee.toLocaleString(
                             "en-NG",
