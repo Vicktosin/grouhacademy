@@ -1,18 +1,28 @@
 export const OFFICE_LIFE_DAY_1_TASK_TITLE = "Resume Office Life – Day 1";
+export const RESOURCE_VIDEO_SUMMARY_TASK_TITLE =
+  "Watch Resource Videos and Write a Summary";
+export const OFFICE_LIFE_DAY_2_TASK_TITLE = "Resume Office Life – Day 2";
 
 type ScheduledTask = {
   title: string;
   opensWeek: number;
   opensAt: Date;
   dueDate: Date;
+  officeLifeDay?: number | null;
 };
 
 function sequenceNumber(task: ScheduledTask): number | null {
+  // Workday identity stays stable when an administrator renames its task.
+  if (task.opensWeek === 3 && task.officeLifeDay === 2) return 2;
   const numberedTitle = /^Week (\d+) Task (\d+):/.exec(task.title);
   if (numberedTitle && Number(numberedTitle[1]) === task.opensWeek)
     return Number(numberedTitle[2]);
 
   if (task.opensWeek === 2 && task.title === OFFICE_LIFE_DAY_1_TASK_TITLE)
+    return 2;
+  if (task.opensWeek === 3 && task.title === RESOURCE_VIDEO_SUMMARY_TASK_TITLE)
+    return 1;
+  if (task.opensWeek === 3 && task.title === OFFICE_LIFE_DAY_2_TASK_TITLE)
     return 2;
 
   return null;
