@@ -27,6 +27,23 @@ type Question = {
   required: boolean;
 };
 
+const trackOrder = [
+  "socialmedia",
+  "aiautomation",
+  "digitalmarketing",
+  "aiforcontentcreation",
+  "frontenddevelopment",
+  "specialclass",
+  "backendengineering",
+  "wordpressdevelopment",
+];
+
+function trackOrderIndex(name: string) {
+  const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const index = trackOrder.findIndex((track) => normalizedName.startsWith(track));
+  return index === -1 ? trackOrder.length : index;
+}
+
 export default function InternshipOnboardingPage() {
   const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -60,6 +77,10 @@ export default function InternshipOnboardingPage() {
   const selectedLevelId = levels.some((level) => level.id === levelId)
     ? levelId
     : (levels[0]?.id ?? "");
+  const orderedPrograms = [...programs].sort(
+    (first, second) =>
+      trackOrderIndex(first.name) - trackOrderIndex(second.name),
+  );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -126,7 +147,7 @@ export default function InternshipOnboardingPage() {
               available level. Select a level below to see its fee.
             </p>
             <div className="mt-3 space-y-2">
-              {programs.map((program) => (
+              {orderedPrograms.map((program) => (
                 <label
                   key={program.id}
                   className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${programId === program.id ? "border-[#5FBB46] bg-[#f4faf2]" : "border-slate-200"}`}
