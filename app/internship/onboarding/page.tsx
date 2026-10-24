@@ -121,6 +121,10 @@ export default function InternshipOnboardingPage() {
             <label className="block text-xs font-bold text-[#1C1D52]">
               Which stack are you interested in?
             </label>
+            <p className="mt-1 text-xs text-slate-500">
+              Prices shown are the acceptance fees for each track&apos;s first
+              available level. Select a level below to see its fee.
+            </p>
             <div className="mt-3 space-y-2">
               {programs.map((program) => (
                 <label
@@ -136,10 +140,20 @@ export default function InternshipOnboardingPage() {
                     className="mt-1"
                     required
                   />
-                  <span>
-                    <strong className="block text-sm text-[#1C1D52]">
-                      {program.name}
-                    </strong>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <strong className="text-sm text-[#1C1D52]">
+                        {program.name}
+                      </strong>
+                      {program.levels[0] && (
+                        <span className="shrink-0 rounded-full bg-[#e8f7eb] px-2.5 py-1 text-[10px] font-bold text-[#397d3a]">
+                          ₦
+                          {program.levels[0].acceptanceFee.toLocaleString(
+                            "en-NG",
+                          )}
+                        </span>
+                      )}
+                    </span>
                     <span className="mt-1 block text-xs text-slate-500">
                       {program.duration}
                       {program.description ? ` · ${program.description}` : ""}
