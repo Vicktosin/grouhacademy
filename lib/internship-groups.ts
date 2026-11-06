@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getPlatformSettings } from "@/lib/platform-settings";
+import { getPoolForCohort } from "@/lib/internship-group-pools";
 
 type Tx = Prisma.TransactionClient;
 
@@ -11,6 +12,10 @@ type Tx = Prisma.TransactionClient;
  */
 export async function lockCohortGroups(tx: Tx, cohortId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`internship-groups:${cohortId}`}))`;
+}
+
+export async function lockPoolGroups(tx: Tx, poolId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`internship-groups:pool:${poolId}`}))`;
 }
 
 export async function nextGroupNumber(tx: Tx, cohortId: string) {
@@ -82,6 +87,52 @@ export async function ensureGroupMembership(application: {
   if (!cohortMatchesProgram) return null;
 
   const { maxGroupSize } = await getPlatformSettings();
+
+  // Mixed-track pool: place intern in a pool group instead of a cohort group.
+  const pool = await getPoolForCohort(cohortId);
+  if (pool) {
+    return prisma.$transaction(async (tx) => {
+      await lockPoolGroups(tx, pool.id);
+
+      const placed = await tx.internshipGroupMember.findUnique({
+        where: { programId_userId: { programId, userId } },
+        include: { group: true },
+      });
+      if (placed) return placed.group;
+
+      const groups = await tx.internshipGroup.findMany({
+        where: { poolId: pool.id },
+        orderBy: { number: "asc" },
+        include: { _count: { select: { members: true } } },
+      });
+      const groupWithRoom = groups.find((g) => g._count.members < g.capacity);
+      const nextNum = (groups.at(-1)?.number ?? 0) + 1;
+
+      const targetGroup =
+        groupWithRoom ??
+        (await tx.internshipGroup.create({
+          data: {
+            programId,
+            cohortId: null,
+            poolId: pool.id,
+            number: nextNum,
+            capacity: maxGroupSize,
+          },
+        }));
+
+      await tx.internshipGroupMember.create({
+        data: { groupId: targetGroup.id, programId, userId },
+      });
+
+      if (!targetGroup.leaderId) {
+        return tx.internshipGroup.update({
+          where: { id: targetGroup.id },
+          data: { leaderId: userId },
+        });
+      }
+      return tx.internshipGroup.findUniqueOrThrow({ where: { id: targetGroup.id } });
+    });
+  }
 
   return prisma.$transaction(async (tx) => {
     await lockCohortGroups(tx, cohortId);

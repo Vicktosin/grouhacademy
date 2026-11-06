@@ -5,6 +5,7 @@ import { requireAdminApi } from "@/lib/api-guards";
 import { cohortTimeline, scheduleToDate } from "@/lib/task-schedule";
 import { listLevels, resolveLevelId } from "@/lib/internship-levels";
 import { REAL_USER } from "@/lib/real-user";
+import { ensureCohortPool } from "@/lib/internship-group-pools";
 
 const DEFAULT_PASS_MARK = 70;
 
@@ -176,6 +177,9 @@ export async function POST(request: Request) {
       status: calculateStatus(startDate, endDate),
     },
   });
+
+  // Link to a mixed-track pool if another eligible cohort shares level+startDate.
+  await ensureCohortPool(cohort.id);
 
   return NextResponse.json({
     success: true,

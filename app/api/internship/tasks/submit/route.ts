@@ -70,12 +70,15 @@ export async function POST(request: Request) {
         officeLifeDay: true,
       },
     });
-    // Cohort intern: task must belong to their cohort.
-    // Self-paced intern: task must be materialised for their application.
+    // Cohort intern: task must belong to their cohort, OR be a GROUP task from
+    // another cohort in the same pool. Self-paced: task links to their application.
     const isSelfPaced = Boolean(context?.selfPacedStartDate);
     const taskOwned = isSelfPaced
       ? task?.applicationId === context?.id
-      : context?.cohortId != null && task?.cohortId === context.cohortId;
+      : context?.cohortId != null &&
+        (task?.cohortId === context.cohortId ||
+          (task?.kind === "GROUP" &&
+            context.poolCohortIds?.includes(task?.cohortId ?? "") === true));
     if (!context || !task || !taskOwned)
       return NextResponse.json({ error: "Task not found." }, { status: 404 });
     // Office Life tasks are submitted for the intern when they finish the

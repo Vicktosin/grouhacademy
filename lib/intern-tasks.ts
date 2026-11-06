@@ -8,6 +8,7 @@ import type {
 import { compareInternshipTaskOrder } from "@/lib/internship-task-order";
 import { formatWat, taskWindowState } from "@/lib/task-schedule";
 import { submissionBlockedReason } from "@/lib/task-submission";
+import { getPoolForCohort } from "@/lib/internship-group-pools";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 const MS_PER_DAY = MS_PER_HOUR * 24;
@@ -55,6 +56,11 @@ export async function getInternTaskContext(userId: string) {
   });
   if (!application) return null;
 
+  const pool = application.cohortId
+    ? await getPoolForCohort(application.cohortId)
+    : null;
+  const poolCohortIds = pool?.cohortIds ?? null;
+
   const membership = await prisma.internshipGroupMember.findUnique({
     where: {
       programId_userId: { programId: application.programId, userId },
@@ -90,7 +96,7 @@ export async function getInternTaskContext(userId: string) {
       }
     : null;
 
-  return { ...application, group };
+  return { ...application, group, poolCohortIds };
 }
 
 export type InternTaskContext = NonNullable<
@@ -103,9 +109,20 @@ export async function getInternTasks(
   context: InternTaskContext,
 ): Promise<InternshipTaskItem[]> {
   if (!context.cohortId) return [];
-  const { group } = context;
+  const { group, poolCohortIds } = context;
+  // For pool members: also include GROUP tasks from other pool cohorts.
+  const otherPoolCohortIds = poolCohortIds
+    ? poolCohortIds.filter((id) => id !== context.cohortId)
+    : [];
   const tasks = await getPrisma().internshipTask.findMany({
-    where: { cohortId: context.cohortId },
+    where: {
+      OR: [
+        { cohortId: context.cohortId },
+        ...(otherPoolCohortIds.length > 0
+          ? [{ cohortId: { in: otherPoolCohortIds }, kind: "GROUP" as const }]
+          : []),
+      ],
+    },
     orderBy: [{ opensAt: "asc" }, { dueDate: "asc" }, { title: "asc" }],
     include: {
       submissions: {
