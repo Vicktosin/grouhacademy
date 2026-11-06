@@ -193,25 +193,38 @@ export async function getSelfPacedTasks(
 }
 
 /**
- * Progress for a self-paced intern: how many of their materialised tasks
- * have an ACCEPTED submission.
+ * Progress for a self-paced intern: completion % and score %.
+ * scorePercent = earned score on ACCEPTED submissions / total possible score.
  */
 export async function computeSelfPacedProgress(applicationId: string) {
   const prisma = getPrisma();
-  const [totalTasks, completedTasks] = await Promise.all([
-    prisma.internshipTask.count({ where: { applicationId } }),
-    prisma.internshipTask.count({
-      where: {
-        applicationId,
-        submissions: { some: { status: "ACCEPTED", groupId: null } },
+  const tasks = await prisma.internshipTask.findMany({
+    where: { applicationId },
+    select: {
+      maxScore: true,
+      submissions: {
+        where: { status: "ACCEPTED", groupId: null },
+        select: { score: true },
+        take: 1,
       },
-    }),
-  ]);
+    },
+  });
+  const totalTasks = tasks.length;
+  const accepted = tasks.filter((t) => t.submissions.length > 0);
+  const completedTasks = accepted.length;
+  const totalScore = tasks.reduce((s, t) => s + t.maxScore, 0);
+  const earnedScore = accepted.reduce(
+    (s, t) => s + (t.submissions[0]?.score ?? 0),
+    0,
+  );
   return {
     totalTasks,
     completedTasks,
     progressPercent: totalTasks
       ? Math.min(100, Math.round((completedTasks / totalTasks) * 100))
+      : 0,
+    scorePercent: totalScore
+      ? Math.min(100, Math.round((earnedScore / totalScore) * 100))
       : 0,
   };
 }

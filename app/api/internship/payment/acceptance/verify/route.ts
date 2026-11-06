@@ -128,12 +128,8 @@ export async function GET(request: Request) {
       const settings = await prisma.platformSettings.findFirst({
         select: { cohortSystemEnabled: true },
       });
-      // Special Class always keeps its cohort regardless of the platform switch.
-      const isSpecialClass = application.program.name
-        .toLowerCase()
-        .includes("special class");
 
-      if (!settings?.cohortSystemEnabled && !isSpecialClass) {
+      if (!settings?.cohortSystemEnabled && !application.program.excludeFromSelfPacedAndPools) {
         // Cohort system is OFF: start self-paced immediately without assigning
         // a cohort, even if one is open for this track.
         await activateSelfPacedMode(applicationId);

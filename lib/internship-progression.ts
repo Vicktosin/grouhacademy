@@ -111,20 +111,37 @@ export async function checkCertificate(
     const [progress, platformSettings] = await Promise.all([
       computeSelfPacedProgress(application.id),
       getPrisma().platformSettings.findFirst({
-        select: { certificateMinimumCompletion: true, automaticCertificateIssue: true },
+        select: {
+          certificateMinimumCompletion: true,
+          automaticCertificateIssue: true,
+          selfPacedCertificatePassMark: true,
+        },
       }),
     ]);
-    const passMark = platformSettings?.certificateMinimumCompletion ?? 100;
+    const completionMark = platformSettings?.certificateMinimumCompletion ?? 100;
+    const scoreMark = platformSettings?.selfPacedCertificatePassMark ?? 70;
     const details = {
       progressPercent: progress.progressPercent,
-      passMark,
+      passMark: completionMark,
       completedTasks: progress.completedTasks,
       totalTasks: progress.totalTasks,
     };
-    if (progress.totalTasks === 0 || progress.progressPercent < passMark)
+    if (progress.totalTasks === 0)
       return {
         eligible: false,
-        reason: `Pass at least ${passMark}% of your tasks to earn your certificate — you've passed ${progress.progressPercent}% so far.`,
+        reason: "No tasks have been assigned yet.",
+        ...details,
+      };
+    if (progress.progressPercent < completionMark)
+      return {
+        eligible: false,
+        reason: `Pass at least ${completionMark}% of your tasks to earn your certificate — you've passed ${progress.progressPercent}% so far.`,
+        ...details,
+      };
+    if (progress.scorePercent < scoreMark)
+      return {
+        eligible: false,
+        reason: `Your task completion qualifies, but your score (${progress.scorePercent}%) must reach ${scoreMark}% to earn your certificate.`,
         ...details,
       };
     // Eligible. Issue automatically only when the setting allows it.

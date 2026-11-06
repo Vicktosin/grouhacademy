@@ -239,8 +239,11 @@ model PlatformSettings {
 
   // Step 3 – Cohort switch. When false, accepted+paid interns start in
   // self-paced mode (tasks dated from their own selfPacedStartDate, GROUP
-  // tasks skipped). Special Class is never affected.
-  cohortSystemEnabled Boolean @default(true)
+  // tasks skipped). Programs with excludeFromSelfPacedAndPools=true are exempt.
+  cohortSystemEnabled          Boolean @default(true)
+  // Minimum score percentage (accepted score / maxScore) for a self-paced
+  // certificate. Separate from certificateMinimumCompletion (task count %).
+  selfPacedCertificatePassMark Int     @default(70)
 
   // Notification settings
   notifyAdminOnRegistration  Boolean @default(true)
@@ -443,10 +446,13 @@ model InternshipProgram {
   features                Json
   requirements            Json
   certificateEligibility  String
-  companyPlacement        Boolean                        @default(false)
-  mentorAvailability      Boolean                        @default(false)
-  communityAvailability   Boolean                        @default(false)
-  status                  InternshipProgramStatus        @default(DRAFT)
+  companyPlacement               Boolean                        @default(false)
+  mentorAvailability             Boolean                        @default(false)
+  communityAvailability          Boolean                        @default(false)
+  // When true, this program always uses cohorts regardless of cohortSystemEnabled,
+  // and is excluded from mixed-track group pools (Step 4). Set for Special Class.
+  excludeFromSelfPacedAndPools   Boolean                        @default(false)
+  status                         InternshipProgramStatus        @default(DRAFT)
   applications            InternshipApplication[]
   cohorts                 InternshipCohort[]
   tracks                  InternshipTrack[]

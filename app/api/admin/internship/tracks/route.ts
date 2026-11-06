@@ -63,6 +63,7 @@ function parseTrack(body: Record<string, unknown>) {
     companyPlacement: Boolean(body.companyPlacement),
     mentorAvailability: Boolean(body.mentorAvailability),
     communityAvailability: Boolean(body.communityAvailability),
+    excludeFromSelfPacedAndPools: Boolean(body.excludeFromSelfPacedAndPools),
   };
 }
 

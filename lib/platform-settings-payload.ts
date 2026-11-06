@@ -16,6 +16,7 @@ export type PlatformSettingsPayload = {
   certificateMinimumCompletion: number;
   automaticCertificateIssue: boolean;
   cohortSystemEnabled: boolean;
+  selfPacedCertificatePassMark: number;
   notifyAdminOnRegistration: boolean;
   notifyAdminOnPayment: boolean;
   notifyStudentOnEnrollment: boolean;

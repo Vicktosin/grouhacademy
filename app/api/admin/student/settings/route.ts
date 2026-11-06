@@ -83,6 +83,13 @@ export async function PATCH(request: Request) {
     value.certificateMinimumCompletion <= 100
       ? value.certificateMinimumCompletion
       : undefined;
+  const selfPacedCertificatePassMark =
+    typeof value.selfPacedCertificatePassMark === "number" &&
+    Number.isInteger(value.selfPacedCertificatePassMark) &&
+    value.selfPacedCertificatePassMark >= 1 &&
+    value.selfPacedCertificatePassMark <= 100
+      ? value.selfPacedCertificatePassMark
+      : undefined;
 
   if (supportEmail && !/^\S+@\S+\.\S+$/.test(supportEmail)) {
     return NextResponse.json(
@@ -158,38 +165,35 @@ export async function PATCH(request: Request) {
         ...(boolean("cohortSystemEnabled") !== undefined && {
           cohortSystemEnabled: boolean("cohortSystemEnabled"),
         }),
+        ...(selfPacedCertificatePassMark !== undefined && {
+          selfPacedCertificatePassMark,
+        }),
       },
     });
 
-    // When the cohort system is switched OFF, any paid intern who has no
-    // cohort and no selfPacedStartDate yet should start self-paced immediately.
-    // Special Class is identified by their program name and skipped.
+    // When the cohort system is switched OFF, bulk-activate any paid intern
+    // who is waiting for a cohort. Fetch the previous value BEFORE the update
+    // so we can detect a true → false transition.
     if (boolean("cohortSystemEnabled") === false) {
-      const previous = await getPrisma().platformSettings.findUnique({
-        where: { id: SETTINGS_ID },
-        select: { cohortSystemEnabled: true },
+      // previousWasEnabled was captured above before the upsert ran.
+      const stranded = await getPrisma().internshipApplication.findMany({
+        where: {
+          cohortId: null,
+          selfPacedStartDate: null,
+          status: { not: "REMOVED" },
+          payment: { is: { status: "PAID" } },
+          program: { excludeFromSelfPacedAndPools: false },
+        },
+        select: { id: true },
       });
-      // Only bulk-activate when actually switching from true → false.
-      if (previous?.cohortSystemEnabled !== false) {
-        const stranded = await getPrisma().internshipApplication.findMany({
-          where: {
-            cohortId: null,
-            selfPacedStartDate: null,
-            status: { not: "REMOVED" },
-            payment: { is: { status: "PAID" } },
-            program: { name: { not: { contains: "Special Class" } } },
-          },
-          select: { id: true },
+      if (stranded.length > 0) {
+        await getPrisma().internshipApplication.updateMany({
+          where: { id: { in: stranded.map((a) => a.id) } },
+          data: { selfPacedStartDate: new Date() },
         });
-        if (stranded.length > 0) {
-          await getPrisma().internshipApplication.updateMany({
-            where: { id: { in: stranded.map((a) => a.id) } },
-            data: { selfPacedStartDate: new Date() },
-          });
-          console.info(
-            `[cohort-switch] Activated self-paced for ${stranded.length} stranded intern(s).`,
-          );
-        }
+        console.info(
+          `[cohort-switch] Activated self-paced for ${stranded.length} stranded intern(s).`,
+        );
       }
     }
 
