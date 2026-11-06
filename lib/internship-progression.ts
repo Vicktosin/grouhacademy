@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
 import { awardLevelUpAchievement } from "@/lib/achievements";
 import { computeInternProgress } from "@/lib/internship-progress";
+import { computeSelfPacedProgress } from "@/lib/self-paced-tasks";
 import { cohortTimeline } from "@/lib/task-schedule";
 import { getAcceptanceFee } from "@/lib/internship-levels";
 import { reassignLeaderIfNeeded } from "@/lib/internship-groups";
@@ -97,12 +98,39 @@ export async function checkCertificate(
   if (existing) return { eligible: true, certificateId: existing.id };
 
   const { cohort } = application;
-  if (!cohort)
-    return {
-      eligible: false,
-      reason:
-        "You'll be able to earn a certificate once you're placed in a cohort.",
-    };
+
+  // Self-paced interns have no cohort. Certificate is earned once every
+  // materialised task has an ACCEPTED submission (100% completion).
+  if (!cohort) {
+    if (!application.selfPacedStartDate)
+      return {
+        eligible: false,
+        reason: "You'll be able to earn a certificate once you're placed in a cohort.",
+      };
+    const progress = await computeSelfPacedProgress(application.id);
+    if (progress.totalTasks === 0 || progress.progressPercent < 100)
+      return {
+        eligible: false,
+        reason: `Complete all ${progress.totalTasks} tasks to earn your certificate — you've passed ${progress.completedTasks} so far.`,
+        progressPercent: progress.progressPercent,
+        completedTasks: progress.completedTasks,
+        totalTasks: progress.totalTasks,
+      };
+    const certificate = await getPrisma().internshipCertificate.create({
+      data: {
+        userId: application.studentId,
+        programId: application.programId,
+        applicationId: application.id,
+        title:
+          application.level.rank > 1
+            ? `${application.program.name} ${application.level.name} Level Completion Certificate`
+            : `${application.program.name} Completion Certificate`,
+        certificateNumber: generateCertificateNumber(),
+      },
+    });
+    await notifyCertificateIssued(certificate.id);
+    return { eligible: true, certificateId: certificate.id, issuedNow: true };
+  }
 
   const progress = await computeInternProgress(
     application.studentId,

@@ -51,7 +51,7 @@ export async function getInternTaskContext(userId: string) {
       attempts: { some: { status: "PASSED" } },
     },
     orderBy: { createdAt: "desc" },
-    select: { programId: true, cohortId: true },
+    select: { id: true, programId: true, levelId: true, cohortId: true, selfPacedStartDate: true },
   });
   if (!application) return null;
 

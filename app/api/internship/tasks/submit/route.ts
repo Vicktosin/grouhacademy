@@ -66,11 +66,17 @@ export async function POST(request: Request) {
         opensAt: true,
         dueDate: true,
         cohortId: true,
+        applicationId: true,
         officeLifeDay: true,
       },
     });
-    // Interns only see, and may only submit, their own cohort's tasks.
-    if (!context?.cohortId || !task || task.cohortId !== context.cohortId)
+    // Cohort intern: task must belong to their cohort.
+    // Self-paced intern: task must be materialised for their application.
+    const isSelfPaced = Boolean(context?.selfPacedStartDate);
+    const taskOwned = isSelfPaced
+      ? task?.applicationId === context?.id
+      : context?.cohortId != null && task?.cohortId === context.cohortId;
+    if (!context || !task || !taskOwned)
       return NextResponse.json({ error: "Task not found." }, { status: 404 });
     // Office Life tasks are submitted for the intern when they finish the
     // workday (lib/office-life/tasks), never by hand.

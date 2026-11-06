@@ -6,6 +6,7 @@ import {
 } from "@/lib/internship-cohort";
 import { activatePromotion } from "@/lib/internship-progression";
 import { recordAffiliateCommission } from "@/lib/affiliates";
+import { activateSelfPacedMode } from "@/lib/self-paced-tasks";
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get("reference");
@@ -123,7 +124,25 @@ export async function GET(request: Request) {
 
     // Only a payment being made now picks a cohort to join; revisiting this
     // page later never moves an intern.
-    await assignApplicationCohort(prisma as unknown as CohortDb, application, { joining });
+    const assignedCohortId = await assignApplicationCohort(
+      prisma as unknown as CohortDb,
+      application,
+      { joining },
+    );
+
+    // When the cohort system is off and no cohort was found for this intern,
+    // switch them to self-paced mode instead of leaving them stranded.
+    // Special Class and any track that still has active cohorts are unaffected:
+    // assignApplicationCohort finds their cohort and returns it.
+    if (joining && !assignedCohortId) {
+      const settings = await prisma.platformSettings.findFirst({
+        select: { cohortSystemEnabled: true },
+      });
+      if (settings && !settings.cohortSystemEnabled) {
+        await activateSelfPacedMode(applicationId);
+      }
+    }
+
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(application.id);
 

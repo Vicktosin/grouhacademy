@@ -59,8 +59,21 @@ export async function recomputeInternProgress(
   const application = await prisma.internshipApplication.findFirst({
     where: { studentId: userId, programId },
     orderBy: { createdAt: "desc" },
-    select: { cohortId: true },
+    select: { id: true, cohortId: true, selfPacedStartDate: true },
   });
+
+  // Self-paced interns: count their materialised tasks instead of cohort tasks.
+  if (application?.selfPacedStartDate && !application.cohortId) {
+    const { computeSelfPacedProgress } = await import("@/lib/self-paced-tasks");
+    const progress = await computeSelfPacedProgress(application.id);
+    await prisma.internshipProgress.upsert({
+      where: { userId_programId: { userId, programId } },
+      create: { userId, programId, ...progress },
+      update: progress,
+    });
+    return;
+  }
+
   const progress = await computeInternProgress(
     userId,
     application?.cohortId ?? null,
