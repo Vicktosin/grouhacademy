@@ -155,8 +155,43 @@ export async function PATCH(request: Request) {
         ...(boolean("notifyStudentOnCertificate") !== undefined && {
           notifyStudentOnCertificate: boolean("notifyStudentOnCertificate"),
         }),
+        ...(boolean("cohortSystemEnabled") !== undefined && {
+          cohortSystemEnabled: boolean("cohortSystemEnabled"),
+        }),
       },
     });
+
+    // When the cohort system is switched OFF, any paid intern who has no
+    // cohort and no selfPacedStartDate yet should start self-paced immediately.
+    // Special Class is identified by their program name and skipped.
+    if (boolean("cohortSystemEnabled") === false) {
+      const previous = await getPrisma().platformSettings.findUnique({
+        where: { id: SETTINGS_ID },
+        select: { cohortSystemEnabled: true },
+      });
+      // Only bulk-activate when actually switching from true → false.
+      if (previous?.cohortSystemEnabled !== false) {
+        const stranded = await getPrisma().internshipApplication.findMany({
+          where: {
+            cohortId: null,
+            selfPacedStartDate: null,
+            status: { not: "REMOVED" },
+            payment: { is: { status: "PAID" } },
+            program: { name: { not: { contains: "Special Class" } } },
+          },
+          select: { id: true },
+        });
+        if (stranded.length > 0) {
+          await getPrisma().internshipApplication.updateMany({
+            where: { id: { in: stranded.map((a) => a.id) } },
+            data: { selfPacedStartDate: new Date() },
+          });
+          console.info(
+            `[cohort-switch] Activated self-paced for ${stranded.length} stranded intern(s).`,
+          );
+        }
+      }
+    }
 
     return NextResponse.json(serialize(settings));
   } catch (error) {

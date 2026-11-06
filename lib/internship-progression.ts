@@ -99,23 +99,39 @@ export async function checkCertificate(
 
   const { cohort } = application;
 
-  // Self-paced interns have no cohort. Certificate is earned once every
-  // materialised task has an ACCEPTED submission (100% completion).
+  // Self-paced interns have no cohort. Eligible once their accepted-task
+  // percentage meets the platform's certificateMinimumCompletion pass mark.
+  // Whether to auto-issue follows the automaticCertificateIssue setting.
   if (!cohort) {
     if (!application.selfPacedStartDate)
       return {
         eligible: false,
         reason: "You'll be able to earn a certificate once you're placed in a cohort.",
       };
-    const progress = await computeSelfPacedProgress(application.id);
-    if (progress.totalTasks === 0 || progress.progressPercent < 100)
+    const [progress, platformSettings] = await Promise.all([
+      computeSelfPacedProgress(application.id),
+      getPrisma().platformSettings.findFirst({
+        select: { certificateMinimumCompletion: true, automaticCertificateIssue: true },
+      }),
+    ]);
+    const passMark = platformSettings?.certificateMinimumCompletion ?? 100;
+    const details = {
+      progressPercent: progress.progressPercent,
+      passMark,
+      completedTasks: progress.completedTasks,
+      totalTasks: progress.totalTasks,
+    };
+    if (progress.totalTasks === 0 || progress.progressPercent < passMark)
       return {
         eligible: false,
-        reason: `Complete all ${progress.totalTasks} tasks to earn your certificate — you've passed ${progress.completedTasks} so far.`,
-        progressPercent: progress.progressPercent,
-        completedTasks: progress.completedTasks,
-        totalTasks: progress.totalTasks,
+        reason: `Pass at least ${passMark}% of your tasks to earn your certificate — you've passed ${progress.progressPercent}% so far.`,
+        ...details,
       };
+    // Eligible. Issue automatically only when the setting allows it.
+    // When auto-issue is off, an admin issues the cert manually; we signal
+    // eligibility with a placeholder id — the cert row doesn't exist yet.
+    if (!platformSettings?.automaticCertificateIssue)
+      return { eligible: true, certificateId: "pending-admin-issue" };
     const certificate = await getPrisma().internshipCertificate.create({
       data: {
         userId: application.studentId,

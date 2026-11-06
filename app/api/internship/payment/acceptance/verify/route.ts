@@ -124,23 +124,33 @@ export async function GET(request: Request) {
 
     // Only a payment being made now picks a cohort to join; revisiting this
     // page later never moves an intern.
-    const assignedCohortId = await assignApplicationCohort(
-      prisma as unknown as CohortDb,
-      application,
-      { joining },
-    );
-
-    // When the cohort system is off and no cohort was found for this intern,
-    // switch them to self-paced mode instead of leaving them stranded.
-    // Special Class and any track that still has active cohorts are unaffected:
-    // assignApplicationCohort finds their cohort and returns it.
-    if (joining && !assignedCohortId) {
+    if (joining) {
       const settings = await prisma.platformSettings.findFirst({
         select: { cohortSystemEnabled: true },
       });
-      if (settings && !settings.cohortSystemEnabled) {
+      // Special Class always keeps its cohort regardless of the platform switch.
+      const isSpecialClass = application.program.name
+        .toLowerCase()
+        .includes("special class");
+
+      if (!settings?.cohortSystemEnabled && !isSpecialClass) {
+        // Cohort system is OFF: start self-paced immediately without assigning
+        // a cohort, even if one is open for this track.
         await activateSelfPacedMode(applicationId);
+      } else {
+        await assignApplicationCohort(
+          prisma as unknown as CohortDb,
+          application,
+          { joining },
+        );
       }
+    } else {
+      // Revisit after already paid: re-confirm cohort but never move an intern.
+      await assignApplicationCohort(
+        prisma as unknown as CohortDb,
+        application,
+        { joining: false },
+      );
     }
 
     // A paid move up to the next level becomes the intern's current level.
