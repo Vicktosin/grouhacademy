@@ -54,3 +54,6 @@ learner-roles-backup-*.json
 # Practice Lab images in local development without Supabase Storage
 .lab-media/
 .env*.local
+
+# Database snapshots (may contain personal data)
+/snapshots/

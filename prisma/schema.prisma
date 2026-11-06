@@ -237,6 +237,11 @@ model PlatformSettings {
   certificateMinimumCompletion Int     @default(100)
   automaticCertificateIssue    Boolean @default(true)
 
+  // Step 3 – Cohort switch. When false, accepted+paid interns start in
+  // self-paced mode (tasks dated from their own selfPacedStartDate, GROUP
+  // tasks skipped). Special Class is never affected.
+  cohortSystemEnabled Boolean @default(true)
+
   // Notification settings
   notifyAdminOnRegistration  Boolean @default(true)
   notifyAdminOnPayment       Boolean @default(true)
@@ -456,6 +461,7 @@ model InternshipProgram {
   labScenarios            LabScenario[]
   progress                InternshipProgress[]
   mentorAssignments       MentorAssignment[]
+  taskTemplates           InternshipTaskTemplate[]
   payments                Payment[]
   createdAt               DateTime                       @default(now())
   updatedAt               DateTime                       @updatedAt
@@ -495,11 +501,15 @@ model InternshipCohort {
   // Percentage of the cohort's tasks an intern must pass (have accepted) to
   // earn the certificate when the cohort ends.
   certificatePassMark Int          @default(70)
+  // Step 4 – Mixed-track groups. Set when this cohort is part of a pool.
+  // Null for all existing cohorts; set lazily when a pool is first formed.
+  poolId              String?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
   program      InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   level        InternshipLevel         @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  pool         InternshipGroupPool?    @relation(fields: [poolId], references: [id], onDelete: SetNull)
   applications InternshipApplication[]
   groups       InternshipGroup[]
   tasks        InternshipTask[]
@@ -536,10 +546,16 @@ model InternshipApplication {
   premiumTier        PremiumTier @default(NONE)
   premiumActivatedAt DateTime?
 
-  certificates InternshipCertificate[]
-  followUp     InternshipFollowUp?
-  followUpLogs InternshipFollowUpLog[]
-  interviews   InterviewSession[]
+  // Step 3 – Self-paced mode. Set when payment is confirmed and
+  // cohortSystemEnabled is false (or no cohort exists). NULL for all cohort
+  // interns (including Special Class). Special Class always keeps cohortId.
+  selfPacedStartDate DateTime?
+
+  certificates    InternshipCertificate[]
+  followUp        InternshipFollowUp?
+  followUpLogs    InternshipFollowUpLog[]
+  interviews      InterviewSession[]
+  selfPacedTasks  InternshipTask[]
 
   // One application per track per level: moving up a level adds a new one.
   @@unique([studentId, programId, levelId])
@@ -1220,14 +1236,16 @@ model InternshipModule {
   @@index([programId])
 }
 
-// A task belongs to one cohort. Its submission window is set relative to the
-// cohort start (week 1, day 1 = the cohort's start date, times in WAT);
-// opensAt/dueDate are the resulting real times, recomputed whenever the
-// schedule or the cohort start date changes.
+// A task belongs to one cohort (cohortId not null) OR is a self-paced
+// materialisation of a library template (cohortId null, templateId set).
+// Its submission window is set relative to the cohort start (cohort tasks)
+// or the intern's selfPacedStartDate (self-paced tasks); opensAt/dueDate
+// are the resulting real UTC times.
 model InternshipTask {
   id          String   @id @default(cuid())
   moduleId    String
-  cohortId    String
+  // Null only for self-paced tasks generated from a library template.
+  cohortId    String?
   title       String
   description String?
   kind        TaskKind @default(INDIVIDUAL)
@@ -1243,19 +1261,28 @@ model InternshipTask {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  module        InternshipModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  cohort        InternshipCohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  module        InternshipModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  cohort        InternshipCohort? @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   submissions   TaskSubmission[]
   // Optional Practice Lab exercise the intern completes for this task.
   labScenarioId String?
-  labScenario   LabScenario?     @relation(fields: [labScenarioId], references: [id], onDelete: SetNull)
+  labScenario   LabScenario?      @relation(fields: [labScenarioId], references: [id], onDelete: SetNull)
   // Lab percentage (checks passed, or the run score) needed to pass the task.
   labPassMark   Int @default(70)
   // The selected Office Life workday (1-4) the intern completes for this task.
   officeLifeDay Int?
+  // Set when this task was materialised from a library template (Step 2).
+  // Null for all 120 existing cohort tasks.
+  templateId    String?
+  template      InternshipTaskTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  // Set for self-paced tasks only (cohortId null). Links the task to exactly
+  // one intern's application so it can be found without a cohort.
+  applicationId String?
+  application   InternshipApplication?  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
   @@index([cohortId, dueDate])
+  @@index([templateId])
 }
 
 // Individual tasks: one row per intern (groupId null). Group tasks: one row
@@ -1480,10 +1507,14 @@ model Announcement {
 
 // A team of interns within one cohort. Numbering restarts at 1 for each
 // cohort. Groups created before groups were cohort-scoped may have no cohort.
+// Step 4: a cross-track pool group sets poolId and may have members from
+// different tracks; cohortId is still set to one of the cohorts in the pool.
 model InternshipGroup {
   id             String   @id @default(cuid())
   programId      String
   cohortId       String?
+  // Step 4 – Mixed-track groups. Null for all existing groups.
+  poolId         String?
   number         Int
   capacity       Int      @default(12)
   leaderId       String?  @db.Uuid
@@ -1494,6 +1525,7 @@ model InternshipGroup {
 
   program         InternshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   cohort          InternshipCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  pool            InternshipGroupPool?    @relation(fields: [poolId], references: [id], onDelete: SetNull)
   leader          User?                   @relation("GroupLeader", fields: [leaderId], references: [id], onDelete: SetNull)
   members         InternshipGroupMember[]
   messages        GroupMessage[]
@@ -1502,6 +1534,7 @@ model InternshipGroup {
 
   @@unique([cohortId, number])
   @@index([programId])
+  @@index([poolId])
 }
 
 model InternshipGroupMember {
@@ -1725,6 +1758,8 @@ model InternshipLevel {
   interviewSetups InterviewSetup[]
   labScenarios    LabScenario[]
   achievements    AchievementDefinition[]
+  taskTemplates   InternshipTaskTemplate[]
+  groupPools      InternshipGroupPool[]
 }
 
 enum AchievementTrigger {
@@ -2081,8 +2116,9 @@ model LabScenario {
 
   program  InternshipProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
   level    InternshipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
-  attempts LabAttempt[]
-  tasks    InternshipTask[]
+  attempts      LabAttempt[]
+  tasks         InternshipTask[]
+  taskTemplates InternshipTaskTemplate[]
 
   @@index([programId, levelId, published])
 }
@@ -2242,4 +2278,66 @@ model AffiliatePayout {
 
   @@index([affiliateId, requestedAt])
   @@index([status, requestedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Step 2 – Task Library. Templates created once; cohort tasks (and self-paced
+// tasks) reference them via InternshipTask.templateId.
+// The library starts EMPTY. All 120 existing tasks have templateId = null.
+// isShared GROUP templates appear to all tracks in the same pool (Step 4).
+// Special Class tasks are never templated.
+// ---------------------------------------------------------------------------
+
+model InternshipTaskTemplate {
+  id            String   @id @default(cuid())
+  // programId null only when isShared = true (GROUP tasks visible to every
+  // track in a pool). Otherwise equals the track the template belongs to.
+  programId     String?
+  levelId       String
+  title         String
+  description   String?
+  kind          TaskKind @default(INDIVIDUAL)
+  opensWeek     Int
+  opensDay      Int
+  opensTime     String
+  dueWeek       Int
+  dueDay        Int
+  dueTime       String
+  maxScore      Int      @default(100)
+  labScenarioId String?
+  labPassMark   Int      @default(70)
+  officeLifeDay Int?
+  // true = GROUP task visible to all tracks in a cross-track pool (Step 4).
+  isShared      Boolean  @default(false)
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  program     InternshipProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  level       InternshipLevel    @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  labScenario LabScenario?       @relation(fields: [labScenarioId], references: [id], onDelete: SetNull)
+  tasks       InternshipTask[]
+
+  @@index([programId, levelId])
+  @@index([levelId, archived])
+}
+
+// ---------------------------------------------------------------------------
+// Step 4 – Mixed-track group pools. One pool per (levelId, startDate) pair;
+// contains cohorts and groups that span multiple tracks.
+// Special Class cohorts are never assigned to a pool.
+// ---------------------------------------------------------------------------
+
+model InternshipGroupPool {
+  id        String   @id @default(cuid())
+  levelId   String
+  startDate DateTime
+  createdAt DateTime @default(now())
+
+  level   InternshipLevel    @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  cohorts InternshipCohort[]
+  groups  InternshipGroup[]
+
+  @@unique([levelId, startDate])
+  @@index([levelId])
 }

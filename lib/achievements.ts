@@ -130,9 +130,9 @@ export async function awardTaskAchievements(tx: Tx, userId: string, submissionId
   const base = {
     userId,
     programId: task.module.programId,
-    levelId: task.cohort.levelId,
+    levelId: task.cohort!.levelId,
     track: task.module.program.name,
-    level: task.cohort.level.name,
+    level: task.cohort!.level.name,
     taskTitle: task.title,
     scorePercent: percent,
     accomplishment: {
@@ -236,9 +236,9 @@ export async function awardTaskSubmittedAchievements(tx: Tx, submissionId: strin
     await awardForEvent(tx, {
       userId,
       programId: task.module.programId,
-      levelId: task.cohort.levelId,
+      levelId: task.cohort!.levelId,
       track: task.module.program.name,
-      level: task.cohort.level.name,
+      level: task.cohort!.level.name,
       trigger: "TASK_SUBMITTED",
       activityKey: `submitted:${task.cohortId}`,
       taskTitle: task.title,

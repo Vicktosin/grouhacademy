@@ -148,7 +148,7 @@ export async function submitOfficeLifeTasks(
   const taskIds = tasks.map((task) => task.id);
   const [enrolments, existing] = await Promise.all([
     prisma.internshipApplication.findMany({
-      where: { studentId: { in: userIds }, cohortId: { in: [...new Set(tasks.map((task) => task.cohortId))] }, status: { not: "REMOVED" } },
+      where: { studentId: { in: userIds }, cohortId: { in: [...new Set(tasks.map((task) => task.cohortId).filter((id): id is string => id !== null))] }, status: { not: "REMOVED" } },
       select: { studentId: true, cohortId: true },
     }),
     prisma.taskSubmission.findMany({
@@ -159,7 +159,7 @@ export async function submitOfficeLifeTasks(
 
   const plan = planOfficeLifeSubmissions({
     days: rows,
-    tasks: tasks.map((task) => ({ ...task, programId: task.cohort.programId, levelId: task.cohort.levelId })),
+    tasks: tasks.filter((t) => t.cohort !== null).map((task) => ({ ...task, cohortId: task.cohortId!, programId: task.cohort!.programId, levelId: task.cohort!.levelId })),
     enrolments: enrolments.flatMap((item) => (item.cohortId ? [{ userId: item.studentId, cohortId: item.cohortId }] : [])),
     existing,
   });

@@ -199,8 +199,8 @@ export async function GET() {
       description: task.description ?? "",
       kind: task.kind,
       cohortId: task.cohortId,
-      cohortName: task.cohort.name,
-      programName: task.cohort.program.name,
+      cohortName: task.cohort!.name,
+      programName: task.cohort!.program.name,
       opensWeek: task.opensWeek,
       opensDay: task.opensDay,
       opensTime: task.opensTime,
@@ -313,8 +313,8 @@ export async function PUT(request: Request) {
     },
   });
   if (parsed.data.cohortId !== existing.cohortId) {
-    await recomputeCohortProgress(existing.cohortId);
-    await recomputeCohortProgress(parsed.data.cohortId);
+    if (existing.cohortId) await recomputeCohortProgress(existing.cohortId);
+    if (parsed.data.cohortId) await recomputeCohortProgress(parsed.data.cohortId);
   }
   if (parsed.data.officeLifeDay !== null) await submitOfficeLifeTasks({ taskId: id });
   return NextResponse.json({ success: true, taskId: id });
@@ -341,6 +341,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Task not found." }, { status: 404 });
 
   await prisma.internshipTask.delete({ where: { id: taskId } });
-  await recomputeCohortProgress(task.cohortId);
+  if (task.cohortId) await recomputeCohortProgress(task.cohortId);
   return NextResponse.json({ success: true });
 }
