@@ -90,6 +90,13 @@ export async function PATCH(request: Request) {
     value.selfPacedCertificatePassMark <= 100
       ? value.selfPacedCertificatePassMark
       : undefined;
+  const poolGroupSize =
+    typeof value.poolGroupSize === "number" &&
+    Number.isInteger(value.poolGroupSize) &&
+    value.poolGroupSize >= 2 &&
+    value.poolGroupSize <= 50
+      ? value.poolGroupSize
+      : undefined;
 
   if (supportEmail && !/^\S+@\S+\.\S+$/.test(supportEmail)) {
     return NextResponse.json(
@@ -168,6 +175,7 @@ export async function PATCH(request: Request) {
         ...(selfPacedCertificatePassMark !== undefined && {
           selfPacedCertificatePassMark,
         }),
+        ...(poolGroupSize !== undefined && { poolGroupSize }),
       },
     });
 

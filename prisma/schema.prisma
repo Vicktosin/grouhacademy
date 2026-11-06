@@ -244,6 +244,9 @@ model PlatformSettings {
   // Minimum score percentage (accepted score / maxScore) for a self-paced
   // certificate. Separate from certificateMinimumCompletion (task count %).
   selfPacedCertificatePassMark Int     @default(70)
+  // Group size for mixed-track pool groups (separate from maxGroupSize which
+  // applies to cohort-scoped groups).
+  poolGroupSize                Int     @default(4)
 
   // Notification settings
   notifyAdminOnRegistration  Boolean @default(true)
@@ -1242,11 +1245,13 @@ model InternshipModule {
   @@index([programId])
 }
 
-// A task belongs to one cohort (cohortId not null) OR is a self-paced
-// materialisation of a library template (cohortId null, templateId set).
-// Its submission window is set relative to the cohort start (cohort tasks)
-// or the intern's selfPacedStartDate (self-paced tasks); opensAt/dueDate
-// are the resulting real UTC times.
+// A task belongs to one of three contexts:
+//   cohort task  — cohortId set; created by admin for one cohort
+//   self-paced   — cohortId null, applicationId set; materialised from template
+//   pool task    — cohortId null, applicationId null, poolId set; materialised
+//                  from an isShared GROUP template; ONE row per pool
+// opensAt/dueDate are real UTC times computed relative to cohort start (cohort
+// and pool tasks) or intern's selfPacedStartDate (self-paced tasks).
 model InternshipTask {
   id          String   @id @default(cuid())
   moduleId    String
@@ -1281,14 +1286,17 @@ model InternshipTask {
   // Null for all 120 existing cohort tasks.
   templateId    String?
   template      InternshipTaskTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  // Set for self-paced tasks only (cohortId null). Links the task to exactly
-  // one intern's application so it can be found without a cohort.
+  // Self-paced tasks only (cohortId null): links to exactly one intern.
   applicationId String?
   application   InternshipApplication?  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  // Pool GROUP tasks only (cohortId null, applicationId null): one task per pool.
+  poolId        String?
+  pool          InternshipGroupPool?    @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
   @@index([cohortId, dueDate])
   @@index([templateId])
+  @@index([poolId])
 }
 
 // Individual tasks: one row per intern (groupId null). Group tasks: one row
@@ -2343,6 +2351,7 @@ model InternshipGroupPool {
   level   InternshipLevel    @relation(fields: [levelId], references: [id], onDelete: Restrict)
   cohorts InternshipCohort[]
   groups  InternshipGroup[]
+  tasks   InternshipTask[]
 
   @@unique([levelId, startDate])
   @@index([levelId])

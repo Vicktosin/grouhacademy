@@ -86,7 +86,8 @@ export async function ensureGroupMembership(application: {
   });
   if (!cohortMatchesProgram) return null;
 
-  const { maxGroupSize } = await getPlatformSettings();
+  const settings = await getPlatformSettings();
+  const { maxGroupSize, poolGroupSize } = settings;
 
   // Mixed-track pool: place intern in a pool group instead of a cohort group.
   const pool = await getPoolForCohort(cohortId);
@@ -100,23 +101,29 @@ export async function ensureGroupMembership(application: {
       });
       if (placed) return placed.group;
 
+      // Load all pool groups with their total member count AND count of members
+      // from this intern's track (programId), so we can spread tracks evenly.
       const groups = await tx.internshipGroup.findMany({
         where: { poolId: pool.id },
         orderBy: { number: "asc" },
-        include: { _count: { select: { members: true } } },
+        include: {
+          _count: { select: { members: true } },
+          members: { where: { programId }, select: { id: true } },
+        },
       });
-      const groupWithRoom = groups.find((g) => g._count.members < g.capacity);
-      const nextNum = (groups.at(-1)?.number ?? 0) + 1;
 
+      // Among groups that still have room, prefer the one with fewest members
+      // from this track (round-robin across tracks).
+      const groupsWithRoom = groups.filter((g) => g._count.members < poolGroupSize);
       const targetGroup =
-        groupWithRoom ??
+        groupsWithRoom.sort((a, b) => a.members.length - b.members.length)[0] ??
         (await tx.internshipGroup.create({
           data: {
             programId,
             cohortId: null,
             poolId: pool.id,
-            number: nextNum,
-            capacity: maxGroupSize,
+            number: (groups.at(-1)?.number ?? 0) + 1,
+            capacity: poolGroupSize,
           },
         }));
 
