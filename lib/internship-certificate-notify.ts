@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/site-url";
 import { CONTACT_SENDER } from "@/lib/contact";
 import { internshipAchievement } from "@/lib/internship-certificates";
+import { getCertificateBranding } from "@/lib/certificate-branding";
 
 // Tells an intern their certificate is ready: an in-app notification and,
 // when Resend is configured, an email. Never throws; failures are logged so
@@ -72,6 +73,7 @@ export async function notifyCertificateIssued(certificateId: string) {
       );
       return;
     }
+    const { academyName } = await getCertificateBranding(prisma);
     const firstName =
       certificate.user.profile?.firstName?.trim() ||
       certificate.user.name?.trim().split(/\s+/)[0] ||
@@ -89,12 +91,12 @@ export async function notifyCertificateIssued(certificateId: string) {
         `Open your dashboard: ${dashboardUrl}`,
         "",
         "Keep it up!",
-        "Grouh Academy",
+        academyName,
       ].join("\n"),
       html: `<p>Hi ${escapeHtml(firstName)},</p>
 <p>${escapeHtml(message)}</p>
 <p><a href="${dashboardUrl}" style="display:inline-block;background:#5FBB46;color:#14204f;padding:12px 20px;border-radius:10px;font-weight:bold;text-decoration:none">Open my dashboard</a></p>
-<p>Keep it up!<br>Grouh Academy</p>`,
+<p>Keep it up!<br>${escapeHtml(academyName)}</p>`,
     });
     if (error) console.error("Certificate email was rejected by Resend.", error);
   } catch (error) {

@@ -1,5 +1,6 @@
 export type PlatformSettingsPayload = {
   academyName: string;
+  platformName: string;
   supportEmail: string;
   platformUrl: string | null;
   defaultLanguage: string;
@@ -13,6 +14,9 @@ export type PlatformSettingsPayload = {
   maintenanceMode: boolean;
   certificateIssuerName: string;
   certificatePrefix: string;
+  certificateNumberPrefix: string;
+  certificateLogoUrl: string | null;
+  testimonialDriveUrl: string | null;
   certificateMinimumCompletion: number;
   automaticCertificateIssue: boolean;
   cohortSystemEnabled: boolean;

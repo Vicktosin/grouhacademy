@@ -7,7 +7,8 @@ import {
   AnnouncementScope,
   LearnerAudience,
 } from "@/generated/prisma/client";
-import { audienceWhere, workspaceFromRequest } from "@/lib/learner-audience";
+import { workspaceFromRequest } from "@/lib/learner-audience";
+import { announcementsForUser } from "@/lib/announcements";
 
 function timeAgoLabel(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -19,9 +20,10 @@ function timeAgoLabel(date: Date): string {
   return `${days} days ago`;
 }
 
-// GET: announcement feed visible to the current student —
-// all GLOBAL announcements, plus MENTOR_MENTEES announcements from any
-// mentor currently assigned to them.
+// GET: announcement feed visible to the current learner — GLOBAL
+// announcements targeted at them (track / cohorts), plus MENTOR_MENTEES
+// announcements from any mentor currently assigned to them
+// (lib/announcement-targeting).
 // `?workspace=courses|internship` limits the feed to that side.
 export async function GET(request: Request) {
   const userId = await getCurrentUserId();
@@ -32,39 +34,12 @@ export async function GET(request: Request) {
     );
   }
 
-  const prisma = getPrisma();
-
   try {
-    const activeMentorIds = (
-      await prisma.mentorAssignment.findMany({
-        where: { internId: userId, status: "ACTIVE" },
-        select: { mentorId: true },
-      })
-    ).map((a) => a.mentorId);
-
-    const announcements = await prisma.announcement.findMany({
-      where: {
-        ...audienceWhere(workspaceFromRequest(request)),
-        AND: [
-          {
-            OR: [
-              { scope: AnnouncementScope.GLOBAL },
-              ...(activeMentorIds.length
-                ? [
-                    {
-                      scope: AnnouncementScope.MENTOR_MENTEES,
-                      authorId: { in: activeMentorIds },
-                    },
-                  ]
-                : []),
-            ],
-          },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      include: { author: { select: { name: true } } },
-    });
+    const announcements = await announcementsForUser(
+      userId,
+      workspaceFromRequest(request),
+      10,
+    );
 
     return NextResponse.json(
       announcements.map((a) => ({

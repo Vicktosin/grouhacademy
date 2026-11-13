@@ -14,6 +14,10 @@ import {
   certificateFileName,
   downloadCertificatePdf,
 } from "@/components/certificate/download-certificate";
+import {
+  FALLBACK_BRANDING,
+  useCertificateBranding,
+} from "@/components/certificate/branding";
 
 type EarnedCertificate = {
   id: string;
@@ -56,6 +60,7 @@ export default function InternshipCertificatePage() {
   const faceRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [nextLevelName, setNextLevelName] = useState<string | null>(null);
+  const issuerName = (useCertificateBranding() ?? FALLBACK_BRANDING).issuerName;
 
   const earned = data?.certificates ?? [];
   // The certificate on show: one picked from the list, else the current
@@ -244,7 +249,7 @@ export default function InternshipCertificatePage() {
             className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800"
           >
             <p className="font-bold">
-              This certificate was revoked by Grouh Academy on{" "}
+              This certificate was revoked by {issuerName} on{" "}
               {formatCertificateDate(shown.revokedAt)}.
             </p>
             {shown.revokedReason && (

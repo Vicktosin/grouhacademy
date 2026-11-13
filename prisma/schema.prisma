@@ -236,6 +236,9 @@ model PlatformSettings {
   certificateNumberPrefix      String  @default("CERT-INT")
   certificateMinimumCompletion Int     @default(100)
   automaticCertificateIssue    Boolean @default(true)
+  // Logo shown at the top of certificates (http(s) URL or a /public path).
+  // Null uses the bundled /logo.png.
+  certificateLogoUrl           String?
 
   // Step 3 – Cohort switch. When false, accepted+paid interns start in
   // self-paced mode (tasks dated from their own selfPacedStartDate, GROUP
@@ -247,6 +250,10 @@ model PlatformSettings {
   // Group size for mixed-track pool groups (separate from maxGroupSize which
   // applies to cohort-scoped groups).
   poolGroupSize                Int     @default(4)
+
+  // Testimonials: the Drive folder interns upload videos to when their
+  // cohort has none of its own (InternshipCohort.testimonialDriveUrl).
+  testimonialDriveUrl          String?
 
   // Notification settings
   notifyAdminOnRegistration  Boolean @default(true)
@@ -344,6 +351,8 @@ model User {
   internConversations Conversation[] @relation("InternConversations")
   sentMessages        Message[]      @relation("SentMessages")
   sentAnnouncements   Announcement[] @relation("AnnouncementAuthor")
+  announcementDismissals AnnouncementDismissal[]
+  testimonials           InternTestimonial[]
 
   sentNotifications Notification[] @relation("NotificationRecipient")
   auditLogs         AuditLog[]     @relation("AuditActor")
@@ -478,6 +487,7 @@ model InternshipProgram {
   conversations          Conversation[]
   announcements          Announcement[]
   internshipCertificates InternshipCertificate[]
+  testimonials           InternTestimonial[]
   groups                 InternshipGroup[]
   officeLifeContent      OfficeLifeContent[]
   achievements           AchievementDefinition[]
@@ -513,6 +523,9 @@ model InternshipCohort {
   // Step 4 – Mixed-track groups. Set when this cohort is part of a pool.
   // Null for all existing cohorts; set lazily when a pool is first formed.
   poolId              String?
+  // Google Drive folder where this cohort's interns upload testimonial
+  // videos. Falls back to PlatformSettings.testimonialDriveUrl.
+  testimonialDriveUrl String?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
@@ -522,6 +535,7 @@ model InternshipCohort {
   applications InternshipApplication[]
   groups       InternshipGroup[]
   tasks        InternshipTask[]
+  testimonials InternTestimonial[]
 
   @@index([programId])
   @@index([levelId])
@@ -565,6 +579,7 @@ model InternshipApplication {
   followUpLogs    InternshipFollowUpLog[]
   interviews      InterviewSession[]
   selfPacedTasks  InternshipTask[]
+  testimonial     InternTestimonial?
 
   // One application per track per level: moving up a level adds a new one.
   @@unique([studentId, programId, levelId])
@@ -1508,15 +1523,69 @@ model Announcement {
   title     String
   message   String
   audience  LearnerAudience?
+  // Only interns in one of these cohorts see it (empty: no cohort limit).
+  // Combined with programId when both are set. See lib/announcement-targeting.
+  cohortIds   String[]          @default([])
+  // Shown once to each targeted intern as a modal ("Got it").
+  showAsPopup Boolean           @default(false)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
-  author  User               @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  program InternshipProgram? @relation(fields: [programId], references: [id], onDelete: Cascade)
+  author     User                    @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  program    InternshipProgram?      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  dismissals AnnouncementDismissal[]
 
   @@index([scope])
   @@index([authorId])
   @@index([programId])
+}
+
+// An intern pressed "Got it" on a pop-up announcement, so it isn't shown again.
+model AnnouncementDismissal {
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String   @db.Uuid
+  dismissedAt    DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// An intern's testimonial. Text only: the video itself lives in the cohort's
+// Google Drive folder and is never uploaded here; videoLink is just a URL.
+model InternTestimonial {
+  id            String            @id @default(cuid())
+  userId        String            @db.Uuid
+  // One testimonial per application (track + level); resubmitting edits it.
+  applicationId String            @unique
+  cohortId      String?
+  programId     String
+  videoLink     String?
+  testimonial   String
+  rating        Int
+  consent       Boolean           @default(false)
+  status        TestimonialStatus @default(PENDING)
+  tags          String[]          @default([])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  cohort      InternshipCohort?     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  program     InternshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([cohortId])
+  @@index([programId])
+  @@index([status])
 }
 
 // A team of interns within one cohort. Numbering restarts at 1 for each

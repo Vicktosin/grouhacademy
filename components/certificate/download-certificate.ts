@@ -1,4 +1,5 @@
 import { CERT_HEIGHT, CERT_WIDTH } from "./Certificate";
+import { loadCertificateBranding } from "./branding";
 
 // Letter landscape in PDF points (72 per inch), the same 11in x 8.5in the
 // certificate is laid out at, so the page is exactly the certificate.
@@ -15,11 +16,22 @@ export async function downloadCertificatePdf(
   face: HTMLElement,
   fileName: string,
 ) {
-  const [{ domToJpeg }, { PDFDocument }] = await Promise.all([
+  const [{ domToJpeg }, { PDFDocument }, branding] = await Promise.all([
     import("modern-screenshot"),
     import("pdf-lib"),
+    loadCertificateBranding(),
   ]);
   await document.fonts.ready;
+  // The branding may have only just loaded: let it render, then wait for
+  // the logo, so the PDF never shows the previous name or a missing logo.
+  await new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+  );
+  await Promise.all(
+    Array.from(face.querySelectorAll("img")).map((img) =>
+      img.complete ? null : img.decode().catch(() => null),
+    ),
+  );
 
   const image = await domToJpeg(face, {
     width: CERT_WIDTH,
@@ -33,7 +45,7 @@ export async function downloadCertificatePdf(
 
   const pdf = await PDFDocument.create();
   pdf.setTitle(fileName.replace(/\.pdf$/i, ""));
-  pdf.setCreator("Grouh Academy");
+  pdf.setCreator(branding.issuerName);
   const jpg = await pdf.embedJpg(image);
   const page = pdf.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT]);
   page.drawImage(jpg, {

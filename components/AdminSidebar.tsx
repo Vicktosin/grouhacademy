@@ -31,6 +31,7 @@ import {
   UsersRound,
   WalletCards,
   FileCheck2,
+  MessageSquareQuote,
 } from "lucide-react";
 import type { AdminContext } from "@/lib/admin-context";
 
@@ -102,6 +103,11 @@ const internshipItems = [
     label: "Notifications",
     href: "/admin/internship/notifications",
     icon: Bell,
+  },
+  {
+    label: "Testimonials",
+    href: "/admin/internship/testimonials",
+    icon: MessageSquareQuote,
   },
   {
     label: "Dashboard Banners",

@@ -3,7 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { computeInternProgress } from "@/lib/internship-progress";
 import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
 import { cohortTimeline } from "@/lib/task-schedule";
-import { audienceWhere } from "@/lib/learner-audience";
+import { announcementsForUser } from "@/lib/announcements";
 import { requireInternshipWorkspace } from "@/lib/internship-access";
 
 function formatDate(date: Date): string {
@@ -138,35 +138,8 @@ export async function GET() {
       include: { task: true },
     });
 
-    const activeMentorIds = (
-      await prisma.mentorAssignment.findMany({
-        where: { internId: userId, status: "ACTIVE" },
-        select: { mentorId: true },
-      })
-    ).map((a) => a.mentorId);
-
-    const announcements = await prisma.announcement.findMany({
-      where: {
-        ...audienceWhere("internship"),
-        AND: [
-          {
-            OR: [
-              { scope: "GLOBAL" },
-              ...(activeMentorIds.length
-                ? [
-                    {
-                      scope: "MENTOR_MENTEES" as const,
-                      authorId: { in: activeMentorIds },
-                    },
-                  ]
-                : []),
-            ],
-          },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    });
+    // Targeted to this intern's track and cohorts (lib/announcement-targeting).
+    const announcements = await announcementsForUser(userId, "internship", 3);
 
     // The shown cohort's own days (its first to the end of its last, WAT),
     // not whether some other cohort is running.

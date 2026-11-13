@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getPlatformSettings } from "@/lib/platform-settings";
 import { requireAdminApi } from "@/lib/api-guards";
+import { parsePlatformSettingsPatch } from "@/lib/platform-settings-validation";
+
+const SHARED_RULE_FIELDS = [
+  "platformName",
+  "supportEmail",
+  "defaultLanguage",
+  "timezone",
+  "maxUploadSizeMb",
+  "allowStudentRegistration",
+  "enableCourseReviews",
+  "maintenanceMode",
+  "certificateNumberPrefix",
+];
 
 export async function GET() {
   const userId = await requireAdminApi();
@@ -54,6 +67,18 @@ export async function PATCH(request: Request) {
   for (const field of allowedFields) {
     if (field in body) data[field] = body[field];
   }
+
+  // Fields with shared rules (lib/platform-settings-validation) are checked
+  // the same way as on the other settings pages and in the MCP server.
+  const checked = parsePlatformSettingsPatch(
+    Object.fromEntries(
+      SHARED_RULE_FIELDS.filter((field) => field in data).map((field) => [field, data[field]]),
+    ),
+  );
+  if (checked.errors.length) {
+    return NextResponse.json({ error: checked.errors.join(" ") }, { status: 400 });
+  }
+  Object.assign(data, checked.data);
 
   try {
     await getPlatformSettings(); // ensures the singleton row exists first

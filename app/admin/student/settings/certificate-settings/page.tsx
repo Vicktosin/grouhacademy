@@ -15,7 +15,7 @@ export default function CertificateSettingsPage() {
       <AdminSettings
         active="certificate-settings"
         title="Certificate rules"
-        description="Define the certificate identity and automatic issuing policy for completed courses."
+        description="Define the certificate identity (issuer, number prefixes, logo) and automatic issuing policy. The issuer name and logo appear on course and internship certificates."
       >
         {error && <p className="pt-5 text-xs text-red-600">{error}</p>}
         {!settings && !error && (
@@ -30,6 +30,8 @@ export default function CertificateSettingsPage() {
               void save({
                 certificateIssuerName: data.get("certificateIssuerName"),
                 certificatePrefix: data.get("certificatePrefix"),
+                certificateNumberPrefix: data.get("certificateNumberPrefix"),
+                certificateLogoUrl: data.get("certificateLogoUrl") ?? "",
                 certificateMinimumCompletion: Number(
                   data.get("certificateMinimumCompletion"),
                 ),
@@ -46,9 +48,21 @@ export default function CertificateSettingsPage() {
                 defaultValue={settings.certificateIssuerName}
               />
               <SettingsField
-                label="Certificate prefix"
+                label="Course certificate prefix"
                 name="certificatePrefix"
                 defaultValue={settings.certificatePrefix}
+              />
+              <SettingsField
+                label="Internship certificate prefix"
+                name="certificateNumberPrefix"
+                defaultValue={settings.certificateNumberPrefix}
+                placeholder="e.g. SR-INT"
+              />
+              <SettingsField
+                label="Certificate logo (URL or /public path)"
+                name="certificateLogoUrl"
+                defaultValue={settings.certificateLogoUrl ?? ""}
+                placeholder="Empty uses /logo.png"
               />
               <SettingsField
                 label="Minimum completion (%)"

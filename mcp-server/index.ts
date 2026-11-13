@@ -25,11 +25,41 @@ import {
 } from "../lib/intern-resources";
 import { resolveLevelId } from "../lib/internship-levels";
 import { storeImage } from "../lib/stored-images";
+import {
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  listAnnouncementsForAdmin,
+} from "../lib/announcements";
+import { parsePlatformSettingsPatch } from "../lib/platform-settings-validation";
+import { applyPlatformSettingsPatch } from "../lib/platform-settings-update";
+import { internshipCertificateNumber, internshipCertificatePrefix } from "../lib/certificate-branding";
+import { notifyCertificateIssued } from "../lib/internship-certificate-notify";
+import {
+  issueCohortCertificates,
+  loadCohortRoster,
+  prismaCohortCertificateStore,
+} from "../lib/cohort-certificates";
+import {
+  listTestimonials,
+  listTestimonialDriveLinks,
+  reviewTestimonial,
+  setTestimonialDriveUrl,
+} from "../lib/testimonials";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+// One small pool per MCP process (Claude Desktop starts more than one), shared
+// with the lib/* helpers via the same global getPrisma() uses, so each process
+// holds at most 3 pooler connections instead of two default pools of 10.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  max: 3,
+  connectionTimeoutMillis: 15_000,
+  idleTimeoutMillis: 30_000,
+});
 const db = new PrismaClient({ adapter });
+globalThis.__grouhPrismaClient = db;
 
 const server = new McpServer({ name: "bacatib", version: "1.0.0" });
 
@@ -299,6 +329,34 @@ server.tool("list_cohorts", "List internship cohorts", {
 });
 
 // ── COURSES ────────────────────────────────────────────────────────────────────
+server.tool("list_cohort_members", "List every intern placed in a cohort: userId, name, email, applicationId, group, number of submissions, status, whether they paid, and their certificate for this cohort (if any). Admins' preview interns are left out.", {
+  cohortId: z.string(),
+}, async ({ cohortId }) => {
+  const cohort = await db.internshipCohort.findUnique({
+    where: { id: cohortId },
+    select: { id: true, name: true, program: { select: { name: true } } },
+  });
+  if (!cohort) return { content: [{ type: "text", text: "Cohort not found." }] };
+  const members = await loadCohortRoster(db, cohortId);
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        cohort: { id: cohort.id, name: cohort.name, track: cohort.program.name },
+        memberCount: members.length,
+        members: members.map((m) => ({
+          userId: m.userId, name: m.name, email: m.email, applicationId: m.applicationId,
+          group: m.group, submissions: m.submissionCount,
+          status: m.status, paid: m.paid,
+          certificate: m.existingCertificate
+            ? { number: m.existingCertificate.certificateNumber, revoked: m.existingCertificate.revoked }
+            : null,
+        })),
+      }, null, 2),
+    }],
+  };
+});
+
 server.tool("list_courses", "List courses with enrollment counts", {
   status: z.enum(["DRAFT","PENDING_REVIEW","PUBLISHED","REJECTED","ARCHIVED"]).optional(),
   limit: z.number().default(20),
@@ -425,48 +483,68 @@ server.tool("send_notification", "Send a notification to a specific user", {
   return { content: [{ type: "text", text: `Notification sent to user ${userId}.` }] };
 });
 
-server.tool("create_announcement", "Post an announcement to all interns or all students", {
-  title: z.string(),
-  message: z.string(),
-  audience: z.enum(["INTERNSHIP","COURSES"]).optional().describe("Leave blank for both (GLOBAL)"),
-  programId: z.string().optional().describe("Restrict to a specific program"),
-}, async ({ title, message, audience, programId }) => {
+// Announcements use the same rules as the admin Notifications page
+// (lib/announcements, lib/announcement-targeting).
+async function mcpAnnouncementAuthorId() {
   const admin = await db.user.findFirst({
     where: { roles: { some: { role: { name: "ADMIN" } } }, status: "ACTIVE" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
   });
-  if (!admin) return { content: [{ type: "text", text: "No active admin found." }] };
-  const announcement = await db.announcement.create({
-    data: {
-      authorId: admin.id,
-      scope: programId ? "MENTOR_MENTEES" : "GLOBAL",
-      title, message,
-      ...(audience && { audience: audience as any }),
-      ...(programId && { programId }),
-    },
-  });
-  return { content: [{ type: "text", text: `Announcement created: ${announcement.id}` }] };
+  return admin?.id ?? null;
+}
+
+const announcementTargetFields = {
+  audience: z.enum(["INTERNSHIP","COURSES"]).nullable().optional().describe("INTERNSHIP, COURSES, or null/omit for both. Cohort-targeted and pop-up announcements are always INTERNSHIP."),
+  programId: z.string().nullable().optional().describe("Only interns on this track (program id from list_programs). Null/omit: any track."),
+  cohortIds: z.array(z.string()).optional().describe("Only interns in one of these cohorts (ids from list_cohorts). Empty/omit: no cohort limit."),
+  showAsPopup: z.boolean().optional().describe("Show it once to each targeted intern as a pop-up with a 'Got it' button, the next time they open the app."),
+};
+
+server.tool("create_announcement", "Post an announcement to all interns, all students, one track, or one or more cohorts (same validation as the admin Notifications page). Optionally show it as a one-time pop-up.", {
+  title: z.string().describe("Up to 160 characters"),
+  message: z.string().describe("Up to 2000 characters"),
+  ...announcementTargetFields,
+}, async ({ title, message, audience, programId, cohortIds, showAsPopup }) => {
+  const authorId = await mcpAnnouncementAuthorId();
+  if (!authorId) return { content: [{ type: "text", text: "No active admin found to post as." }] };
+  const result = await createAnnouncement(authorId, {
+    title, message,
+    audience: audience ?? null,
+    programId: programId ?? null,
+    cohortIds: cohortIds ?? [],
+    showAsPopup: showAsPopup ?? false,
+  }, db);
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: `Announcement created: ${result.value.id}` }] };
 });
 
-server.tool("list_announcements", "List recent announcements", {
-  limit: z.number().default(10),
+server.tool("list_announcements", "List recent announcements with their ids, targets (track / cohorts), pop-up flag and how many interns pressed 'Got it'", {
+  limit: z.number().int().min(1).max(200).default(20),
 }, async ({ limit }) => {
-  const announcements = await db.announcement.findMany({
-    include: { author: { select: { name: true, email: true } }, program: { select: { name: true } } },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify(announcements.map(a => ({
-        id: a.id, title: a.title, message: a.message,
-        scope: a.scope, audience: a.audience,
-        program: a.program?.name ?? "All programs",
-        author: a.author.name ?? a.author.email,
-        createdAt: a.createdAt,
-      })), null, 2),
-    }],
-  };
+  const announcements = await listAnnouncementsForAdmin(limit, db);
+  return { content: [{ type: "text", text: JSON.stringify(announcements, null, 2) }] };
+});
+
+server.tool("update_announcement", "Edit an announcement. Only the fields you pass change; the result is re-validated as a whole (same rules as create_announcement).", {
+  announcementId: z.string(),
+  title: z.string().optional(),
+  message: z.string().optional(),
+  ...announcementTargetFields,
+}, async ({ announcementId, ...fields }) => {
+  const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
+  if (Object.keys(patch).length === 0) return { content: [{ type: "text", text: "Nothing to update." }] };
+  const result = await updateAnnouncement(announcementId, patch, db);
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: `Announcement ${announcementId} updated.` }] };
+});
+
+server.tool("delete_announcement", "Permanently delete an announcement (interns stop seeing it, including as a pop-up)", {
+  announcementId: z.string(),
+}, async ({ announcementId }) => {
+  const result = await deleteAnnouncement(announcementId, db);
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: `Announcement ${announcementId} deleted.` }] };
 });
 
 // ── DASHBOARD BANNERS ──────────────────────────────────────────────────────────
@@ -722,39 +800,94 @@ server.tool("list_cohort_tasks", "List tasks for a cohort", {
   };
 });
 
-server.tool("update_cohort_task", "Update a cohort task's title, description, due timing, or lab pass mark", {
+server.tool("update_cohort_task", "Update a cohort task's title, description, max score, lab pass mark, or schedule. To move a task to another week, pass opensWeek (and dueWeek if the due point should move too): open/due times are recalculated from the cohort start date (WAT) and the task is filed under that week, as on the admin task page.", {
   taskId: z.string(),
   title: z.string().optional(),
   description: z.string().optional(),
-  dueDate: z.string().optional().describe("ISO date string"),
-  opensAt: z.string().optional().describe("ISO date string"),
-  maxScore: z.number().optional(),
+  maxScore: z.number().int().min(1).max(1000).optional(),
   labPassMark: z.number().int().min(1).max(100).optional().describe("Pass percentage for the linked lab (1–100). Only allowed on tasks linked to a Practice Lab exercise."),
-}, async ({ taskId, title, description, dueDate, opensAt, maxScore, labPassMark }) => {
-  if (labPassMark !== undefined) {
-    const task = await db.internshipTask.findUnique({
-      where: { id: taskId },
-      select: { labScenarioId: true },
-    });
-    if (!task) return { content: [{ type: "text", text: "Task not found." }] };
-    if (!task.labScenarioId)
-      return { content: [{ type: "text", text: "labPassMark can only be set on tasks linked to a Practice Lab exercise." }] };
-    const validated = parseLabPassMark(labPassMark);
-    if (validated === null)
-      return { content: [{ type: "text", text: "Pass mark must be a whole number from 1 to 100." }] };
-  }
-  await db.internshipTask.update({
+  opensWeek: z.number().int().min(1).max(52).optional().describe("Week the task opens (1 = cohort's first week). Moves the task to that week."),
+  opensDay: z.number().int().min(1).max(7).optional().describe("Day it opens (1 = Monday)"),
+  opensTime: z.string().optional().describe("HH:MM, 24-hour WAT"),
+  dueWeek: z.number().int().min(1).max(52).optional(),
+  dueDay: z.number().int().min(1).max(7).optional(),
+  dueTime: z.string().optional().describe("HH:MM, 24-hour WAT"),
+  dueDate: z.string().optional().describe("Exact ISO due date. Prefer dueWeek/dueDay/dueTime; can't be combined with them."),
+  opensAt: z.string().optional().describe("Exact ISO open date. Prefer opensWeek/opensDay/opensTime; can't be combined with them."),
+}, async ({ taskId, title, description, dueDate, opensAt, maxScore, labPassMark, opensWeek, opensDay, opensTime, dueWeek, dueDay, dueTime }) => {
+  const task = await db.internshipTask.findUnique({
     where: { id: taskId },
-    data: {
-      ...(title && { title }),
-      ...(description !== undefined && { description }),
-      ...(dueDate && { dueDate: new Date(dueDate) }),
-      ...(opensAt && { opensAt: new Date(opensAt) }),
-      ...(maxScore !== undefined && { maxScore }),
-      ...(labPassMark !== undefined && { labPassMark }),
+    select: {
+      labScenarioId: true, cohortId: true,
+      opensWeek: true, opensDay: true, opensTime: true,
+      dueWeek: true, dueDay: true, dueTime: true,
+      cohort: { select: { startDate: true, programId: true } },
     },
   });
-  return { content: [{ type: "text", text: `Task ${taskId} updated.` }] };
+  if (!task) return { content: [{ type: "text", text: "Task not found." }] };
+
+  if (title !== undefined && (!title.trim() || title.trim().length > 200))
+    return { content: [{ type: "text", text: "Give the task a name (up to 200 characters)." }] };
+  if (description !== undefined && description.length > 10_000)
+    return { content: [{ type: "text", text: "The task brief is too long." }] };
+  if (labPassMark !== undefined) {
+    if (!task.labScenarioId)
+      return { content: [{ type: "text", text: "labPassMark can only be set on tasks linked to a Practice Lab exercise." }] };
+    if (parseLabPassMark(labPassMark) === null)
+      return { content: [{ type: "text", text: "Pass mark must be a whole number from 1 to 100." }] };
+  }
+
+  const scheduleGiven = [opensWeek, opensDay, opensTime, dueWeek, dueDay, dueTime].some((v) => v !== undefined);
+  if (scheduleGiven && (dueDate || opensAt))
+    return { content: [{ type: "text", text: "Use either the week/day/time fields or exact ISO dates, not both." }] };
+
+  const data: Record<string, unknown> = {
+    ...(title !== undefined && { title: title.trim() }),
+    ...(description !== undefined && { description: description || null }),
+    ...(maxScore !== undefined && { maxScore }),
+    ...(labPassMark !== undefined && { labPassMark }),
+    ...(dueDate && { dueDate: new Date(dueDate) }),
+    ...(opensAt && { opensAt: new Date(opensAt) }),
+  };
+
+  let moved = "";
+  if (scheduleGiven) {
+    if (!task.cohortId || !task.cohort)
+      return { content: [{ type: "text", text: "Only cohort tasks can be rescheduled here (this is a self-paced or pool task)." }] };
+    const opens: SchedulePoint = { week: opensWeek ?? task.opensWeek, day: opensDay ?? task.opensDay, time: opensTime ?? task.opensTime };
+    const due: SchedulePoint = { week: dueWeek ?? task.dueWeek, day: dueDay ?? task.dueDay, time: dueTime ?? task.dueTime };
+    if (!isValidSchedulePoint(opens) || !isValidSchedulePoint(due))
+      return { content: [{ type: "text", text: "Set a valid week, day (1–7) and time (HH:MM) for opens and due." }] };
+    const newOpensAt = scheduleToDate(task.cohort.startDate, opens);
+    const newDueDate = scheduleToDate(task.cohort.startDate, due);
+    if (newDueDate <= newOpensAt)
+      return { content: [{ type: "text", text: `The due time (week ${due.week}, day ${due.day} ${due.time}) must be after the opening time (week ${opens.week}, day ${opens.day} ${opens.time}). Pass dueWeek too when moving a task to a later week.` }] };
+    Object.assign(data, {
+      opensWeek: opens.week, opensDay: opens.day, opensTime: opens.time,
+      dueWeek: due.week, dueDay: due.day, dueTime: due.time,
+      opensAt: newOpensAt, dueDate: newDueDate,
+    });
+    // File it under the "Week N" module of its new week (as the admin page).
+    if (opens.week !== task.opensWeek) {
+      const moduleTitle = `Week ${opens.week}`;
+      const existingModule = await db.internshipModule.findFirst({
+        where: { programId: task.cohort.programId, title: moduleTitle },
+        select: { id: true },
+      });
+      data.moduleId = existingModule
+        ? existingModule.id
+        : (await db.internshipModule.create({
+            data: { programId: task.cohort.programId, title: moduleTitle, order: opens.week },
+            select: { id: true },
+          })).id;
+    }
+    moved = ` Now opens ${newOpensAt.toISOString()} (week ${opens.week}) and is due ${newDueDate.toISOString()} (week ${due.week}).`;
+  }
+
+  if (Object.keys(data).length === 0) return { content: [{ type: "text", text: "Nothing to update." }] };
+  await db.internshipTask.update({ where: { id: taskId }, data });
+  if (task.cohortId && (scheduleGiven || dueDate || opensAt)) await recomputeCohortProgress(task.cohortId);
+  return { content: [{ type: "text", text: `Task ${taskId} updated.${moved}` }] };
 });
 
 server.tool("create_cohort_task", "Create a task for a cohort — same validation as the admin task page. Times are in West Africa Time (WAT). Optionally link a Practice Lab exercise.", {
@@ -986,17 +1119,39 @@ server.tool("remove_user_role", "Remove a role from a user", {
 });
 
 // ── CERTIFICATES ───────────────────────────────────────────────────────────────
-server.tool("issue_internship_certificate", "Manually issue an internship certificate to an intern", {
+server.tool("issue_internship_certificate", "Manually issue an internship certificate to one intern. The intern can download it straight away and gets the usual notification. Uses the certificate number prefix from platform settings.", {
   userId: z.string().describe("User UUID"),
   programId: z.string(),
-  applicationId: z.string().optional(),
+  applicationId: z.string().optional().describe("The intern's application (ties the certificate to its cohort and level; recommended)"),
   title: z.string().describe("Certificate title e.g. 'Digital Marketing Internship – Beginner Level'"),
 }, async ({ userId, programId, applicationId, title }) => {
-  const certNum = `CERT-INT-${Date.now()}`;
+  if (applicationId) {
+    const existing = await db.internshipCertificate.findFirst({
+      where: { applicationId, revokedAt: null },
+      select: { certificateNumber: true },
+    });
+    if (existing)
+      return { content: [{ type: "text", text: `This application already has certificate ${existing.certificateNumber}. Not issuing a duplicate.` }] };
+  }
+  const certNum = internshipCertificateNumber(await internshipCertificatePrefix(db));
   const cert = await db.internshipCertificate.create({
     data: { userId, programId, ...(applicationId && { applicationId }), title, certificateNumber: certNum },
   });
-  return { content: [{ type: "text", text: `Certificate issued: ${cert.certificateNumber} (id: ${cert.id})` }] };
+  await notifyCertificateIssued(cert.id);
+  return { content: [{ type: "text", text: `Certificate issued: ${cert.certificateNumber} (id: ${cert.id}). The intern was notified.` }] };
+});
+
+server.tool("issue_cohort_certificates", "Issue internship certificates to a whole cohort. mode 'submitted_at_least_one': every paid, active intern in the cohort with at least one submission; 'all': every paid, active intern. Interns who already have a certificate for this cohort are skipped, so running it twice creates no duplicates. Each intern can download theirs straight away and gets the usual notification. Returns one row per intern: name, email, certificate number, issued or skipped (with reason).", {
+  cohortId: z.string(),
+  title: z.string().describe("Certificate title, e.g. 'Digital Marketing Internship Completion Certificate'"),
+  mode: z.enum(["submitted_at_least_one", "all"]),
+}, async ({ cohortId, title, mode }) => {
+  const result = await issueCohortCertificates(
+    prismaCohortCertificateStore(db, notifyCertificateIssued),
+    { cohortId, title, mode },
+  );
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool("revoke_certificate", "Revoke an internship certificate", {
@@ -1663,7 +1818,7 @@ server.tool(
 
 server.tool(
   "get_platform_settings",
-  "Read the current platform settings including cohortSystemEnabled, selfPacedCertificatePassMark, automaticCertificateIssue, certificateMinimumCompletion, and other operational flags.",
+  "Read the current platform settings including branding (academyName, certificateIssuerName, certificate prefixes and logo), cohortSystemEnabled, selfPacedCertificatePassMark, automaticCertificateIssue, certificateMinimumCompletion, and other operational flags.",
   {},
   async () => {
     const settings = await db.platformSettings.upsert({
@@ -1675,6 +1830,13 @@ server.tool(
       content: [{
         type: "text",
         text: JSON.stringify({
+          academyName: settings.academyName,
+          platformName: settings.platformName,
+          certificateIssuerName: settings.certificateIssuerName,
+          certificatePrefix: settings.certificatePrefix,
+          certificateNumberPrefix: settings.certificateNumberPrefix,
+          certificateLogoUrl: settings.certificateLogoUrl,
+          testimonialDriveUrl: settings.testimonialDriveUrl,
           cohortSystemEnabled: settings.cohortSystemEnabled,
           selfPacedCertificatePassMark: settings.selfPacedCertificatePassMark,
           automaticCertificateIssue: settings.automaticCertificateIssue,
@@ -2010,6 +2172,73 @@ server.tool(
     return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
   },
 );
+
+// ── PLATFORM SETTINGS ─────────────────────────────────────────────────────────
+server.tool("update_platform_settings", "Change platform settings with the same validation as the admin settings pages. Only the fields you pass change. certificateIssuerName and certificateLogoUrl appear on every certificate; certificateNumberPrefix is used for new internship certificate numbers, certificatePrefix for course certificates.", {
+  academyName: z.string().optional().describe("1–120 characters; shown on certificates (e.g. 'SabiRole')"),
+  platformName: z.string().optional().describe("1–120 characters"),
+  certificateIssuerName: z.string().optional().describe("1–120 characters; the certificate seal and 'issued by' text"),
+  certificatePrefix: z.string().optional().describe("Course certificate number prefix: 1–24 letters, digits or hyphens (saved uppercase)"),
+  certificateNumberPrefix: z.string().optional().describe("Internship certificate number prefix: 1–24 letters, digits or hyphens (saved uppercase), e.g. 'SR-INT'"),
+  certificateLogoUrl: z.string().nullable().optional().describe("Logo on certificates: an https image URL or a /public path like /sabirole-logo.png. Empty or null: the bundled /logo.png. Host it in /public or a public Supabase bucket so it also appears in downloaded PDFs."),
+  automaticCertificateIssue: z.boolean().optional(),
+  poolGroupSize: z.number().int().optional().describe("2–50"),
+  certificateMinimumCompletion: z.number().int().optional().describe("1–100"),
+  selfPacedCertificatePassMark: z.number().int().optional().describe("1–100"),
+  supportEmail: z.string().optional(),
+  testimonialDriveUrl: z.string().nullable().optional().describe("Global Google Drive folder for testimonial videos (cohorts without their own). Empty or null clears it."),
+}, async (fields) => {
+  const body = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
+  if (Object.keys(body).length === 0) return { content: [{ type: "text", text: "Nothing to update." }] };
+  const { data, errors } = parsePlatformSettingsPatch(body);
+  if (errors.length) return { content: [{ type: "text", text: `Not saved. ${errors.join(" ")}` }] };
+  const settings = await applyPlatformSettingsPatch(data, null, db);
+  const changed = Object.fromEntries(Object.keys(data).map((key) => [key, (settings as Record<string, unknown>)[key]]));
+  return { content: [{ type: "text", text: JSON.stringify({ updated: changed }, null, 2) }] };
+});
+
+// ── TESTIMONIALS (text only; videos stay in Google Drive) ─────────────────────
+server.tool("list_testimonials", "List intern testimonials with their consent status ('SabiRole may share my video and words'), rating, status, tags, and Drive video link. Filter by cohort, track, status, or consent.", {
+  cohortId: z.string().optional(),
+  programId: z.string().optional().describe("Track id"),
+  status: z.enum(["PENDING","APPROVED","REJECTED"]).optional(),
+  consentOnly: z.boolean().optional().describe("Only testimonials the intern consented to share"),
+}, async ({ cohortId, programId, status, consentOnly }) => {
+  const items = await listTestimonials({ cohortId, programId, status, consentOnly }, db);
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        count: items.length,
+        consented: items.filter((i) => i.consent).length,
+        testimonials: items,
+      }, null, 2),
+    }],
+  };
+});
+
+server.tool("update_testimonial", "Approve, reject, or tag a testimonial", {
+  testimonialId: z.string(),
+  status: z.enum(["PENDING","APPROVED","REJECTED"]).optional(),
+  tags: z.array(z.string()).optional().describe("Replaces the tags (up to 10 short words)"),
+}, async ({ testimonialId, status, tags }) => {
+  const result = await reviewTestimonial(testimonialId, { status, tags }, db);
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: `Testimonial ${testimonialId} updated.` }] };
+});
+
+server.tool("list_testimonial_drive_links", "Show the global testimonial Google Drive folder and each cohort's own folder", {}, async () => {
+  return { content: [{ type: "text", text: JSON.stringify(await listTestimonialDriveLinks(db), null, 2) }] };
+});
+
+server.tool("set_testimonial_drive_link", "Set the Google Drive folder where interns upload testimonial videos, for one cohort or (without cohortId) the global fallback. Empty url clears it.", {
+  cohortId: z.string().optional().describe("Omit to set the global link"),
+  url: z.string().describe("https://drive.google.com/… folder link, or empty to clear"),
+}, async ({ cohortId, url }) => {
+  const result = await setTestimonialDriveUrl(cohortId ?? null, url, null, db);
+  if (!result.ok) return { content: [{ type: "text", text: `Error: ${result.error}` }] };
+  return { content: [{ type: "text", text: `${cohortId ? `Cohort ${cohortId}` : "Global"} testimonial folder ${result.url ? `set to ${result.url}` : "cleared"}.` }] };
+});
 
 // ── LAUNCH ─────────────────────────────────────────────────────────────────────
 async function main() {

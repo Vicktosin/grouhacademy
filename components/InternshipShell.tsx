@@ -11,6 +11,7 @@ import DashboardBanner from "./DashboardBanner";
 import InternTour from "./onboarding/InternTour";
 import PreviewBanner from "./PreviewBanner";
 import AchievementCelebration from "./AchievementCelebration";
+import AnnouncementPopup from "./AnnouncementPopup";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
 // Routes reachable before the acceptance fee is paid — the onboarding →
@@ -211,6 +212,10 @@ export default function InternshipShell({
       <InternTour />
       <AchievementCelebration
         enabled={Boolean(status?.acceptanceFeePaid && status.assessmentPassed)}
+      />
+      {/* Admin pop-up announcements, once each (not over the paywall). */}
+      <AnnouncementPopup
+        enabled={Boolean(status?.acceptanceFeePaid) && !showPaywall}
       />
     </div>
   );

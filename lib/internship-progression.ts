@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
 import { awardLevelUpAchievement } from "@/lib/achievements";
 import { computeInternProgress } from "@/lib/internship-progress";
@@ -7,6 +6,10 @@ import { cohortTimeline } from "@/lib/task-schedule";
 import { getAcceptanceFee } from "@/lib/internship-levels";
 import { reassignLeaderIfNeeded } from "@/lib/internship-groups";
 import { notifyCertificateIssued } from "@/lib/internship-certificate-notify";
+import {
+  internshipCertificateNumber,
+  internshipCertificatePrefix,
+} from "@/lib/certificate-branding";
 
 // Finishing a level and moving up. An intern earns a certificate for each
 // level of a track; with it they can join the next level without an entrance
@@ -27,8 +30,9 @@ function formatDate(date: Date): string {
   });
 }
 
-function generateCertificateNumber(): string {
-  return `CERT-INT-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+/** A new number with the admin's prefix (Certificate rules / MCP). */
+async function generateCertificateNumber(): Promise<string> {
+  return internshipCertificateNumber(await internshipCertificatePrefix());
 }
 
 export const certificateApplicationInclude = {
@@ -158,7 +162,7 @@ export async function checkCertificate(
           application.level.rank > 1
             ? `${application.program.name} ${application.level.name} Level Completion Certificate`
             : `${application.program.name} Completion Certificate`,
-        certificateNumber: generateCertificateNumber(),
+        certificateNumber: await generateCertificateNumber(),
       },
     });
     await notifyCertificateIssued(certificate.id);
@@ -201,7 +205,7 @@ export async function checkCertificate(
         application.level.rank > 1
           ? `${application.program.name} ${application.level.name} Level Completion Certificate`
           : `${application.program.name} Completion Certificate`,
-      certificateNumber: generateCertificateNumber(),
+      certificateNumber: await generateCertificateNumber(),
     },
   });
   await notifyCertificateIssued(certificate.id);

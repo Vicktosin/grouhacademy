@@ -11,6 +11,10 @@ import {
   certificateFileName,
   downloadCertificatePdf,
 } from "@/components/certificate/download-certificate";
+import {
+  FALLBACK_BRANDING,
+  useCertificateBranding,
+} from "@/components/certificate/branding";
 
 type Certificate = {
   id: string;
@@ -36,6 +40,7 @@ export default function CertificatesPage() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const faceRef = useRef<HTMLDivElement>(null);
+  const issuerName = (useCertificateBranding() ?? FALLBACK_BRANDING).issuerName;
 
   useEffect(() => {
     fetch("/api/student/certificates")
@@ -154,7 +159,7 @@ export default function CertificatesPage() {
                 className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800"
               >
                 <p className="font-bold">
-                  This certificate was revoked by Grouh Academy on{" "}
+                  This certificate was revoked by {issuerName} on{" "}
                   {formatDate(selected.revokedAt)}.
                 </p>
                 {selected.revokedReason && (

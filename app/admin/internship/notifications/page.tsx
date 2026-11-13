@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import AnnouncementManager from "@/components/admin/AnnouncementManager";
 
 type ActivityCategory =
   "Assessment" | "Payment" | "Task" | "Cohort" | "Program" | "Announcement";
@@ -212,6 +213,8 @@ export default function InternshipNotificationsPage() {
             {success}
           </p>
         )}
+
+        <AnnouncementManager />
 
         <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-6">

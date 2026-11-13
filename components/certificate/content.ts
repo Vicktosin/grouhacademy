@@ -54,7 +54,7 @@ export function internshipCertificateContent(certificate: {
     heading: "Certificate of Internship",
     recipientName: certificate.studentName,
     statement:
-      "has successfully completed the Grouh Academy virtual internship, demonstrating practical, career-ready skills through hands-on tasks and collaborative group projects in",
+      "has successfully completed the {academyName} virtual internship, demonstrating practical, career-ready skills through hands-on tasks and collaborative group projects in",
     achievement: certificate.programName,
     detail: certificate.periodLabel
       ? `Internship period: ${certificate.periodLabel}`

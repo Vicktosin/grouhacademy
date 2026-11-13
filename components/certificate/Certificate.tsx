@@ -1,8 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import { Cormorant_Garamond, Great_Vibes, Lato } from "next/font/google";
 import { useEffect, useId, useRef, useState, type Ref } from "react";
+import {
+  DEFAULT_LOGO,
+  FALLBACK_BRANDING,
+  brandText,
+  useCertificateBranding,
+  type CertificateBranding,
+} from "./branding";
 
 // Certificates load their own fonts so they look the same on every device,
 // on screen and in the downloaded PDF.
@@ -46,7 +52,10 @@ export type CertificateContent = {
   /** Small line above the heading, e.g. "Official certification". */
   eyebrow: string;
   recipientName: string;
-  /** The sentence between the recipient and the achievement. */
+  /**
+   * The sentence between the recipient and the achievement. "{academyName}"
+   * and "{issuerName}" are filled from platform settings (./branding).
+   */
   statement: string;
   /** The course or internship track, shown prominently. */
   achievement: string;
@@ -87,7 +96,11 @@ function Corner({ className }: { className: string }) {
   );
 }
 
-function Seal({ id }: { id: string }) {
+function Seal({ id, issuerName }: { id: string; issuerName: string }) {
+  // The ring fits 38 characters at 7.4px ("GROUH ACADEMY • CERTIFIED
+  // EXCELLENCE •"); longer issuer names get smaller letters to still fit.
+  const ringText = `${issuerName.toUpperCase()} • CERTIFIED EXCELLENCE •`;
+  const ringFontSize = Math.min(7.4, (7.4 * 38) / ringText.length);
   // A gold rosette: a serrated outer ring around a smooth medallion.
   const points = Array.from({ length: 64 }, (_, i) => {
     const angle = (i / 64) * Math.PI * 2;
@@ -132,14 +145,19 @@ function Seal({ id }: { id: string }) {
         strokeWidth="0.8"
       />
       {/* Text fitted exactly once around the circle (2πr, r = 31). */}
-      <text fill="#f6dd8a" fontSize="7.4" fontWeight="700" style={sans.style}>
+      <text
+        fill="#f6dd8a"
+        fontSize={ringFontSize.toFixed(2)}
+        fontWeight="700"
+        style={sans.style}
+      >
         <textPath
           href={`#${id}-arc`}
           startOffset="0"
           textLength="190"
           lengthAdjust="spacing"
         >
-          GROUH ACADEMY • CERTIFIED EXCELLENCE •
+          {ringText}
         </textPath>
       </text>
       <path
@@ -153,11 +171,16 @@ function Seal({ id }: { id: string }) {
 export function CertificateFace({
   content,
   ref,
+  branding: brandingOverride,
 }: {
   content: CertificateContent;
   ref?: Ref<HTMLDivElement>;
+  /** Defaults to the platform settings (loaded once per page). */
+  branding?: CertificateBranding;
 }) {
   const id = useId().replace(/:/g, "");
+  const loaded = useCertificateBranding();
+  const branding = brandingOverride ?? loaded ?? FALLBACK_BRANDING;
   return (
     <div
       ref={ref}
@@ -208,13 +231,13 @@ export function CertificateFace({
 
       {/* Main text, centred in the space above the signature row */}
       <div className="absolute inset-x-[102px] bottom-[228px] top-[64px] flex flex-col items-center justify-center text-center">
-        <Image
-          src="/logo.png"
-          alt="Grouh Academy"
-          width={200}
-          height={54}
-          unoptimized
-          className="h-[52px] w-auto"
+        {/* A plain <img>: the logo may be any URL set in settings, and the
+            PDF capture inlines it as it is. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={branding.logoUrl ?? DEFAULT_LOGO}
+          alt={branding.academyName}
+          className="h-[52px] w-auto max-w-[320px] object-contain"
         />
         <p
           className="mt-4 text-[11px] font-bold uppercase tracking-[0.38em]"
@@ -253,7 +276,7 @@ export function CertificateFace({
         </p>
         <span className="mt-1 h-[2px] w-[560px]" style={{ background: GOLD }} />
         <p className="mt-6 max-w-[660px] text-balance text-[15px] leading-[26px] text-slate-600">
-          {content.statement}
+          {brandText(content.statement, branding)}
         </p>
         <p
           className="mt-3 max-w-[780px] text-[30px] font-black leading-tight"
@@ -278,7 +301,7 @@ export function CertificateFace({
             <p className="text-[10px] text-slate-500">Academy Director</p>
           </div>
         </div>
-        <Seal id={id} />
+        <Seal id={id} issuerName={branding.issuerName} />
         <div className="text-right">
           <p
             className="text-[22px] font-semibold leading-none"
