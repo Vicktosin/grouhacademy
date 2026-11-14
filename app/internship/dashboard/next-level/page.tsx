@@ -143,6 +143,12 @@ export default function NextLevelPage() {
               </ul>
               <div className="flex items-center justify-between rounded-xl bg-[#f8fbff] px-4 py-3">
                 <span className="text-xs font-semibold text-slate-500">
+                  Tuition fee
+                </span>
+                <span className="text-lg font-bold text-[#5FBB46]">Free</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-[#f8fbff] px-4 py-3">
+                <span className="text-xs font-semibold text-slate-500">
                   Acceptance fee
                 </span>
                 <span className="text-lg font-bold text-[#1C1D52]">
