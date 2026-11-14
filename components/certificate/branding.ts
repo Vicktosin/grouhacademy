@@ -11,12 +11,10 @@ export type CertificateBranding = {
   logoUrl: string | null;
 };
 
-export const DEFAULT_LOGO = "/logo.png";
-
 /** Used until settings load, or if they can't be loaded. */
 export const FALLBACK_BRANDING: CertificateBranding = {
-  academyName: "Grouh Academy",
-  issuerName: "Grouh Academy",
+  academyName: "SabiRole",
+  issuerName: "SabiRole",
   logoUrl: null,
 };
 

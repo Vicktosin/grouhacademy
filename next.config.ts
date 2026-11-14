@@ -169,6 +169,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // The graduation flyer pop-up (any internship page) removes the
+        // photo's background with MediaPipe, which runs as WebAssembly
+        // (served from this site, public/mediapipe).
+        source: "/internship/:path*",
+        headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+      },
+      {
         // Practice interviews run in an embedded Tavus (Daily) video room,
         // which needs the camera and microphone. Allowed only here, only
         // for this site and that room; every other page keeps them off.
@@ -264,6 +271,12 @@ const nextConfig: NextConfig = {
           { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
+      },
+      {
+        // MediaPipe's runtime (its folder name carries the version) and
+        // models for the graduation flyer: downloaded once, then cached.
+        source: "/mediapipe/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=2592000, immutable" }],
       },
       {
         // Always revalidate the service worker so updates reach users.

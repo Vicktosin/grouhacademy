@@ -169,7 +169,8 @@ export async function placePreviewIntern(adminId: string, placement: PreviewPlac
 
 /**
  * Clears everything the preview intern did (submissions, lab work,
- * progress, notifications, interviews, certificates), keeping its place.
+ * progress, notifications, interviews, certificates, testimonial), keeping
+ * its place.
  */
 export async function resetPreviewIntern(adminId: string) {
   const prisma = getPrisma();
@@ -189,6 +190,7 @@ export async function resetPreviewIntern(adminId: string) {
     prisma.interviewSession.deleteMany({ where: { userId } }),
     prisma.internshipCertificate.deleteMany({ where: { userId } }),
     prisma.officeLifeDay.deleteMany({ where: { userId } }),
+    prisma.internTestimonial.deleteMany({ where: { userId } }),
   ]);
   const current = await getPreviewPlacement(adminId);
   if (current) await placePreviewIntern(adminId, current);

@@ -1,9 +1,8 @@
 "use client";
 
-import { Cormorant_Garamond, Great_Vibes, Lato } from "next/font/google";
+import { Cormorant_Garamond, Great_Vibes, Lato, Parisienne, Poppins } from "next/font/google";
 import { useEffect, useId, useRef, useState, type Ref } from "react";
 import {
-  DEFAULT_LOGO,
   FALLBACK_BRANDING,
   brandText,
   useCertificateBranding,
@@ -17,9 +16,23 @@ const serif = Cormorant_Garamond({
   weight: ["600", "700"],
   display: "block",
 });
+// The director's signature.
 const script = Great_Vibes({
   subsets: ["latin"],
   weight: "400",
+  display: "block",
+});
+// The recipient's name: still a flowing script, but with clearer capitals
+// and open letters, so names read easily on screen and in print.
+const nameScript = Parisienne({
+  subsets: ["latin"],
+  weight: "400",
+  display: "block",
+});
+// The SabiRole wordmark (used when no logo image is set in settings).
+const wordmark = Poppins({
+  subsets: ["latin"],
+  weight: ["700"],
   display: "block",
 });
 const sans = Lato({
@@ -69,10 +82,24 @@ export type CertificateContent = {
 };
 
 function nameSize(name: string) {
-  if (name.length <= 22) return 76;
-  if (name.length <= 30) return 64;
-  if (name.length <= 40) return 54;
-  return 44;
+  if (name.length <= 22) return 70;
+  if (name.length <= 30) return 60;
+  if (name.length <= 40) return 50;
+  return 42;
+}
+
+/** "SabiRole": "Sabi" in navy and "Role" in green, in Poppins. */
+function Wordmark() {
+  return (
+    <p
+      className="text-[46px] font-bold leading-none tracking-[-0.01em]"
+      style={wordmark.style}
+      aria-label="SabiRole"
+    >
+      <span style={{ color: NAVY }}>Sabi</span>
+      <span style={{ color: GREEN }}>Role</span>
+    </p>
+  );
 }
 
 function Corner({ className }: { className: string }) {
@@ -97,7 +124,7 @@ function Corner({ className }: { className: string }) {
 }
 
 function Seal({ id, issuerName }: { id: string; issuerName: string }) {
-  // The ring fits 38 characters at 7.4px ("GROUH ACADEMY • CERTIFIED
+  // The ring fits 38 characters at 7.4px (e.g. "SABIROLE • CERTIFIED
   // EXCELLENCE •"); longer issuer names get smaller letters to still fit.
   const ringText = `${issuerName.toUpperCase()} • CERTIFIED EXCELLENCE •`;
   const ringFontSize = Math.min(7.4, (7.4 * 38) / ringText.length);
@@ -231,14 +258,19 @@ export function CertificateFace({
 
       {/* Main text, centred in the space above the signature row */}
       <div className="absolute inset-x-[102px] bottom-[228px] top-[64px] flex flex-col items-center justify-center text-center">
-        {/* A plain <img>: the logo may be any URL set in settings, and the
-            PDF capture inlines it as it is. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={branding.logoUrl ?? DEFAULT_LOGO}
-          alt={branding.academyName}
-          className="h-[52px] w-auto max-w-[320px] object-contain"
-        />
+        {/* A logo image set in settings, else the SabiRole wordmark. A
+            plain <img>: the logo may be any URL, and the PDF capture
+            inlines it as it is. */}
+        {branding.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={branding.logoUrl}
+            alt={branding.academyName}
+            className="h-[52px] w-auto max-w-[320px] object-contain"
+          />
+        ) : (
+          <Wordmark />
+        )}
         <p
           className="mt-4 text-[11px] font-bold uppercase tracking-[0.38em]"
           style={{ color: GREEN }}
@@ -266,9 +298,10 @@ export function CertificateFace({
           This certificate is proudly presented to
         </p>
         <p
-          className="mt-2 leading-[1.15]"
+          className="mt-2 leading-[1.2]"
           style={{
-            ...script.style,
+            ...nameScript.style,
+            color: NAVY,
             fontSize: nameSize(content.recipientName),
           }}
         >

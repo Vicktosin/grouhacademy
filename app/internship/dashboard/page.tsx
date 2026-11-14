@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import CohortCountdown from "@/components/CohortCountdown";
 import InternshipShell from "@/components/InternshipShell";
 import LevelCompleteModal from "@/components/LevelCompleteModal";
+import GraduationFlyerButton from "@/components/graduation/GraduationFlyerButton";
 import RecommendedResources from "@/components/RecommendedResources";
 
 type DashboardData = {
@@ -126,6 +127,8 @@ export default function InternshipDashboardPage() {
       {/* First visit: what the internship is, then an offer of a tour. */}
       <InternWelcome autoOpen={data.paymentStatus === "PAID"} />
       <div className="space-y-5">
+        {/* Graduates: their flyer and testimonial, any time. */}
+        <GraduationFlyerButton />
         {data.program ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -62,7 +62,7 @@ export default function CertificateSettingsPage() {
                 label="Certificate logo (URL or /public path)"
                 name="certificateLogoUrl"
                 defaultValue={settings.certificateLogoUrl ?? ""}
-                placeholder="Empty uses /logo.png"
+                placeholder="Empty shows the SabiRole wordmark"
               />
               <SettingsField
                 label="Minimum completion (%)"

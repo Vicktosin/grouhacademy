@@ -1,0 +1,159 @@
+"use client";
+
+import { ArrowLeft, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import ExperienceForm from "./ExperienceForm";
+import FlyerStep from "./FlyerStep";
+import {
+  OPEN_GRADUATION_EVENT,
+  useGraduation,
+  whenLevelCompleteSettled,
+  type GraduationData,
+} from "./graduation-data";
+
+// The graduation pop-up, on every internship page (InternshipShell). It
+// opens by itself once for a graduate (an intern with an internship
+// certificate) who hasn't made a flyer, after the level-complete
+// congratulations if that is showing; never for anyone who hasn't completed.
+// "My graduation flyer" (dashboard, testimonial page) and the admin preview
+// banner open it any time. Step 1 is the flyer; after they download or share
+// it, step 2 asks about their experience.
+
+const dismissKey = (data: GraduationData) => `sabirole-graduation-dismissed:${data.certificateId ?? "preview"}`;
+
+function stored(key: string) {
+  try {
+    return window.localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export default function GraduationModal({ enabled }: { enabled: boolean }) {
+  const { data } = useGraduation(enabled);
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"flyer" | "experience">("flyer");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const autoChecked = useRef(false);
+
+  // Open by itself, once, for a graduate without a flyer.
+  useEffect(() => {
+    if (!data || autoChecked.current) return;
+    autoChecked.current = true;
+    if (!data.graduated || data.flyerUrl || stored(dismissKey(data))) return;
+    // The dashboard first congratulates them on the level (LevelCompleteModal);
+    // the flyer follows when that closes (or doesn't show).
+    const ready = pathname === "/internship/dashboard" ? whenLevelCompleteSettled() : Promise.resolve();
+    void ready.then(() => setOpen(true));
+  }, [data, pathname]);
+
+  // Opened on request.
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const wanted = (event as CustomEvent<{ step?: "flyer" | "experience" }>).detail?.step;
+      returnFocus.current = document.activeElement as HTMLElement | null;
+      setStep(wanted ?? "flyer");
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_GRADUATION_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_GRADUATION_EVENT, onOpen);
+  }, []);
+
+  // Focus inside, trap Tab, Esc closes.
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLElement>("button, [href], input, textarea")?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]):not([tabindex="-1"]), textarea, [role="radio"], canvas[tabindex]',
+      )].filter((el) => el.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // close is stable enough for this listener's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step]);
+
+  function close() {
+    setOpen(false);
+    if (data) {
+      try {
+        window.localStorage.setItem(dismissKey(data), "1");
+      } catch {
+        // Without storage it may open by itself again next visit.
+      }
+    }
+    returnFocus.current?.focus?.();
+  }
+
+  if (!open || !data) return null;
+  // Never for anyone who hasn't completed (the preview intern counts).
+  if (!data.graduated) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-[#11132f]/75 backdrop-blur-sm sm:items-center sm:p-4"
+      onMouseDown={(event) => event.target === event.currentTarget && close()}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="graduation-title"
+        className="relative max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white px-5 pb-6 pt-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:px-7"
+      >
+        <div className="mb-2 flex items-center justify-between">
+          {step === "experience" ? (
+            <button type="button" onClick={() => setStep("flyer")} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> My flyer
+            </button>
+          ) : (
+            <span className="text-[10px] font-semibold text-slate-400">Step 1 of 2</span>
+          )}
+          <button type="button" onClick={close} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {data.isPreview && (
+          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">
+            Preview: interns see this once they&apos;ve earned their internship certificate.
+          </p>
+        )}
+        {step === "flyer" ? (
+          <FlyerStep data={data} onShared={() => setStep("experience")} />
+        ) : (
+          <ExperienceForm data={data} onDone={close} />
+        )}
+        {step === "flyer" && (
+          <button
+            type="button"
+            onClick={() => setStep("experience")}
+            className="mt-4 block w-full text-center text-xs font-semibold text-slate-500 underline"
+          >
+            Skip to sharing your experience
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

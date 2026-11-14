@@ -1569,9 +1569,17 @@ model InternTestimonial {
   applicationId String            @unique
   cohortId      String?
   programId     String
+  // The intern shares their experience one of three ways: a video (in the
+  // Google Drive folder; this is the link they paste), a voice note, or
+  // writing. Media are public Storage URLs (testimonial-media bucket);
+  // the files themselves are never in the database.
   videoLink     String?
-  testimonial   String
-  rating        Int
+  voiceNoteUrl  String?
+  // Their graduation flyer (components/graduation), saved when they
+  // download or share it.
+  flyerUrl      String?
+  testimonial   String            @default("")
+  rating        Int?
   consent       Boolean           @default(false)
   status        TestimonialStatus @default(PENDING)
   tags          String[]          @default([])

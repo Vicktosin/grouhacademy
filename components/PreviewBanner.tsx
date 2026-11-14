@@ -1,10 +1,11 @@
 "use client";
 
-import { Eye, LoaderCircle, LogOut, RotateCcw, Shuffle } from "lucide-react";
+import { Eye, GraduationCap, LoaderCircle, LogOut, RotateCcw, Shuffle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { clearCachedJson, loadShell, peekShell } from "@/lib/client-cache";
 import type { ShellData } from "@/app/api/internship/shell/route";
+import { openGraduation } from "./graduation/graduation-data";
 
 // Shown across the internship's pages while an admin experiences them as
 // their preview intern (lib/preview-intern): where they're placed, and
@@ -67,6 +68,14 @@ export default function PreviewBanner() {
         <strong>Preview:</strong> you&apos;re seeing the internship as an intern in <strong>{where}</strong>. What you do
         here is hidden from everyone else.
       </p>
+      <button
+        type="button"
+        onClick={() => openGraduation("flyer")}
+        className={button}
+        title="Show the graduation flyer pop-up graduates see"
+      >
+        <GraduationCap className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Graduation pop-up</span><span className="sm:hidden">Grad</span>
+      </button>
       <Link href="/admin/internship/preview" className={button}>
         <Shuffle className="h-3.5 w-3.5" /> Switch
       </Link>

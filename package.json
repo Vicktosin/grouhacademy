@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:auth": "tsx --test tests/auth-policy.test.ts",
     "dev-db": "tsx scripts/dev-db.ts",
-    "lab-runtime": "tsx scripts/copy-lab-runtime.ts"
+    "lab-runtime": "tsx scripts/copy-lab-runtime.ts",
+    "mediapipe": "tsx scripts/copy-mediapipe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -22,6 +23,7 @@
     "@codemirror/lang-php": "^6.0.2",
     "@codemirror/lang-sql": "6.10.0",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
+    "@mediapipe/tasks-vision": "1.2.3",
     "@next/third-parties": "^16.3.6",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",

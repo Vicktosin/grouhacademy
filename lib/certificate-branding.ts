@@ -10,7 +10,7 @@ export type CertificateBranding = {
   academyName: string;
   /** e.g. "SabiRole": the seal and "issued by" wording. */
   issuerName: string;
-  /** Logo at the top of the certificate; null uses the bundled /logo.png. */
+  /** Logo at the top of the certificate; null shows the SabiRole wordmark. */
   logoUrl: string | null;
 };
 
@@ -22,8 +22,8 @@ export async function getCertificateBranding(
     select: { academyName: true, certificateIssuerName: true, certificateLogoUrl: true },
   });
   return {
-    academyName: settings?.academyName ?? "Grouh Academy",
-    issuerName: settings?.certificateIssuerName ?? settings?.academyName ?? "Grouh Academy",
+    academyName: settings?.academyName ?? "SabiRole",
+    issuerName: settings?.certificateIssuerName ?? settings?.academyName ?? "SabiRole",
     logoUrl: settings?.certificateLogoUrl ?? null,
   };
 }
