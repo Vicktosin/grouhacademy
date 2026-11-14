@@ -97,7 +97,7 @@ const nextConfig: NextConfig = {
       // development project when running locally).
       ...[
         ...new Set([
-          "unqeyyxzmlpnjiwtmtov.supabase.co",
+          "rmbdfgumujxdbhnocqzb.supabase.co",
           ...(supabaseUrl.startsWith("https://") && !supabaseUrl.includes("*")
             ? [new URL(supabaseUrl).hostname]
             : []),
