@@ -1,54 +1,73 @@
 "use client";
 
 import { ArrowLeft, X } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import ExperienceForm from "./ExperienceForm";
 import FlyerStep from "./FlyerStep";
 import {
   OPEN_GRADUATION_EVENT,
+  markGraduationSettled,
   useGraduation,
-  whenLevelCompleteSettled,
-  type GraduationData,
 } from "./graduation-data";
 
 // The graduation pop-up, on every internship page (InternshipShell). It
-// opens by itself once for a graduate (an intern with an internship
-// certificate) who hasn't made a flyer, after the level-complete
-// congratulations if that is showing; never for anyone who hasn't completed.
+// opens by itself, first thing, once every time a graduate (an intern with
+// an internship certificate) logs in; the level-complete congratulations
+// waits for it. Never for anyone who hasn't completed.
 // "My graduation flyer" (dashboard, testimonial page) and the admin preview
 // banner open it any time. Step 1 is the flyer; after they download or share
 // it, step 2 asks about their experience.
 
-const dismissKey = (data: GraduationData) => `sabirole-graduation-dismissed:${data.certificateId ?? "preview"}`;
+const SHOWN_KEY = "sabirole-graduation-shown";
 
-function stored(key: string) {
+/** This login: the user and when they signed in (changes every login). */
+async function currentLogin() {
   try {
-    return window.localStorage.getItem(key) === "1";
+    const { data } = await createSupabaseBrowserClient().auth.getSession();
+    const user = data.session?.user;
+    return user ? `${user.id}:${user.last_sign_in_at ?? ""}` : null;
+  } catch {
+    return null;
+  }
+}
+
+function shownFor(login: string) {
+  try {
+    return window.localStorage.getItem(SHOWN_KEY) === login;
   } catch {
     return false;
   }
 }
 
+function rememberShown(login: string) {
+  try {
+    window.localStorage.setItem(SHOWN_KEY, login);
+  } catch {
+    // Without storage it may open again on the next page.
+  }
+}
+
 export default function GraduationModal({ enabled }: { enabled: boolean }) {
-  const { data } = useGraduation(enabled);
-  const pathname = usePathname();
+  const { data, loaded } = useGraduation(enabled);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"flyer" | "experience">("flyer");
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const autoChecked = useRef(false);
 
-  // Open by itself, once, for a graduate without a flyer.
+  // Open by itself, once per login, for a graduate.
   useEffect(() => {
-    if (!data || autoChecked.current) return;
+    if (!enabled) return markGraduationSettled();
+    if (!loaded || autoChecked.current) return;
     autoChecked.current = true;
-    if (!data.graduated || data.flyerUrl || stored(dismissKey(data))) return;
-    // The dashboard first congratulates them on the level (LevelCompleteModal);
-    // the flyer follows when that closes (or doesn't show).
-    const ready = pathname === "/internship/dashboard" ? whenLevelCompleteSettled() : Promise.resolve();
-    void ready.then(() => setOpen(true));
-  }, [data, pathname]);
+    if (!data?.graduated) return markGraduationSettled();
+    void currentLogin().then((login) => {
+      if (login && shownFor(login)) return markGraduationSettled();
+      if (login) rememberShown(login);
+      setOpen(true);
+    });
+  }, [enabled, loaded, data]);
 
   // Opened on request.
   useEffect(() => {
@@ -90,19 +109,11 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // close is stable enough for this listener's lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, step]);
 
   function close() {
     setOpen(false);
-    if (data) {
-      try {
-        window.localStorage.setItem(dismissKey(data), "1");
-      } catch {
-        // Without storage it may open by itself again next visit.
-      }
-    }
+    markGraduationSettled();
     returnFocus.current?.focus?.();
   }
 

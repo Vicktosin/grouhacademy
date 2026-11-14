@@ -1,5 +1,7 @@
 "use client";
 
+import "@fontsource/poppins/500.css";
+import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import { Download, ImagePlus, LoaderCircle, RotateCcw, Share2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,7 +19,7 @@ import {
   type Placement,
 } from "@/lib/flyer/layout";
 import { PHOTO_ERROR_MESSAGES, loadPhoto, warmUp, type FlyerPhotoError } from "@/lib/flyer/photo";
-import { drawFlyer, loadFlyerAssets, loadTemplate } from "@/lib/flyer/render";
+import { drawFlyer, loadFlyerAssets } from "@/lib/flyer/render";
 import { updateGraduation, type GraduationData } from "./graduation-data";
 
 // Step 1 of the graduation pop-up: the graduate uploads a photo and their
@@ -67,12 +69,37 @@ export default function FlyerStep({
   const savedRef = useRef<{ placement: Placement | null; url: string } | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
 
-  // Load the face detector and the template as soon as the pop-up opens.
+  // Load the face detector as soon as the pop-up opens.
   useEffect(() => {
     void warmUp();
-    void loadTemplate().catch(() => null);
     return () => photoRef.current?.close();
   }, []);
+
+  // Before a photo: their own flyer with a silhouette and their name.
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    let url: string | null = null;
+    let cancelled = false;
+    void loadFlyerAssets(data.studentName)
+      .then((template) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = FLYER_WIDTH;
+        canvas.height = FLYER_HEIGHT;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        drawFlyer(context, { template, photo: null, placement: null, name: data.studentName });
+        canvas.toBlob((blob) => {
+          if (!blob || cancelled) return;
+          url = URL.createObjectURL(blob);
+          setPreview(url);
+        }, "image/png");
+      })
+      .catch(() => null);
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [data.studentName]);
 
   // Redraw whenever the photo's position or size changes.
   useEffect(() => {
@@ -275,11 +302,11 @@ export default function FlyerStep({
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={showSaved ? data.flyerUrl! : "/flyer-sample.png"}
+            src={showSaved ? data.flyerUrl! : (preview ?? "/flyer-sample.png")}
             alt={
               showSaved
                 ? `Your saved graduation flyer with the name ${data.studentName}`
-                : "Sample graduation flyer: a graduate's photo in a green circle with confetti and a graduation cap, the words I just completed my internship program with Sabirole, and their name"
+                : `Your graduation flyer, waiting for your photo: a person silhouette in a green circle with confetti and a graduation cap, the words I just completed my internship program with Sabirole, and the name ${data.studentName}`
             }
             width={FLYER_WIDTH}
             height={FLYER_HEIGHT}
@@ -293,7 +320,7 @@ export default function FlyerStep({
           </div>
         )}
         {!ready && !showSaved && !working && (
-          <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-[#1C1D52]">Sample</span>
+          <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-[#1C1D52]">Preview</span>
         )}
       </div>
 

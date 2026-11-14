@@ -30,17 +30,18 @@ export type GraduationData = {
 
 /** Opens the graduation pop-up (dashboard button, preview banner, …). */
 export const OPEN_GRADUATION_EVENT = "sabirole:open-graduation";
-// The dashboard's level-complete congratulations (LevelCompleteModal) goes
-// first; the flyer pop-up waits until it is closed or decides not to show.
-let settleLevelComplete: () => void = () => {};
-const levelCompleteSettled = new Promise<void>((resolve) => {
-  settleLevelComplete = resolve;
+// The graduation pop-up is the first thing a graduate sees after logging
+// in; the dashboard's level-complete congratulations (LevelCompleteModal)
+// waits until it is closed or decides not to open.
+let settleGraduation: () => void = () => {};
+const graduationSettled = new Promise<void>((resolve) => {
+  settleGraduation = resolve;
 });
-export function markLevelCompleteSettled() {
-  settleLevelComplete();
+export function markGraduationSettled() {
+  settleGraduation();
 }
-export function whenLevelCompleteSettled() {
-  return levelCompleteSettled;
+export function whenGraduationSettled() {
+  return graduationSettled;
 }
 
 export function openGraduation(step: "flyer" | "experience" = "flyer") {

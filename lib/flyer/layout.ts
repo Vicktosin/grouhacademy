@@ -11,6 +11,9 @@ export const FLYER_TEMPLATE_URL = "/flyer-template.png";
 /** The grey circle in the template: the photo replaces it completely. */
 export const PHOTO_CIRCLE = { x: 1080, y: 1460, radius: 608 } as const;
 
+/** The placeholder person shown in the circle before a photo is chosen. */
+export const SILHOUETTE = { background: "#D3DADE", figure: "#A7B3BC" } as const;
+
 /** Where a detected face is placed (about). */
 export const FACE_TARGET = { x: 1080, y: 1200 } as const;
 
@@ -30,6 +33,12 @@ export const NAME_STYLE = {
    */
   capTop: 2345,
   maxWidth: 1840,
+} as const;
+
+/** Small lines drawn on the template: under the logo, and under the name. */
+export const FLYER_NOTES = {
+  formerly: { text: "(formerly Grouh Academy)", weight: 500, size: 46, color: "#3A4248", x: 1080, baseline: 612 },
+  website: { text: "www.grouhacademy.com/register", weight: 600, size: 56, color: "#0B7D54", x: 1080, gap: 44 },
 } as const;
 
 export const SHARE_CAPTION = "I just completed my internship program with Sabirole.";

@@ -3,7 +3,7 @@
 import { ArrowRight, Award, Download, PartyPopper, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { markLevelCompleteSettled } from "./graduation/graduation-data";
+import { whenGraduationSettled } from "./graduation/graduation-data";
 
 type Progression = {
   programName: string;
@@ -29,8 +29,7 @@ export default function LevelCompleteModal() {
     fetch("/api/internship/progression", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Progression | null) => {
-        // The graduation flyer pop-up waits for this one (graduation-data).
-        if (!data?.certificateId || data.queuedApplicationId) return markLevelCompleteSettled();
+        if (!data?.certificateId || data.queuedApplicationId) return;
         let dismissed = false;
         try {
           dismissed =
@@ -38,16 +37,16 @@ export default function LevelCompleteModal() {
         } catch {
           // Storage unavailable: show it this time.
         }
+        if (dismissed) return;
         setProgression(data);
-        setOpen(!dismissed);
-        if (dismissed) markLevelCompleteSettled();
+        // After the graduation pop-up, which a graduate sees first.
+        void whenGraduationSettled().then(() => setOpen(true));
       })
-      .catch(() => markLevelCompleteSettled());
+      .catch(() => null);
   }, []);
 
   const close = () => {
     setOpen(false);
-    markLevelCompleteSettled();
     if (!progression?.certificateId) return;
     try {
       window.localStorage.setItem(dismissKey(progression.certificateId), "1");

@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   FACE_TARGET,
   FLYER_HEIGHT,
+  FLYER_NOTES,
   FLYER_WIDTH,
   MAX_ZOOM,
   NAME_STYLE,
@@ -106,4 +107,9 @@ test("download name and share caption", () => {
   assert.doesNotMatch(SHARE_CAPTION, /job|hired|offer|employ/i);
   const names = shareLinks("https://x.supabase.co/f.png").map((l) => l.name);
   assert.deepEqual(names, ["WhatsApp", "LinkedIn", "X", "Facebook"]);
+});
+
+test("the flyer says Sabirole was Grouh Academy, and where to register", () => {
+  assert.equal(FLYER_NOTES.formerly.text, "(formerly Grouh Academy)");
+  assert.equal(FLYER_NOTES.website.text, "www.grouhacademy.com/register");
 });
