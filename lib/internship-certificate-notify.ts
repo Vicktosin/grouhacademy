@@ -18,7 +18,11 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-export async function notifyCertificateIssued(certificateId: string) {
+export async function notifyCertificateIssued(
+  certificateId: string,
+  /** inApp: false sends only the email (e.g. resending it later). */
+  { inApp = true }: { inApp?: boolean } = {},
+) {
   try {
     const prisma = getPrisma();
     const certificate = await prisma.internshipCertificate.findUnique({
@@ -54,15 +58,16 @@ export async function notifyCertificateIssued(certificateId: string) {
       ? `Congratulations on completing ${achievement}! Download your certificate, or move up to ${next.name} level, from your dashboard.`
       : `Congratulations on completing ${achievement}! Download your certificate from your dashboard.`;
 
-    await prisma.notification.create({
-      data: {
-        userId: certificate.userId,
-        title,
-        message,
-        type: NotificationType.SUCCESS,
-        audience: LearnerAudience.INTERNSHIP,
-      },
-    });
+    if (inApp)
+      await prisma.notification.create({
+        data: {
+          userId: certificate.userId,
+          title,
+          message,
+          type: NotificationType.SUCCESS,
+          audience: LearnerAudience.INTERNSHIP,
+        },
+      });
 
     // An admin's preview intern has no real address (lib/preview-intern).
     if (certificate.user.isPreview) return;
