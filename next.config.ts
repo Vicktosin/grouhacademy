@@ -169,8 +169,8 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // The graduation flyer pop-up (any internship page) removes the
-        // photo's background with MediaPipe, which runs as WebAssembly
+        // The graduation flyer pop-up (any internship page) finds the
+        // graduate's face with MediaPipe, which runs as WebAssembly
         // (served from this site, public/mediapipe).
         source: "/internship/:path*",
         headers: [{ key: "Content-Security-Policy", value: csp({ wasm: true }) }],

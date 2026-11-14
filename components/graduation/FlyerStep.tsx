@@ -1,38 +1,37 @@
 "use client";
 
-import { Download, ImagePlus, LoaderCircle, Minus, Plus, RotateCcw, Share2 } from "lucide-react";
-import { Poppins } from "next/font/google";
+import "@fontsource/poppins/700.css";
+import { Download, ImagePlus, LoaderCircle, RotateCcw, Share2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FLYER_HEIGHT,
   FLYER_WIDTH,
+  MAX_ZOOM,
+  PHOTO_CIRCLE,
   SHARE_CAPTION,
-  DEFAULT_HEAD,
+  coverScale,
   defaultPlacement,
   flyerFileName,
   shareLinks,
   zoomPlacement,
-  type Head,
   type Placement,
 } from "@/lib/flyer/layout";
-import { drawFlyer, loadFlyerFont } from "@/lib/flyer/render";
-import { PHOTO_ERROR_MESSAGES, cutOutPerson, warmUp, type FlyerPhotoError } from "@/lib/flyer/segment";
+import { PHOTO_ERROR_MESSAGES, loadPhoto, warmUp, type FlyerPhotoError } from "@/lib/flyer/photo";
+import { drawFlyer, loadFlyerAssets, loadTemplate } from "@/lib/flyer/render";
 import { updateGraduation, type GraduationData } from "./graduation-data";
 
-// Step 1 of the graduation pop-up: the graduate uploads a photo, its
-// background is removed in the browser (lib/flyer/segment), and their own
-// flyer is drawn (lib/flyer/render) for them to adjust, download and share.
-// The finished flyer (never the photo) is saved so admins can see it.
-
-const poppins = Poppins({ subsets: ["latin"], weight: ["700", "800"], display: "block" });
+// Step 1 of the graduation pop-up: the graduate uploads a photo and their
+// own flyer is drawn in the browser (lib/flyer/render): the template, their
+// photo exactly as uploaded in the circle (their face centred when it's
+// found, lib/flyer/photo), and their name. They can move and zoom the
+// photo, then download and share it. The finished flyer (never the photo)
+// is saved so admins can see it.
 
 type Phase =
   | { kind: "idle" }
   | { kind: "working" }
-  | { kind: "error"; code: FlyerPhotoError; file: File | null }
+  | { kind: "error"; code: FlyerPhotoError | "ASSETS" }
   | { kind: "ready" };
-
-const RETRYABLE: FlyerPhotoError[] = ["FAILED", "TIMEOUT"];
 
 function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -53,56 +52,72 @@ export default function FlyerStep({
   /** After a download or share: move on to the experience step. */
   onShared: () => void;
 }) {
-  const family = poppins.style.fontFamily;
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [placement, setPlacement] = useState<Placement | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [links, setLinks] = useState<{ name: string; href: string }[] | null>(null);
   const [busy, setBusy] = useState<"download" | "share" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const cutoutRef = useRef<ImageBitmap | null>(null);
+  const photoRef = useRef<ImageBitmap | null>(null);
+  const templateRef = useRef<HTMLImageElement | null>(null);
   const baseRef = useRef<Placement | null>(null);
   // The flyer saved for this placement (re-saved after changes).
   const savedRef = useRef<{ placement: Placement | null; url: string } | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
 
-  // Load the models and the font as soon as the pop-up opens.
+  // Load the face detector and the template as soon as the pop-up opens.
   useEffect(() => {
     void warmUp();
-    void loadFlyerFont(family);
-    return () => cutoutRef.current?.close();
-  }, [family]);
+    void loadTemplate().catch(() => null);
+    return () => photoRef.current?.close();
+  }, []);
 
   // Redraw whenever the photo's position or size changes.
   useEffect(() => {
     const canvas = canvasRef.current;
-    const cutout = cutoutRef.current;
-    if (phase.kind !== "ready" || !canvas || !cutout || !placement) return;
+    const photo = photoRef.current;
+    const template = templateRef.current;
+    if (phase.kind !== "ready" || !canvas || !photo || !template || !placement) return;
     const frame = requestAnimationFrame(() => {
       const context = canvas.getContext("2d");
-      if (context) drawFlyer(context, { cutout, placement, name: data.studentName, fontFamily: family });
+      if (context) drawFlyer(context, { template, photo, placement, name: data.studentName });
     });
     return () => cancelAnimationFrame(frame);
-  }, [phase, placement, data.studentName, family]);
+  }, [phase, placement, data.studentName]);
 
   const process = useCallback(
     async (file: File) => {
       setPhase({ kind: "working" });
       setLinks(null);
       setNotice(null);
-      const [result] = await Promise.all([cutOutPerson(file), loadFlyerFont(family)]);
-      if (!result.ok) return setPhase({ kind: "error", code: result.code, file });
-      cutoutRef.current?.close();
-      cutoutRef.current = result.cutout;
-      const base = defaultPlacement(result.head as Head);
+      const [result, template] = await Promise.all([
+        loadPhoto(file),
+        loadFlyerAssets(data.studentName).catch(() => null),
+      ]);
+      if (!result.ok) return setPhase({ kind: "error", code: result.code });
+      if (!template) {
+        result.photo.close();
+        return setPhase({ kind: "error", code: "ASSETS" });
+      }
+      templateRef.current = template;
+      photoRef.current?.close();
+      photoRef.current = result.photo;
+      const base = defaultPlacement(result.photo.width, result.photo.height, result.face);
       baseRef.current = base;
       savedRef.current = null;
+      setSize({ width: result.photo.width, height: result.photo.height });
       setPlacement(base);
       setPhase({ kind: "ready" });
     },
-    [family],
+    [data.studentName],
   );
+
+  /** Changes the placement, keeping the circle covered. */
+  function zoomBy(p: Placement, factor: number, around: { x: number; y: number }) {
+    return size ? zoomPlacement(p, factor, around, size.width, size.height) : p;
+  }
 
   function choose() {
     fileRef.current?.click();
@@ -124,20 +139,20 @@ export default function FlyerStep({
 
   function onPointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const previous = pointers.current.get(event.pointerId);
-    if (!previous || !placement || !baseRef.current) return;
+    if (!previous || !placement || !size) return;
     const point = toFlyer(event);
     const others = [...pointers.current.entries()].filter(([id]) => id !== event.pointerId);
     if (others.length === 0) {
-      setPlacement({ ...placement, x: placement.x + point.x - previous.x, y: placement.y + point.y - previous.y });
+      // Moving by 1 = zooming by 1 (which keeps the circle covered).
+      setPlacement(
+        zoomBy({ ...placement, x: placement.x + point.x - previous.x, y: placement.y + point.y - previous.y }, 1, point),
+      );
     } else {
       // Pinch: zoom by the change in distance, around the midpoint.
       const other = others[0][1];
       const before = Math.hypot(previous.x - other.x, previous.y - other.y);
       const after = Math.hypot(point.x - other.x, point.y - other.y);
-      if (before > 4)
-        setPlacement(
-          zoomPlacement(placement, after / before, { x: (point.x + other.x) / 2, y: (point.y + other.y) / 2 }, baseRef.current),
-        );
+      if (before > 4) setPlacement(zoomBy(placement, after / before, { x: (point.x + other.x) / 2, y: (point.y + other.y) / 2 }));
     }
     pointers.current.set(event.pointerId, point);
   }
@@ -146,8 +161,10 @@ export default function FlyerStep({
     pointers.current.delete(event.pointerId);
   }
 
-  function zoom(factor: number, around = { x: DEFAULT_HEAD.x, y: DEFAULT_HEAD.y }) {
-    if (placement && baseRef.current) setPlacement(zoomPlacement(placement, factor, around, baseRef.current));
+  // The zoom slider: 1 = just covering the circle.
+  const zoomLevel = placement && size ? placement.scale / coverScale(size.width, size.height) : 1;
+  function setZoom(level: number) {
+    if (placement) setPlacement(zoomBy(placement, level / zoomLevel, PHOTO_CIRCLE));
   }
 
   useEffect(() => {
@@ -156,11 +173,11 @@ export default function FlyerStep({
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const around = toFlyer(event);
-      setPlacement((p) => (p && baseRef.current ? zoomPlacement(p, Math.exp(-event.deltaY / 500), around, baseRef.current) : p));
+      setPlacement((p) => (p && size ? zoomPlacement(p, Math.exp(-event.deltaY / 500), around, size.width, size.height) : p));
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
-  }, [phase.kind]);
+  }, [phase.kind, size]);
 
   // ── Download, share, save ───────────────────────────────────────────────
   async function flyerBlob(): Promise<Blob | null> {
@@ -237,7 +254,7 @@ export default function FlyerStep({
       </h2>
       <p className="mt-1 text-xs leading-5 text-slate-500">
         {ready
-          ? "Drag to move your photo, pinch or use + and − to resize. Then download it or share it with your friends."
+          ? "Drag to move your photo, and pinch or use the slider to zoom. Then download it or share it with your friends."
           : "Upload your photo and we'll make your own Sabirole graduation flyer to share with your friends."}
       </p>
 
@@ -262,7 +279,7 @@ export default function FlyerStep({
             alt={
               showSaved
                 ? `Your saved graduation flyer with the name ${data.studentName}`
-                : "Sample graduation flyer: a graduate's photo on green, blue, orange and grey bars, with the words I just completed my internship program with Sabirole, and their name"
+                : "Sample graduation flyer: a graduate's photo in a green circle with confetti and a graduation cap, the words I just completed my internship program with Sabirole, and their name"
             }
             width={FLYER_WIDTH}
             height={FLYER_HEIGHT}
@@ -273,7 +290,6 @@ export default function FlyerStep({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/40 text-center" role="status">
             <LoaderCircle className="h-8 w-8 animate-spin text-[#0B7D54]" aria-hidden="true" />
             <p className="text-sm font-bold text-[#1C1D52]">Preparing your flyer...</p>
-            <p className="px-6 text-[11px] text-slate-600">The first time can take a little longer.</p>
           </div>
         )}
         {!ready && !showSaved && !working && (
@@ -282,13 +298,20 @@ export default function FlyerStep({
       </div>
 
       {ready && (
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <button type="button" onClick={() => zoom(1 / 1.1)} className="rounded-lg border border-slate-200 p-2 text-[#1C1D52]" aria-label="Make photo smaller">
-            <Minus className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => zoom(1.1)} className="rounded-lg border border-slate-200 p-2 text-[#1C1D52]" aria-label="Make photo bigger">
-            <Plus className="h-4 w-4" />
-          </button>
+        <div className="mt-3 flex items-center justify-center gap-3">
+          <label className="flex flex-1 items-center gap-2 text-[11px] font-semibold text-[#1C1D52]">
+            Zoom
+            <input
+              type="range"
+              min={1}
+              max={MAX_ZOOM}
+              step={0.01}
+              value={zoomLevel}
+              onChange={(event) => setZoom(Number(event.target.value))}
+              className="flex-1 accent-[#0B7D54]"
+              aria-label="Zoom photo"
+            />
+          </label>
           <button
             type="button"
             onClick={() => baseRef.current && setPlacement(baseRef.current)}
@@ -301,12 +324,9 @@ export default function FlyerStep({
 
       {phase.kind === "error" && (
         <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-          {PHOTO_ERROR_MESSAGES[phase.code]}
-          {RETRYABLE.includes(phase.code) && phase.file && (
-            <button type="button" onClick={() => void process(phase.file!)} className="mt-2 block font-bold text-[#0B7D54] underline">
-              Try again
-            </button>
-          )}
+          {phase.code === "ASSETS"
+            ? "We couldn't load the flyer design. Please check your connection and try again."
+            : PHOTO_ERROR_MESSAGES[phase.code]}
         </div>
       )}
 

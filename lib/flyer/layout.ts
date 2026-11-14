@@ -1,114 +1,106 @@
-// The graduation flyer's design (approved design: public/flyer-sample.png),
-// as numbers, so the drawing (./render) and tests use one source.
-// Canvas: 1080 x 1350 px. See components/graduation.
+// The graduation flyer's layout, as numbers, so the drawing (./render) and
+// the tests use one source. Canvas: 2160 x 2700 px. The background, text,
+// ring, confetti and cap are all in the template image
+// (public/flyer-template.png); only the photo and the name are drawn.
+// The finished look: public/flyer-sample.png. See components/graduation.
 
-export const FLYER_WIDTH = 1080;
-export const FLYER_HEIGHT = 1350;
+export const FLYER_WIDTH = 2160;
+export const FLYER_HEIGHT = 2700;
+export const FLYER_TEMPLATE_URL = "/flyer-template.png";
 
-export const FLYER_COLORS = {
-  background: "#EAF4EE",
-  maze: "rgba(255, 255, 255, 0.8)",
-  glow: "11, 125, 84", // #0B7D54, as rgb for the gradient
-  ring: "#C3CACE",
-  intro: "#3A4248",
-  sabi: "#12306B",
-  role: "#0B7D54",
-  name: "#1E2327",
+/** The grey circle in the template: the photo replaces it completely. */
+export const PHOTO_CIRCLE = { x: 1080, y: 1460, radius: 608 } as const;
+
+/** Where a detected face is placed (about). */
+export const FACE_TARGET = { x: 1080, y: 1200 } as const;
+
+/** Furthest the photo can be zoomed in, relative to just covering the circle. */
+export const MAX_ZOOM = 4;
+
+export const NAME_STYLE = {
+  family: "Poppins",
+  weight: 700,
+  size: 128,
+  minSize: 48,
+  color: "#1E2327",
+  x: FLYER_WIDTH / 2,
+  /**
+   * Top of the capitals. Taller letters (d, t, S) reach about y = 2340 and
+   * the baseline sits near 2434, as in public/flyer-sample.png.
+   */
+  capTop: 2345,
+  maxWidth: 1840,
 } as const;
-
-/** Thick white angular lines (44px, square corners), as point lists. */
-export const MAZE_LINES: [number, number][][] = [
-  // M 260 -40 V 190 H 560 V 60 H 830 V 340 H 1120
-  [[260, -40], [260, 190], [560, 190], [560, 60], [830, 60], [830, 340], [1120, 340]],
-  // M -40 610 H 150 V 390 H 330 V 900 H 80 V 1130 H 420 V 1390
-  [[-40, 610], [150, 610], [150, 390], [330, 390], [330, 900], [80, 900], [80, 1130], [420, 1130], [420, 1390]],
-  // M 1120 570 H 900 V 830 H 1010 V 1100 H 760 V 1390
-  [[1120, 570], [900, 570], [900, 830], [1010, 830], [1010, 1100], [760, 1100], [760, 1390]],
-];
-export const MAZE_WIDTH = 44;
-
-export const GLOW = { x: 1000, y: 430, radius: 560, opacity: 0.34 };
-
-export const RINGS = [
-  { x: -30, y: 20, radius: 150 },
-  { x: 1080, y: 1350, radius: 265 },
-];
-export const RING_WIDTH = 38;
-
-/** The funnel group: translated, then rotated (degrees). */
-export const PILL_GROUP = { x: 600, y: 770, rotation: -35 };
-
-export type Pill = { color: string; x: number; y: number; width: number; height: number };
-
-/** In the group's local coordinates; fully rounded ends (radius = h / 2). */
-export const PILLS: Pill[] = [
-  { color: "#0B7D54", x: -340, y: -289, width: 680, height: 180 },
-  { color: "#1F5FD1", x: -265, y: -93, width: 530, height: 135 },
-  { color: "#F5A20A", x: -230, y: 58, width: 460, height: 115 },
-  { color: "#3A3F44", x: -180, y: 189, width: 360, height: 100 },
-];
-
-/** Above the green pill (local coordinates): where the head rises out. */
-export const POP_OUT = { x: -150, y: -900, width: 470, height: 701 };
-
-/** Where the head goes by default: centre and height (top of hair to chin). */
-export const DEFAULT_HEAD = { x: 517, y: 446, height: 220 };
-
-export const FLYER_TEXT = {
-  introLines: ["I just completed my", "internship program with"],
-  introSize: 36,
-  // Canvas "top" is the font's em box: these match the approved design.
-  introTop: 75,
-  introLineHeight: 52,
-  brandSize: 104,
-  /** Gap between the last intro line's box and the brand's top. */
-  brandGap: 13,
-  brand: ["Sabi", "role"] as const,
-  nameX: 80,
-  nameBaseline: FLYER_HEIGHT - 86,
-  nameSize: 64,
-  nameMinSize: 30,
-  nameMaxWidth: 700,
-};
 
 export const SHARE_CAPTION = "I just completed my internship program with Sabirole.";
 
-/**
- * Where the cut-out goes on the flyer: a flyer point is
- * cut-out point × scale + (x, y).
- */
+/** Where the photo goes: a flyer point is photo point × scale + (x, y). */
 export type Placement = { scale: number; x: number; y: number };
 
-/** The head (in cut-out pixels): centre and height, top of hair to chin. */
-export type Head = { x: number; y: number; height: number };
-
-/** Puts the head at DEFAULT_HEAD's place and size. */
-export function defaultPlacement(head: Head): Placement {
-  const scale = DEFAULT_HEAD.height / Math.max(1, head.height);
-  return { scale, x: DEFAULT_HEAD.x - head.x * scale, y: DEFAULT_HEAD.y - head.y * scale };
+/** The scale at which the photo just covers the circle. */
+export function coverScale(width: number, height: number) {
+  const diameter = PHOTO_CIRCLE.radius * 2;
+  return Math.max(diameter / width, diameter / height);
 }
-
-export const MIN_ZOOM = 0.5;
-export const MAX_ZOOM = 2.5;
 
 /**
- * Zooms by `factor` around a flyer point (e.g. the pinch or the head), keeping
- * the zoom within MIN_ZOOM..MAX_ZOOM of `base` (the default placement).
+ * Keeps the photo covering the whole circle: never smaller than the cover
+ * scale (nor bigger than MAX_ZOOM times it), and never moved so far that
+ * an edge shows inside the circle.
  */
-export function zoomPlacement(p: Placement, factor: number, around: { x: number; y: number }, base: Placement): Placement {
-  const scale = Math.min(base.scale * MAX_ZOOM, Math.max(base.scale * MIN_ZOOM, p.scale * factor));
-  const f = scale / p.scale;
-  return { scale, x: around.x - (around.x - p.x) * f, y: around.y - (around.y - p.y) * f };
+export function clampPlacement(placement: Placement, width: number, height: number): Placement {
+  const min = coverScale(width, height);
+  const scale = Math.min(Math.max(placement.scale, min), min * MAX_ZOOM);
+  const { x: cx, y: cy, radius: r } = PHOTO_CIRCLE;
+  const clamp = (value: number, size: number, centre: number) =>
+    Math.min(Math.max(value, centre + r - size * scale), centre - r);
+  return { scale, x: clamp(placement.x, width, cx), y: clamp(placement.y, height, cy) };
 }
 
-/** The largest name size (down from 64) whose width fits on one line. */
+/**
+ * The starting placement: covering the circle, centred, or with the face
+ * (its centre, in photo pixels) moved to about FACE_TARGET as far as the
+ * photo allows.
+ */
+export function defaultPlacement(width: number, height: number, face?: { x: number; y: number } | null): Placement {
+  const scale = coverScale(width, height);
+  const centred = {
+    scale,
+    x: PHOTO_CIRCLE.x - (width * scale) / 2,
+    y: PHOTO_CIRCLE.y - (height * scale) / 2,
+  };
+  if (!face) return centred;
+  return clampPlacement({ scale, x: FACE_TARGET.x - face.x * scale, y: FACE_TARGET.y - face.y * scale }, width, height);
+}
+
+/** Zooms by `factor` around a flyer point, keeping the circle covered. */
+export function zoomPlacement(
+  placement: Placement,
+  factor: number,
+  around: { x: number; y: number },
+  width: number,
+  height: number,
+): Placement {
+  const wanted = clampPlacement({ ...placement, scale: placement.scale * factor }, width, height).scale;
+  const actual = wanted / placement.scale;
+  return clampPlacement(
+    {
+      scale: wanted,
+      x: around.x - (around.x - placement.x) * actual,
+      y: around.y - (around.y - placement.y) * actual,
+    },
+    width,
+    height,
+  );
+}
+
+/** The name's font size: NAME_STYLE.size, smaller only if it's too wide. */
 export function fitNameSize(measure: (size: number) => number) {
-  for (let size = FLYER_TEXT.nameSize; size > FLYER_TEXT.nameMinSize; size -= 2)
-    if (measure(size) <= FLYER_TEXT.nameMaxWidth) return size;
-  return FLYER_TEXT.nameMinSize;
+  let size: number = NAME_STYLE.size;
+  while (size > NAME_STYLE.minSize && measure(size) > NAME_STYLE.maxWidth) size -= 2;
+  return size;
 }
 
-/** "sabirole-graduation-ada-obi.png" */
 export function flyerFileName(name: string, extension = "png") {
   const slug = name
     .normalize("NFKD")
@@ -120,14 +112,14 @@ export function flyerFileName(name: string, extension = "png") {
   return `sabirole-graduation-${slug || "graduate"}.${extension}`;
 }
 
-/** Share links for when the browser can't share files. */
+/** Share links for when the device can't share the image file itself. */
 export function shareLinks(flyerUrl: string | null) {
   const text = encodeURIComponent(flyerUrl ? `${SHARE_CAPTION} ${flyerUrl}` : SHARE_CAPTION);
-  const url = flyerUrl ? encodeURIComponent(flyerUrl) : null;
+  const url = encodeURIComponent(flyerUrl ?? "https://grouhacademy.com");
   return [
     { name: "WhatsApp", href: `https://wa.me/?text=${text}` },
-    ...(url ? [{ name: "LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}` }] : []),
+    { name: "LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}` },
     { name: "X", href: `https://x.com/intent/post?text=${text}` },
-    ...(url ? [{ name: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${url}` }] : []),
+    { name: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
   ];
 }
