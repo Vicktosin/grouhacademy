@@ -155,3 +155,18 @@ test("tags are tidied; CSV export escapes quotes and neutralises formulas", () =
   assert.ok(csv.includes(`"'=HYPERLINK(""x"")"`), "formula is neutralised");
   assert.ok(csv.includes(",https://x.supabase.co/f.png,No,"));
 });
+
+test("voice notes: the option goes at 6 people, and 7 is a strict maximum", async () => {
+  const { VOICE_NOTE_LIMIT, VOICE_NOTE_HARD_LIMIT } = await import("../lib/testimonial-input");
+  assert.equal(VOICE_NOTE_LIMIT, 6);
+  assert.equal(VOICE_NOTE_HARD_LIMIT, 7);
+  const source = readFileSync(new URL("../lib/testimonials.ts", import.meta.url), "utf8");
+  assert.match(source, /distinct: \["userId"\]/, "counted per person, not per submission");
+  assert.match(source, /user: REAL_USER/, "admins' previews don't count");
+  assert.match(source, /pg_advisory_xact_lock[\s\S]*>= VOICE_NOTE_HARD_LIMIT/, "saving checks the strict limit under a lock");
+  assert.match(
+    readFileSync(new URL("../app/api/internship/testimonial/voice/route.ts", import.meta.url), "utf8"),
+    /voiceNotesOpen\(access\.userId, undefined, VOICE_NOTE_HARD_LIMIT\)/,
+    "no recording is stored once full",
+  );
+});

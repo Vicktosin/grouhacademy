@@ -112,11 +112,13 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
       </div>
     );
 
-  const cards: { id: Choice; icon: typeof Video; title: string; text: string }[] = [
+  const allCards: { id: Choice; icon: typeof Video; title: string; text: string }[] = [
     { id: "video", icon: Video, title: "Upload a video", text: "30–90 seconds about your experience" },
     { id: "voice", icon: Mic, title: "Drop a voice note", text: "Record up to 3 minutes right here" },
     { id: "write", icon: PenLine, title: "Write about it", text: "A few words about your month" },
   ];
+  // Voice notes close once VOICE_NOTE_LIMIT different interns have sent one.
+  const cards = allCards.filter((card) => card.id !== "voice" || data.voiceNotesOpen);
 
   return (
     <div>

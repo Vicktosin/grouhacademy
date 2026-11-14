@@ -3,6 +3,9 @@ import { getPrisma } from "@/lib/prisma";
 import { REAL_USER } from "@/lib/real-user";
 import { isGoogleDriveUrl } from "@/lib/platform-settings-validation";
 import {
+  VOICE_NOTE_HARD_LIMIT,
+  VOICE_NOTE_LIMIT,
+  VOICE_NOTES_CLOSED,
   parseTestimonialTags,
   resolveDriveFolderUrl,
   type TestimonialCsvRow,
@@ -98,6 +101,8 @@ export async function getInternTestimonialForm(userId: string, db: PrismaClient 
     /** The certificate the graduation is for (null for a preview). */
     certificateId: grad.certificateId,
     isPreview: grad.isPreview,
+    /** Voice notes are still open to this intern (see voiceNotesOpen). */
+    voiceNotesOpen: await voiceNotesOpen(userId, db),
     /** The name printed on the flyer. */
     studentName: grad.name,
     flyerUrl: t?.flyerUrl ?? null,
@@ -130,19 +135,32 @@ export async function saveInternTestimonial(
     rating: input.rating,
     consent: input.consent,
   };
-  await db.internTestimonial.upsert({
-    where: { applicationId: application.id },
-    create: {
-      ...data,
-      userId,
-      applicationId: application.id,
-      cohortId: application.cohortId,
-      programId: application.programId,
-    },
-    // An edited testimonial goes back for approval (the flyer is kept).
-    update: { ...data, status: "PENDING" },
+  const write = (client: Db) =>
+    client.internTestimonial.upsert({
+      where: { applicationId: application.id },
+      create: {
+        ...data,
+        userId,
+        applicationId: application.id,
+        cohortId: application.cohortId,
+        programId: application.programId,
+      },
+      // An edited testimonial goes back for approval (the flyer is kept).
+      update: { ...data, status: "PENDING" },
+    });
+  if (!input.voiceNoteUrl) {
+    await write(db);
+    return { ok: true as const };
+  }
+  // A voice note: strictly at most VOICE_NOTE_HARD_LIMIT people. The lock
+  // makes simultaneous submissions take turns, so none can slip past it.
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('sabirole-voice-notes'))`;
+    if (!(await hasOwnVoiceNote(userId, tx)) && (await countVoiceNotePeople(tx)) >= VOICE_NOTE_HARD_LIMIT)
+      return { ok: false as const, error: VOICE_NOTES_CLOSED, closed: true };
+    await write(tx);
+    return { ok: true as const };
   });
-  return { ok: true as const };
 }
 
 /** Records the graduate's flyer (after they download or share it). */
@@ -165,6 +183,38 @@ export async function saveInternFlyer(userId: string, flyerUrl: string, db: Pris
 }
 
 /** Whether the intern may make a flyer (graduated, or an admin's preview). */
+type Db = PrismaClient | Prisma.TransactionClient;
+
+function hasOwnVoiceNote(userId: string, db: Db) {
+  return db.internTestimonial
+    .findFirst({ where: { userId, voiceNoteUrl: { not: null } }, select: { id: true } })
+    .then(Boolean);
+}
+
+/** How many different real interns have sent a voice note. */
+export async function countVoiceNotePeople(db: Db = getPrisma()) {
+  const rows = await db.internTestimonial.findMany({
+    where: { voiceNoteUrl: { not: null }, user: REAL_USER },
+    distinct: ["userId"],
+    select: { userId: true },
+  });
+  return rows.length;
+}
+
+/**
+ * Whether this intern may send a voice note: the option shows until
+ * VOICE_NOTE_LIMIT people have sent one (pass VOICE_NOTE_HARD_LIMIT to check
+ * the strict maximum). Someone who already has one may still replace it.
+ */
+export async function voiceNotesOpen(
+  userId: string,
+  db: PrismaClient = getPrisma(),
+  limit: number = VOICE_NOTE_LIMIT,
+) {
+  if (await hasOwnVoiceNote(userId, db)) return true;
+  return (await countVoiceNotePeople(db)) < limit;
+}
+
 export async function canMakeFlyer(userId: string, db: PrismaClient = getPrisma()) {
   return Boolean((await graduation(db, userId))?.graduated);
 }

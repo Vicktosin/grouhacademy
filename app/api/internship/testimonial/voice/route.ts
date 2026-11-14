@@ -1,5 +1,7 @@
 import { requireInternshipWorkspace } from "@/lib/internship-access";
 import { isStorageConfigured, uploadTestimonialMedia } from "@/lib/testimonial-media";
+import { voiceNotesOpen } from "@/lib/testimonials";
+import { VOICE_NOTE_HARD_LIMIT, VOICE_NOTES_CLOSED } from "@/lib/testimonial-input";
 import { MEDIA_UPLOAD_MAX_BYTES, VOICE_NOTE_TYPES, baseContentType } from "@/lib/testimonial-input";
 
 // Uploads a voice note (recorded in the browser, up to 3 minutes) to the
@@ -10,6 +12,11 @@ export async function POST(request: Request) {
   if ("response" in access) return access.response;
   if (!isStorageConfigured())
     return Response.json({ error: "Voice notes aren't set up yet. Please write or share a video instead." }, { status: 503 });
+
+  // Don't store a recording that can't be saved (the strict limit is
+  // enforced again, under a lock, when the testimonial is saved).
+  if (!(await voiceNotesOpen(access.userId, undefined, VOICE_NOTE_HARD_LIMIT)))
+    return Response.json({ error: VOICE_NOTES_CLOSED }, { status: 409 });
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");

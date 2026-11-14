@@ -35,7 +35,8 @@ export async function PUT(request: Request) {
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   try {
     const result = await saveInternTestimonial(access.userId, parsed.value);
-    if (!result.ok) return Response.json({ error: result.error }, { status: 404 });
+    // Voice notes full (strict limit, checked when saving), or no application.
+    if (!result.ok) return Response.json({ error: result.error }, { status: "closed" in result ? 409 : 404 });
     return Response.json({ saved: true });
   } catch (error) {
     console.error("Failed to save testimonial:", error);

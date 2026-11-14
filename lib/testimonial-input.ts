@@ -27,6 +27,15 @@ export const VOICE_NOTE_TYPES = [
   "audio/wav",
 ] as const;
 export const VOICE_NOTE_MAX_SECONDS = 180;
+/** The voice note option disappears once this many interns have sent one. */
+export const VOICE_NOTE_LIMIT = 6;
+/**
+ * The strict maximum: interns who had the option open at the same moment
+ * as the 6th may still finish, but never more than this many people.
+ */
+export const VOICE_NOTE_HARD_LIMIT = 7;
+export const VOICE_NOTES_CLOSED =
+  "Voice notes are closed now. Please share a video or write about your experience instead.";
 
 export type MediaKind = "flyers" | "voice-notes";
 

@@ -14,6 +14,8 @@ export type GraduationData = {
   graduated: boolean;
   certificateId: string | null;
   isPreview: boolean;
+  /** False once enough interns have sent voice notes (VOICE_NOTE_LIMIT). */
+  voiceNotesOpen: boolean;
   studentName: string;
   flyerUrl: string | null;
   testimonial: {

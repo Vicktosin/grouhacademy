@@ -4,6 +4,7 @@ import { Check, Download, Eye, ExternalLink, ImageIcon, LoaderCircle, Mic, PenLi
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { VOICE_NOTE_LIMIT } from "@/lib/testimonial-input";
 
 // Graduation testimonials: each graduate's flyer (made in the graduation
 // pop-up) and how they shared their experience: a video (in Google Drive;
@@ -13,6 +14,7 @@ import AdminShell from "@/components/AdminShell";
 
 type Testimonial = {
   id: string;
+  userId: string;
   name: string;
   email: string;
   isPreview: boolean;
@@ -152,12 +154,15 @@ export default function AdminTestimonialsPage() {
     setNotice(data.url ? "Drive folder saved." : "Drive folder cleared.");
   }
 
+  // Voice notes close for new interns once this many people have sent one.
+  const voicePeople = new Set(real.filter((t) => t.voiceNoteUrl).map((t) => t.userId)).size;
+  const voiceLabel = `Voice notes (limit ${VOICE_NOTE_LIMIT}${voicePeople >= VOICE_NOTE_LIMIT ? ", closed" : ""})`;
   const stats: [string, number | null][] = [
     ["Graduates (certificate)", graduates],
     ["Flyers made", real.filter((t) => t.flyerUrl).length],
     ["Experiences shared", real.filter(hasExperience).length],
     ["Videos", real.filter((t) => t.videoLink).length],
-    ["Voice notes", real.filter((t) => t.voiceNoteUrl).length],
+    [voiceLabel, voicePeople],
     ["Written", real.filter((t) => t.testimonial).length],
   ];
 
