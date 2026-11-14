@@ -13,7 +13,7 @@ const appDir = path.resolve(__dirname, "..");
 test("MCP tools expose the new fields to Claude", { timeout: 60_000 }, async () => {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [path.join(appDir, "mcp-server", "launcher.js")],
+    args: [require.resolve("tsx/cli"), path.join(appDir, "mcp-server", "index.ts")],
     cwd: appDir,
     stderr: "pipe",
   });
