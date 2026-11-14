@@ -1,8 +1,9 @@
 "use client";
 
 import PageGuide from "@/components/onboarding/PageGuide";
-import { ArrowRight, Download, LoaderCircle, Lock } from "lucide-react";
+import { ArrowRight, Download, LoaderCircle, Lock, MessageSquareHeart } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import InternshipShell from "@/components/InternshipShell";
 import { ScaledCertificate } from "@/components/certificate/Certificate";
@@ -33,6 +34,8 @@ type EarnedCertificate = {
 
 type CertificateData = {
   eligible: boolean;
+  /** Graduated but hasn't shared their experience yet: no certificate until they do. */
+  experienceRequired?: boolean;
   id?: string;
   /** Every certificate earned, across levels and tracks, newest first. */
   certificates?: EarnedCertificate[];
@@ -51,7 +54,11 @@ type CertificateData = {
   revokedReason?: string | null;
 };
 
+/** Where a graduate shares their experience, then comes back here. */
+const SHARE_EXPERIENCE_HREF = `/internship/dashboard/testimonial?next=${encodeURIComponent("/internship/dashboard/certificate")}`;
+
 export default function InternshipCertificatePage() {
+  const router = useRouter();
   const [data, setData] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +134,50 @@ export default function InternshipCertificatePage() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  // Sharing their experience comes first: a short notice, then on to it.
+  const experienceRequired = Boolean(data?.experienceRequired);
+  useEffect(() => {
+    if (!experienceRequired) return;
+    const timer = window.setTimeout(() => router.replace(SHARE_EXPERIENCE_HREF), 4000);
+    return () => window.clearTimeout(timer);
+  }, [experienceRequired, router]);
+
+  if (experienceRequired) {
+    return (
+      <InternshipShell>
+        <div
+          className="fixed inset-0 z-[96] flex items-center justify-center bg-[#11132f]/70 p-4 backdrop-blur-sm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="experience-required-title"
+          aria-describedby="experience-required-text"
+        >
+          <div className="w-full max-w-sm rounded-3xl bg-white px-6 py-7 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#edf9f3] text-[#0B7D54]">
+              <MessageSquareHeart className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <h1 id="experience-required-title" className="mt-4 text-lg font-bold text-[#1C1D52]">
+              Please tell us about your experience
+            </h1>
+            <p id="experience-required-text" className="mt-2 text-xs leading-5 text-slate-500">
+              Before you download your certificate, share your experience of the internship: a short video, a voice
+              note or a few written words. It only takes a minute, and then your certificate is yours.
+            </p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => router.replace(SHARE_EXPERIENCE_HREF)}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0B7D54] px-4 py-3 text-sm font-bold text-white"
+            >
+              Tell us about my experience <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <p className="mt-3 text-[11px] text-slate-400">Taking you there in a moment…</p>
+          </div>
+        </div>
+      </InternshipShell>
+    );
+  }
 
   if (loading) {
     return (

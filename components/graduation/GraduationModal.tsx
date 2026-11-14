@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowLeft, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import ExperienceForm from "./ExperienceForm";
@@ -18,6 +20,14 @@ import {
 // "My graduation flyer" (dashboard, testimonial page) and the admin preview
 // banner open it any time. Step 1 is the flyer; after they download or share
 // it, step 2 asks about their experience.
+//
+// Sharing their experience is compulsory: until a graduate has, the pop-up
+// opens on every page (not just once per login) and can't be closed. Coming
+// back after making their flyer, they continue at step 2. Not on the pages
+// that handle it themselves (the testimonial page holds the same form; the
+// certificate page sends them there), nor for an admin's preview.
+
+const HANDLES_IT_ITSELF = ["/internship/dashboard/testimonial", "/internship/dashboard/certificate"];
 
 const SHOWN_KEY = "sabirole-graduation-shown";
 
@@ -50,6 +60,12 @@ function rememberShown(login: string) {
 
 export default function GraduationModal({ enabled }: { enabled: boolean }) {
   const { data, loaded } = useGraduation(enabled);
+  const pathname = usePathname() ?? "";
+  const ownPage = HANDLES_IT_ITSELF.some((page) => pathname.startsWith(page));
+  // Must share their experience before carrying on.
+  const required = Boolean(data?.graduated && !data.isPreview && !data.experienceShared);
+  // Can't be closed until then (except where they opened it on purpose).
+  const locked = required && !ownPage;
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"flyer" | "experience">("flyer");
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -62,12 +78,22 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
     if (!loaded || autoChecked.current) return;
     autoChecked.current = true;
     if (!data?.graduated) return markGraduationSettled();
+    if (required) {
+      if (ownPage) return markGraduationSettled();
+      // Every page until they've shared; straight to step 2 once the flyer is made.
+      const startAt = data.flyerUrl ? "experience" : "flyer";
+      void Promise.resolve().then(() => {
+        setStep(startAt);
+        setOpen(true);
+      });
+      return;
+    }
     void currentLogin().then((login) => {
       if (login && shownFor(login)) return markGraduationSettled();
       if (login) rememberShown(login);
       setOpen(true);
     });
-  }, [enabled, loaded, data]);
+  }, [enabled, loaded, data, required, ownPage]);
 
   // Opened on request.
   useEffect(() => {
@@ -89,7 +115,7 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        close();
+        if (!locked) close();
         return;
       }
       if (event.key !== "Tab" || !dialog) return;
@@ -109,7 +135,7 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, step]);
+  }, [open, step, locked]);
 
   function close() {
     setOpen(false);
@@ -124,7 +150,7 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
   return (
     <div
       className="fixed inset-0 z-[95] flex items-end justify-center bg-[#11132f]/75 backdrop-blur-sm sm:items-center sm:p-4"
-      onMouseDown={(event) => event.target === event.currentTarget && close()}
+      onMouseDown={(event) => !locked && event.target === event.currentTarget && close()}
     >
       <div
         ref={dialogRef}
@@ -141,9 +167,15 @@ export default function GraduationModal({ enabled }: { enabled: boolean }) {
           ) : (
             <span className="text-[10px] font-semibold text-slate-400">Step 1 of 2</span>
           )}
-          <button type="button" onClick={close} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">
-            <X className="h-5 w-5" />
-          </button>
+          {locked ? (
+            <Link href="/internship/dashboard/logout" className="text-[11px] font-semibold text-slate-400 underline">
+              Log out
+            </Link>
+          ) : (
+            <button type="button" onClick={close} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
         {data.isPreview && (
           <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">

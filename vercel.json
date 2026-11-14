@@ -8,6 +8,14 @@
     {
       "path": "/api/cron/affiliate-payouts",
       "schedule": "0 7 1 * *"
+    },
+    {
+      "path": "/api/cron/testimonial-media?run=morning",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/testimonial-media?run=evening",
+      "schedule": "0 19 * * *"
     }
   ]
 }

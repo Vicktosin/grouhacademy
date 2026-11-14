@@ -4,6 +4,7 @@ import { Check, Download, Eye, ExternalLink, ImageIcon, LoaderCircle, Mic, PenLi
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { downloadFlyerJpeg } from "@/lib/flyer/download";
 import { VOICE_NOTE_LIMIT } from "@/lib/testimonial-input";
 
 // Graduation testimonials: each graduate's flyer (made in the graduation
@@ -76,7 +77,6 @@ export default function AdminTestimonialsPage() {
   const [programId, setProgramId] = useState("");
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState<Kind>("");
-  const [consentOnly, setConsentOnly] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/internship/testimonials", { cache: "no-store" })
@@ -106,10 +106,9 @@ export default function AdminTestimonialsPage() {
           (!cohortId || t.cohortId === cohortId) &&
           (!programId || t.programId === programId) &&
           (!status || t.status === status) &&
-          (!consentOnly || t.consent) &&
           matchesKind(t, kind),
       ),
-    [items, cohortId, programId, status, consentOnly, kind],
+    [items, cohortId, programId, status, kind],
   );
   const real = items.filter((t) => !t.isPreview);
 
@@ -118,10 +117,9 @@ export default function AdminTestimonialsPage() {
     if (cohortId) params.set("cohortId", cohortId);
     if (programId) params.set("programId", programId);
     if (status) params.set("status", status);
-    if (consentOnly) params.set("consentOnly", "1");
     const query = params.toString();
     return `/api/admin/internship/testimonials/export${query ? `?${query}` : ""}`;
-  }, [cohortId, programId, status, consentOnly]);
+  }, [cohortId, programId, status]);
 
   async function review(id: string, body: { status?: Testimonial["status"]; tags?: string[] }) {
     setError(null);
@@ -235,17 +233,13 @@ export default function AdminTestimonialsPage() {
                 <option value="REJECTED">Rejected</option>
               </select>
             </label>
-            <label className="flex items-center gap-2 pb-2 text-xs text-[#1C1D52]">
-              <input type="checkbox" checked={consentOnly} onChange={(e) => setConsentOnly(e.target.checked)} className="accent-[#5FBB46]" />
-              Consented only
-            </label>
             <a href={exportHref} className="ml-auto inline-flex items-center gap-2 rounded-lg bg-[#1C1D52] px-4 py-2.5 text-[10px] font-semibold text-white">
               <Download className="h-3.5 w-3.5" aria-hidden="true" /> Export CSV
             </a>
           </div>
 
           <p className="mt-4 text-[10px] text-slate-500">
-            {visible.filter((t) => !t.isPreview).length} shown · {visible.filter((t) => !t.isPreview && t.consent).length} with consent to share
+            {visible.filter((t) => !t.isPreview).length} shown · {visible.filter((t) => !t.isPreview && t.flyerUrl).length} with a flyer
           </p>
 
           {loading && <p className="mt-4 text-xs text-slate-500">Loading…</p>}
@@ -280,18 +274,49 @@ export default function AdminTestimonialsPage() {
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightbox.url} alt={`Graduation flyer of ${lightbox.name}`} className="max-h-[85vh] max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
-          <a
-            href={lightbox.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-4 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#1C1D52]"
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" /> Open full size
-          </a>
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2" onClick={(e) => e.stopPropagation()}>
+            <FlyerDownloadButton url={lightbox.url} name={lightbox.name} variant="light" />
+            <a
+              href={lightbox.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-white/15 px-3 py-2 text-xs font-semibold text-white"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> Open full size
+            </a>
+          </div>
         </div>
       )}
     </AdminShell>
+  );
+}
+
+/** Downloads the graduate's finished flyer to this device as a JPEG. */
+function FlyerDownloadButton({ url, name, variant = "dark" }: { url: string; name: string; variant?: "dark" | "light" }) {
+  const [state, setState] = useState<"idle" | "busy" | "failed">("idle");
+  async function download() {
+    setState("busy");
+    try {
+      await downloadFlyerJpeg(url, name);
+      setState("idle");
+    } catch (error) {
+      console.error("Flyer download failed:", error);
+      setState("failed");
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void download()}
+      disabled={state === "busy"}
+      aria-label={`Download the graduation flyer of ${name} as a JPEG`}
+      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[10px] font-semibold disabled:opacity-60 ${
+        variant === "light" ? "bg-white text-xs text-[#1C1D52]" : "bg-[#1C1D52] text-white"
+      }`}
+    >
+      {state === "busy" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+      {state === "failed" ? "Retry download" : "Download JPG"}
+    </button>
   );
 }
 
@@ -308,15 +333,18 @@ function TestimonialCard({
   return (
     <li className={`flex gap-4 rounded-2xl border p-4 ${item.isPreview ? "border-dashed border-[#B45309] bg-amber-50/40" : "border-slate-200"}`}>
       {item.flyerUrl ? (
-        <button
-          type="button"
-          onClick={() => onOpenFlyer(item.flyerUrl!)}
-          className="shrink-0 self-start overflow-hidden rounded-lg border border-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5FBB46]"
-          aria-label={`Open the graduation flyer of ${item.name}`}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={item.flyerUrl} alt="" loading="lazy" className="h-[150px] w-[120px] object-cover" />
-        </button>
+        <div className="flex w-[120px] shrink-0 flex-col gap-1.5 self-start">
+          <button
+            type="button"
+            onClick={() => onOpenFlyer(item.flyerUrl!)}
+            className="overflow-hidden rounded-lg border border-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5FBB46]"
+            aria-label={`Open the graduation flyer of ${item.name}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.flyerUrl} alt="" loading="lazy" className="h-[150px] w-[120px] object-cover" />
+          </button>
+          <FlyerDownloadButton url={item.flyerUrl} name={item.name} />
+        </div>
       ) : (
         <div className="flex h-[150px] w-[120px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 text-center text-[10px] text-slate-400">
           <ImageIcon className="h-5 w-5" aria-hidden="true" /> No flyer yet
@@ -341,9 +369,6 @@ function TestimonialCard({
           </div>
           <div className="flex flex-wrap gap-1.5 text-[9px] font-bold">
             {item.rating !== null && <span className="rounded-full bg-[#eef7ff] px-2 py-1 text-[#1C1D52]">{item.rating}/10</span>}
-            <span className={`rounded-full px-2 py-1 ${item.consent ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-              {item.consent ? "May share" : "No consent to share"}
-            </span>
             <span className={`rounded-full px-2 py-1 ${statusChip[item.status]}`}>{item.status}</span>
           </div>
         </div>

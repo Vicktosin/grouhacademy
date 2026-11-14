@@ -21,7 +21,16 @@ function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 
-export default function ExperienceForm({ data, onDone }: { data: GraduationData; onDone?: () => void }) {
+export default function ExperienceForm({
+  data,
+  onDone,
+  doneLabel = "Done",
+}: {
+  data: GraduationData;
+  onDone?: () => void;
+  /** The button after saving (e.g. "Continue to my certificate"). */
+  doneLabel?: string;
+}) {
   const existing = data.testimonial;
   const [choice, setChoice] = useState<Choice | null>(
     existing?.videoLink ? "video" : existing?.voiceNoteUrl ? "voice" : existing?.testimonial ? "write" : null,
@@ -29,7 +38,6 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
   const [videoLink, setVideoLink] = useState(existing?.videoLink ?? "");
   const [uploadedNoLink, setUploadedNoLink] = useState(false);
   const [text, setText] = useState(existing?.testimonial ?? "");
-  const [consent, setConsent] = useState(existing?.consent ?? false);
   const [voice, setVoice] = useState<{ blob: Blob; url: string } | null>(null);
   const [savedVoiceUrl, setSavedVoiceUrl] = useState(existing?.voiceNoteUrl ?? null);
   const [saving, setSaving] = useState(false);
@@ -38,7 +46,7 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
 
   async function submit() {
     setError(null);
-    let body: Record<string, unknown> = { consent };
+    let body: Record<string, unknown> = {};
     if (choice === "video") {
       const link = videoLink.trim();
       if (!link && !uploadedNoLink) return setError("Paste the link to your video, or tick that you've uploaded it.");
@@ -74,12 +82,13 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error ?? "Unable to save. Please try again.");
       updateGraduation({
+        experienceShared: true,
         testimonial: {
           videoLink: (body.videoLink as string) ?? null,
           voiceNoteUrl: (body.voiceNoteUrl as string) ?? null,
           testimonial: (body.testimonial as string) ?? "",
           rating: null,
-          consent,
+          consent: existing?.consent ?? false,
           updatedAt: new Date().toISOString(),
         },
       });
@@ -102,7 +111,7 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
         <div className="mt-5 flex flex-col gap-2">
           {onDone && (
             <button type="button" onClick={onDone} className="rounded-xl bg-[#0B7D54] px-4 py-3 text-sm font-bold text-white">
-              Done
+              {doneLabel}
             </button>
           )}
           <button type="button" onClick={() => setDone(false)} className="text-xs font-semibold text-slate-500 underline">
@@ -242,10 +251,6 @@ export default function ExperienceForm({ data, onDone }: { data: GraduationData;
 
       {choice && (
         <>
-          <label className="mt-4 flex items-start gap-2 text-xs text-[#1C1D52]">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-[#0B7D54]" />
-            <span>Sabirole may share my flyer, video, voice note or words publicly</span>
-          </label>
           {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
           <button
             type="button"

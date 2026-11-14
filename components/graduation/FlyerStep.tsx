@@ -19,6 +19,7 @@ import {
   type Placement,
 } from "@/lib/flyer/layout";
 import { PHOTO_ERROR_MESSAGES, loadPhoto, warmUp, type FlyerPhotoError } from "@/lib/flyer/photo";
+import { FLYER_JPEG_QUALITY, downloadBlob, toJpeg } from "@/lib/flyer/download";
 import { drawFlyer, loadFlyerAssets } from "@/lib/flyer/render";
 import { updateGraduation, type GraduationData } from "./graduation-data";
 
@@ -34,17 +35,6 @@ type Phase =
   | { kind: "working" }
   | { kind: "error"; code: FlyerPhotoError | "ASSETS" }
   | { kind: "ready" };
-
-function downloadBlob(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 export default function FlyerStep({
   data,
@@ -209,8 +199,13 @@ export default function FlyerStep({
   // ── Download, share, save ───────────────────────────────────────────────
   async function flyerBlob(): Promise<Blob | null> {
     if (phase.kind === "ready" && canvasRef.current)
-      return new Promise((resolve) => canvasRef.current!.toBlob(resolve, "image/png"));
-    if (data.flyerUrl) return fetch(data.flyerUrl).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+      // JPEG: a fraction of the size of a PNG, to keep storage small.
+      return new Promise((resolve) => canvasRef.current!.toBlob(resolve, "image/jpeg", FLYER_JPEG_QUALITY));
+    if (data.flyerUrl)
+      return fetch(data.flyerUrl)
+        .then((r) => (r.ok ? r.blob() : null))
+        .then((blob) => (blob ? toJpeg(blob) : null))
+        .catch(() => null);
     return null;
   }
 
@@ -219,7 +214,7 @@ export default function FlyerStep({
     if (phase.kind !== "ready") return data.flyerUrl;
     if (savedRef.current && savedRef.current.placement === placement) return savedRef.current.url;
     const body = new FormData();
-    body.append("file", new File([blob], flyerFileName(data.studentName), { type: "image/png" }));
+    body.append("file", new File([blob], flyerFileName(data.studentName, "jpg"), { type: "image/jpeg" }));
     const response = await fetch("/api/internship/testimonial/flyer", { method: "POST", body }).catch(() => null);
     const result = await response?.json().catch(() => null);
     if (!response?.ok || typeof result?.url !== "string") return null;
@@ -236,7 +231,7 @@ export default function FlyerStep({
       setBusy(null);
       return setNotice("We couldn't prepare the image. Please try again.");
     }
-    downloadBlob(blob, flyerFileName(data.studentName));
+    downloadBlob(blob, flyerFileName(data.studentName, "jpg"));
     await save(blob);
     setBusy(null);
     onShared();
@@ -250,7 +245,7 @@ export default function FlyerStep({
       setBusy(null);
       return setNotice("We couldn't prepare the image. Please try again.");
     }
-    const file = new File([blob], flyerFileName(data.studentName), { type: "image/png" });
+    const file = new File([blob], flyerFileName(data.studentName, "jpg"), { type: "image/jpeg" });
     const url = await save(blob);
     if (navigator.canShare?.({ files: [file] })) {
       try {
@@ -264,7 +259,7 @@ export default function FlyerStep({
       }
     }
     // No file sharing here: download it, and offer share links.
-    downloadBlob(blob, flyerFileName(data.studentName));
+    downloadBlob(blob, flyerFileName(data.studentName, "jpg"));
     setLinks(shareLinks(url));
     setBusy(null);
   }

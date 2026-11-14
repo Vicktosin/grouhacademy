@@ -1,6 +1,6 @@
 import { requireInternshipWorkspace } from "@/lib/internship-access";
 import { canMakeFlyer, saveInternFlyer } from "@/lib/testimonials";
-import { isStorageConfigured, uploadTestimonialMedia } from "@/lib/testimonial-media";
+import { deleteTestimonialMedia, isStorageConfigured, uploadTestimonialMedia } from "@/lib/testimonial-media";
 import { FLYER_TYPES, MEDIA_UPLOAD_MAX_BYTES, baseContentType } from "@/lib/testimonial-input";
 
 // Saves the graduate's finished flyer (drawn in their browser; see
@@ -26,7 +26,15 @@ export async function POST(request: Request) {
   try {
     const url = await uploadTestimonialMedia("flyers", access.userId, new Uint8Array(await file.arrayBuffer()), type);
     const saved = await saveInternFlyer(access.userId, url);
-    if (!saved.ok) return Response.json({ error: saved.error }, { status: 403 });
+    if (!saved.ok) {
+      await deleteTestimonialMedia([url]).catch(() => null);
+      return Response.json({ error: saved.error }, { status: 403 });
+    }
+    // Changed photo: the old flyer is no longer needed, so free its space.
+    if (saved.replaced)
+      await deleteTestimonialMedia([saved.replaced]).catch((error) =>
+        console.error("Failed to delete the replaced flyer:", error),
+      );
     return Response.json({ url });
   } catch (error) {
     console.error("Failed to save flyer:", error);

@@ -9,10 +9,15 @@ import {
   checkCertificate,
   getCurrentApplication,
 } from "@/lib/internship-progression";
+import { mustShareExperience } from "@/lib/testimonials";
 
 // The certificate for the intern's current level (issued here once they
 // qualify), plus every certificate they've earned, so certificates from
 // earlier levels stay available after moving up.
+//
+// A graduate must first share their experience (a video, voice note or
+// writing; see components/graduation): until they do, no certificate is
+// sent, only experienceRequired, and the page sends them to share it.
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -33,7 +38,15 @@ export async function GET() {
       });
     }
 
+    // Issues the certificate when due, so a new graduate is held back too.
     const check = await checkCertificate(application);
+    if (await mustShareExperience(userId))
+      return NextResponse.json({
+        eligible: false,
+        experienceRequired: true,
+        reason: "Tell us about your experience to unlock your certificate.",
+        certificates: [],
+      });
     const earned = await getPrisma().internshipCertificate.findMany({
       where: { userId },
       orderBy: { issuedAt: "desc" },

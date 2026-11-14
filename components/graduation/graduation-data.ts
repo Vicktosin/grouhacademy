@@ -16,6 +16,8 @@ export type GraduationData = {
   isPreview: boolean;
   /** False once enough interns have sent voice notes (VOICE_NOTE_LIMIT). */
   voiceNotesOpen: boolean;
+  /** Has shared their experience (any application). Graduates must, before their certificate. */
+  experienceShared: boolean;
   studentName: string;
   flyerUrl: string | null;
   testimonial: {

@@ -103,6 +103,8 @@ export async function getInternTestimonialForm(userId: string, db: PrismaClient 
     isPreview: grad.isPreview,
     /** Voice notes are still open to this intern (see voiceNotesOpen). */
     voiceNotesOpen: await voiceNotesOpen(userId, db),
+    /** Has shared their experience (on any application, not just this one). */
+    experienceShared: await hasSharedExperience(userId, db),
     /** The name printed on the flyer. */
     studentName: grad.name,
     flyerUrl: t?.flyerUrl ?? null,
@@ -168,6 +170,7 @@ export async function saveInternFlyer(userId: string, flyerUrl: string, db: Pris
   const [application, grad] = await Promise.all([currentApplication(db, userId), graduation(db, userId)]);
   if (!application) return { ok: false as const, error: "No internship application found." };
   if (!grad?.graduated) return { ok: false as const, error: "The graduation flyer is for interns who have completed." };
+  const previous = application.testimonial?.flyerUrl ?? null;
   await db.internTestimonial.upsert({
     where: { applicationId: application.id },
     create: {
@@ -179,7 +182,45 @@ export async function saveInternFlyer(userId: string, flyerUrl: string, db: Pris
     },
     update: { flyerUrl },
   });
-  return { ok: true as const };
+  /** The flyer this one replaces (to delete from storage), if any. */
+  return { ok: true as const, replaced: previous && previous !== flyerUrl ? previous : null };
+}
+
+/** Whether the intern has ever shared their experience (any application). */
+export async function hasSharedExperience(userId: string, db: PrismaClient = getPrisma()) {
+  const found = await db.internTestimonial.findFirst({
+    where: {
+      userId,
+      OR: [{ videoLink: { not: null } }, { voiceNoteUrl: { not: null } }, { testimonial: { not: "" } }],
+    },
+    select: { id: true },
+  });
+  return Boolean(found);
+}
+
+/**
+ * Whether this intern must share their experience before downloading their
+ * certificate: they hold one, and haven't shared yet. An admin's preview
+ * intern is never held back.
+ */
+export async function mustShareExperience(userId: string, db: PrismaClient = getPrisma()) {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { isPreview: true } });
+  if (!user || user.isPreview) return false;
+  const certificate = await db.internshipCertificate.findFirst({
+    where: { userId, revokedAt: null },
+    select: { id: true },
+  });
+  if (!certificate) return false;
+  return !(await hasSharedExperience(userId, db));
+}
+
+/** Every flyer and voice note URL a testimonial still points to. */
+export async function testimonialMediaInUse(db: PrismaClient = getPrisma()) {
+  const rows = await db.internTestimonial.findMany({
+    where: { OR: [{ flyerUrl: { not: null } }, { voiceNoteUrl: { not: null } }] },
+    select: { flyerUrl: true, voiceNoteUrl: true },
+  });
+  return rows.flatMap((row) => [row.flyerUrl, row.voiceNoteUrl]);
 }
 
 /** Whether the intern may make a flyer (graduated, or an admin's preview). */
