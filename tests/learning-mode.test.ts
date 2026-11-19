@@ -92,3 +92,35 @@ test("cohort task dates become week/day/time from the cohort start (WAT)", () =>
   // Week 3 day 1, 09:30 WAT.
   assert.deepEqual(scheduleOffset(start, new Date("2026-11-19T08:30:00Z")), { week: 3, day: 1, time: "09:30" });
 });
+
+test("self-paced progression: a cohort wins once an intern switches", async () => {
+  const { isSelfPacedNow } = await import("../lib/self-paced-tasks");
+  assert.equal(isSelfPacedNow({ selfPacedStartDate: now, cohortId: null }), true);
+  assert.equal(isSelfPacedNow({ selfPacedStartDate: now, cohortId: "c" }), false, "switched: cohort tasks");
+  assert.equal(isSelfPacedNow({ selfPacedStartDate: null, cohortId: null }), false);
+});
+
+test("library copy round trip: self-paced tasks keep the cohort's order and spacing", async () => {
+  const { scheduleToDate } = await import("../lib/task-schedule");
+  const cohortStart = new Date("2026-11-04T23:00:00Z"); // 00:00 WAT, 5 Nov
+  const cohortTasks = [
+    { title: "Learn the Language", opensAt: "2026-11-04T22:00:00Z", dueDate: "2026-11-11T22:00:00Z" },
+    { title: "Practice Lab 1", opensAt: "2026-11-11T22:00:00Z", dueDate: "2026-11-18T22:00:00Z" },
+    { title: "Practice Lab 2", opensAt: "2026-11-18T22:00:00Z", dueDate: "2026-11-25T22:00:00Z" },
+  ];
+  const internStart = new Date("2026-12-01T09:15:00Z"); // starts self-paced mid-morning
+  const internTasks = cohortTasks.map((task) => {
+    const opens = scheduleOffset(cohortStart, new Date(task.opensAt));
+    const due = scheduleOffset(cohortStart, new Date(task.dueDate));
+    return { title: task.title, opensAt: scheduleToDate(internStart, opens), dueDate: scheduleToDate(internStart, due) };
+  });
+  // Same order: concepts first, then the labs.
+  assert.deepEqual(internTasks.map((t) => t.title), ["Learn the Language", "Practice Lab 1", "Practice Lab 2"]);
+  // Same spacing as the cohort.
+  const day = 24 * 60 * 60 * 1000;
+  // (The first opens at 00:00 on day 1; the lab at 23:00 on day 7.)
+  assert.equal((internTasks[1].opensAt.getTime() - internTasks[0].opensAt.getTime()) / day, 6 + 23 / 24);
+  assert.equal((internTasks[2].opensAt.getTime() - internTasks[1].opensAt.getTime()) / day, 7);
+  // Everything is due after it opens.
+  for (const task of internTasks) assert.ok(task.dueDate > task.opensAt);
+});
