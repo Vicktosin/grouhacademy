@@ -29,6 +29,7 @@ type InternRow = {
   enrollmentDate: string;
   tier: string;
   cohort: string;
+  learning: "Self-paced" | "Cohort" | "Waiting" | "Choosing";
   status: string;
   examScore: number | null;
 } & ManagedIntern;
@@ -41,6 +42,7 @@ export default function InternshipInternsPage() {
   const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-interns");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("Active");
+  const [learningFilter, setLearningFilter] = useState("All");
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [options, setOptions] = useState<InternOptions | null>(null);
@@ -90,10 +92,11 @@ export default function InternshipInternsPage() {
       return (
         matchesCohortTrack(cohortTrack, { cohortId: intern.cohortId, trackName: intern.track }) &&
         matchesStatus &&
+        (learningFilter === "All" || intern.learning === learningFilter) &&
         (!searchQuery || searchValue.includes(searchQuery))
       );
     });
-  }, [cohortTrack, interns, query, statusFilter]);
+  }, [cohortTrack, interns, query, statusFilter, learningFilter]);
 
   // Cohorts with their track names, for the filter.
   const cohortOptions = useMemo(() => {
@@ -245,6 +248,15 @@ export default function InternshipInternsPage() {
                   }}
                   options={["Active", "Removed", "All"]}
                 />
+                <FilterSelect
+                  label="Learning"
+                  value={learningFilter}
+                  onChange={(next) => {
+                    setLearningFilter(next);
+                    setPage(1);
+                  }}
+                  options={["All", "Self-paced", "Cohort", "Waiting", "Choosing"]}
+                />
               </div>
             </div>
 
@@ -303,7 +315,11 @@ export default function InternshipInternsPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-slate-600">
-                        {intern.cohort}
+                        {intern.learning === "Cohort" ? intern.cohort : (
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${intern.learning === "Self-paced" ? "bg-emerald-100 text-emerald-700" : intern.learning === "Waiting" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                            {intern.learning === "Waiting" ? "Waiting for cohort" : intern.learning}
+                          </span>
+                        )}
                         {intern.group && (
                           <span className="mt-1 block text-[9px] text-slate-400">
                             Group {intern.group.number}

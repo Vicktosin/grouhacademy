@@ -1,3 +1,4 @@
+import { learningStatusLabel } from "@/lib/learning-mode-rules";
 import { NextResponse } from "next/server";
 
 import {
@@ -117,6 +118,8 @@ export async function GET() {
       examScore: latestAttempt?.scorePercent ?? null,
       attempts: application.attempts.length,
       cohort: application.cohort?.name ?? "Unassigned",
+      // Self-paced / Cohort / Waiting / Choosing (lib/learning-mode-rules).
+      learning: learningStatusLabel(application),
       group: membership?.group ? `Group ${membership.group.number}` : null,
       status: application.payment?.status
         ? application.payment.status

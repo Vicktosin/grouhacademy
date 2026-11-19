@@ -1,3 +1,4 @@
+import { learningStatusLabel } from "@/lib/learning-mode-rules";
 import { NextResponse } from "next/server";
 
 import {
@@ -275,6 +276,12 @@ export async function GET() {
             : null),
       ),
       status: application.status,
+      // Self-paced / Cohort / Waiting / Choosing (lib/learning-mode-rules).
+      learning: learningStatusLabel({
+        learningMode: application.learningMode,
+        cohortId: assignedCohortByApplicationId.get(application.id) ?? null,
+        selfPacedStartDate: application.selfPacedStartDate,
+      }),
       applicationId: application.id,
       programId: application.programId,
       levelId: application.levelId,

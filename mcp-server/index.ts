@@ -34,6 +34,7 @@ import {
 import { parsePlatformSettingsPatch } from "../lib/platform-settings-validation";
 import { applyPlatformSettingsPatch } from "../lib/platform-settings-update";
 import { copyCohortTasksToLibrary } from "../lib/task-library-copy";
+import { learningStatusLabel } from "../lib/learning-mode-rules";
 import { internshipCertificateNumber, internshipCertificatePrefix } from "../lib/certificate-branding";
 import { notifyCertificateIssued } from "../lib/internship-certificate-notify";
 import {
@@ -178,14 +179,22 @@ server.tool("activate_user", "Reactivate a suspended user account", {
 });
 
 // ── INTERNSHIP APPLICATIONS ────────────────────────────────────────────────────
-server.tool("list_applications", "List internship applications", {
+server.tool("list_applications", "List internship applications. Each shows how the intern learns this level (learning: Self-paced, Cohort, Waiting for a cohort, or Choosing = paid but not chosen yet); filter with learning.", {
   status: z.enum(["ACTIVE","ON_HOLD","REMOVED"]).optional(),
   paymentStatus: z.enum(["PENDING","PAID","FAILED","CANCELLED"]).optional(),
   levelName: z.string().optional(),
+  learning: z.enum(["SELF_PACED","COHORT","WAITING","CHOOSING"]).optional(),
   limit: z.number().default(25),
-}, async ({ status, paymentStatus, levelName, limit }) => {
+}, async ({ status, paymentStatus, levelName, learning, limit }) => {
+  const learningWhere =
+    learning === "COHORT" ? { cohortId: { not: null } }
+    : learning === "WAITING" ? { cohortId: null, learningMode: "COHORT" as const }
+    : learning === "SELF_PACED" ? { cohortId: null, OR: [{ learningMode: "SELF_PACED" as const }, { learningMode: null, selfPacedStartDate: { not: null } }] }
+    : learning === "CHOOSING" ? { cohortId: null, learningMode: null, selfPacedStartDate: null }
+    : {};
   const apps = await db.internshipApplication.findMany({
     where: {
+      ...learningWhere,
       ...(status && { status: status as any }),
       ...(paymentStatus && { payment: { status: paymentStatus as any } }),
       ...(levelName && { level: { name: { contains: levelName, mode: "insensitive" } } }),
@@ -210,6 +219,7 @@ server.tool("list_applications", "List internship applications", {
         program: a.program.name,
         level: a.level.name,
         cohort: a.cohort?.name ?? "unassigned",
+        learning: learningStatusLabel(a),
         status: a.status,
         payment: a.payment ? { status: a.payment.status, amount: a.payment.amount, paidAt: a.payment.paidAt } : null,
         createdAt: a.createdAt,

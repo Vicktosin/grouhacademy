@@ -19,6 +19,7 @@ type EnrolleeRow = {
   examScore: number | null;
   attempts: number;
   cohort: string;
+  learning: "Self-paced" | "Cohort" | "Waiting" | "Choosing";
   group: string | null;
   status: string;
   lastUpdated: string;
@@ -29,6 +30,7 @@ const pageSize = 8;
 export default function InternshipEnrolleesPage() {
   const [rows, setRows] = useState<EnrolleeRow[]>([]);
   const [query, setQuery] = useState("");
+  const [learningFilter, setLearningFilter] = useState("All");
   const [cohorts, setCohorts] = useState<PickerCohort[]>([]);
   const [cohortTrack, setCohortTrack] = useCohortTrackFilter("admin-enrollees");
   const [page, setPage] = useState(1);
@@ -66,10 +68,11 @@ export default function InternshipEnrolleesPage() {
         `${row.name} ${row.email} ${row.track} ${row.cohort}`.toLowerCase();
       return (
         matchesCohortTrack(cohortTrack, row) &&
+        (learningFilter === "All" || row.learning === learningFilter) &&
         (!searchQuery || searchable.includes(searchQuery))
       );
     });
-  }, [cohortTrack, query, rows]);
+  }, [cohortTrack, query, rows, learningFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const visibleRows = filteredRows.slice(
@@ -134,6 +137,21 @@ export default function InternshipEnrolleesPage() {
               </label>
 
               <div className="flex flex-wrap gap-2">
+                <label className="flex items-center">
+                  <span className="sr-only">Filter by how they learn</span>
+                  <select
+                    value={learningFilter}
+                    onChange={(event) => {
+                      setLearningFilter(event.target.value);
+                      setPage(1);
+                    }}
+                    className="h-9 rounded-lg px-3 text-[10px] font-semibold text-[#1C1D52] shadow-[inset_0_0_0_1px_#d8dee8] outline-none"
+                  >
+                    {["All", "Self-paced", "Cohort", "Waiting", "Choosing"].map((option) => (
+                      <option key={option} value={option}>Learning: {option}</option>
+                    ))}
+                  </select>
+                </label>
                 <CohortTrackFilter
                   cohorts={cohorts}
                   tracks={rows.map((row) => row.trackName)}
@@ -185,7 +203,11 @@ export default function InternshipEnrolleesPage() {
                         {row.track}
                       </td>
                       <td className="px-3 py-3.5 text-slate-600">
-                        {row.cohort}
+                        {row.learning === "Cohort" ? row.cohort : (
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${row.learning === "Self-paced" ? "bg-emerald-100 text-emerald-700" : row.learning === "Waiting" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                            {row.learning === "Waiting" ? "Waiting for cohort" : row.learning}
+                          </span>
+                        )}
                         {row.group && (
                           <span className="block text-[10px] text-slate-400">
                             {row.group}
