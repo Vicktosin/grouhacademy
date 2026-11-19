@@ -8,11 +8,14 @@ import { useEffect, useState } from "react";
 import CohortCountdown from "@/components/CohortCountdown";
 import InternshipShell from "@/components/InternshipShell";
 import LevelCompleteModal from "@/components/LevelCompleteModal";
+import LearningModeCard from "@/components/LearningModeCard";
+import type { LearningModeState } from "@/lib/learning-mode";
 import GraduationFlyerButton from "@/components/graduation/GraduationFlyerButton";
 import RecommendedResources from "@/components/RecommendedResources";
 
 type DashboardData = {
   program: { name: string; slug: string } | null;
+  learning?: LearningModeState | null;
   paymentStatus?: string;
   assessmentStatus?: string;
   weekLabel?: string;
@@ -127,6 +130,8 @@ export default function InternshipDashboardPage() {
       {/* First visit: what the internship is, then an offer of a tour. */}
       <InternWelcome autoOpen={data.paymentStatus === "PAID"} />
       <div className="space-y-5">
+        {/* Self-paced, waiting for a cohort, or a cohort about to start. */}
+        <LearningModeCard learning={data.learning ?? null} />
         {/* Graduates: their flyer and testimonial, any time. */}
         <GraduationFlyerButton />
         {data.program ? (

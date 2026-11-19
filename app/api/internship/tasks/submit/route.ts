@@ -73,7 +73,8 @@ export async function POST(request: Request) {
     });
     // Cohort intern: task must belong to their cohort, OR be a pool GROUP task
     // for their pool. Self-paced: task links to their application.
-    const isSelfPaced = Boolean(context?.selfPacedStartDate);
+    // A cohort wins: an intern who switched submits to their cohort's tasks.
+    const isSelfPaced = Boolean(context?.selfPacedStartDate) && !context?.cohortId;
     const taskOwned = isSelfPaced
       ? task?.applicationId === context?.id
       : context?.cohortId != null &&

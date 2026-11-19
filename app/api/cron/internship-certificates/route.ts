@@ -29,7 +29,13 @@ export async function GET(request: Request) {
 
   const applications = await prisma.internshipApplication.findMany({
     where: {
-      cohort: { endDate: { gte: since, lt: now } },
+      // Cohorts that just ended, and self-paced interns (no cohort): those
+      // qualify whenever they've passed enough tasks, so they're checked daily.
+      OR: [
+        { cohort: { endDate: { gte: since, lt: now } } },
+        { cohortId: null, selfPacedStartDate: { not: null } },
+      ],
+      status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
       certificates: { none: {} },
     },

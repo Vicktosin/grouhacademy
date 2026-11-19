@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { computeSelfPacedProgress, getSelfPacedTasks, isSelfPacedNow } from "@/lib/self-paced-tasks";
+import { getLearningModeState, settleLearningModeOnPayment } from "@/lib/learning-mode";
 import { computeInternProgress } from "@/lib/internship-progress";
 import { getInternTaskContext, getInternTasks } from "@/lib/intern-tasks";
 import { cohortTimeline } from "@/lib/task-schedule";
@@ -69,6 +71,14 @@ export async function GET() {
     const latestAttempt = application.attempts[0];
     const assessmentStatus = latestAttempt?.status ?? "NOT_STARTED";
 
+    // Waiting for a cohort: place them as soon as one exists for their track.
+    if (application.learningMode === "COHORT" && !application.cohortId && paymentStatus === "PAID") {
+      await settleLearningModeOnPayment(application.id).catch(() => null);
+      const placed = await prisma.internshipApplication.findUnique({ where: { id: application.id }, select: { cohortId: true } });
+      application.cohortId = placed?.cohortId ?? null;
+    }
+    const selfPaced = isSelfPacedNow(application);
+
     const cohorts = await prisma.internshipCohort.findMany({
       where: { programId: program.id },
       orderBy: { startDate: "asc" },
@@ -83,18 +93,22 @@ export async function GET() {
         (cohort) => cohort.startDate <= now && cohort.endDate >= now,
       ) ?? null;
     const nextCohort = cohorts.find((cohort) => cohort.startDate > now) ?? null;
-    const displayCohort = assignedCohort ?? activeCohort ?? nextCohort;
+    // Self-paced interns aren't in a cohort: no cohort countdown for them.
+    const displayCohort = selfPaced ? null : (assignedCohort ?? activeCohort ?? nextCohort);
 
     // Intern progress: tasks passed out of every task set for their cohort.
-    const { completedTasks, totalTasks, progressPercent } =
-      await computeInternProgress(userId, application.cohortId);
+    const { completedTasks, totalTasks, progressPercent } = selfPaced
+      ? await computeSelfPacedProgress(application.id)
+      : await computeInternProgress(userId, application.cohortId);
     const timeline = assignedCohort
       ? cohortTimeline(assignedCohort.startDate, assignedCohort.endDate, now)
       : null;
 
     // Credited submissions: the intern's own, or group work listing them.
     const creditedSubmission = {
-      task: { cohortId: application.cohortId ?? "__none__" },
+      task: selfPaced
+        ? { applicationId: application.id }
+        : { cohortId: application.cohortId ?? "__none__" },
       OR: [
         { groupId: null, userId },
         { groupId: { not: null }, participants: { some: { userId } } },
@@ -118,9 +132,11 @@ export async function GET() {
     // Next task still needing work: the earliest-opening one the intern can
     // submit now, otherwise the next to open (tasks come in opening order).
     const taskContext = await getInternTaskContext(userId);
-    const internTasks = taskContext
-      ? await getInternTasks(userId, taskContext)
-      : [];
+    const internTasks = !taskContext
+      ? []
+      : selfPaced && taskContext.selfPacedStartDate
+        ? await getSelfPacedTasks(userId, { ...taskContext, selfPacedStartDate: taskContext.selfPacedStartDate })
+        : await getInternTasks(userId, taskContext);
     const pendingTasks = internTasks.filter((task) => task.canSubmit).length;
     const upcomingTask =
       internTasks.find((task) => task.canSubmit) ??
@@ -156,6 +172,8 @@ export async function GET() {
 
     return NextResponse.json({
       program: { name: program.name, slug: program.slug },
+      // Self-paced / cohort / waiting, and switching to a cohort (dashboard card).
+      learning: paymentStatus === "PAID" ? await getLearningModeState(userId).catch(() => null) : null,
       paymentStatus,
       assessmentStatus,
       weekLabel: timeline

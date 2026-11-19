@@ -111,9 +111,12 @@ export async function materialiseSelfPacedTasks(
 export async function getSelfPacedTasks(
   userId: string,
   context: InternTaskContext & { selfPacedStartDate: Date },
+  // false: only the tasks already created (an intern who has since joined a
+  // cohort keeps their earlier work but gets no new self-paced tasks).
+  { materialise = true }: { materialise?: boolean } = {},
 ): Promise<InternshipTaskItem[]> {
   const { id: applicationId, programId, levelId, selfPacedStartDate } = context;
-  await materialiseSelfPacedTasks(applicationId, programId, levelId, selfPacedStartDate);
+  if (materialise) await materialiseSelfPacedTasks(applicationId, programId, levelId, selfPacedStartDate);
 
   const tasks = await getPrisma().internshipTask.findMany({
     where: { applicationId },
@@ -190,6 +193,30 @@ export async function getSelfPacedTasks(
       officeLife: null,
     };
   });
+}
+
+/**
+ * Whether the intern is learning self-paced right now: a self-paced start
+ * and no cohort (someone who switched to a cohort is a cohort intern).
+ */
+export function isSelfPacedNow(context: { selfPacedStartDate: Date | null; cohortId: string | null }) {
+  return Boolean(context.selfPacedStartDate) && !context.cohortId;
+}
+
+/** Earlier self-paced work of an intern who joined a cohort: shown, read-only. */
+export async function earlierSelfPacedWork(
+  userId: string,
+  context: InternTaskContext & { selfPacedStartDate: Date },
+): Promise<InternshipTaskItem[]> {
+  const items = await getSelfPacedTasks(userId, context, { materialise: false });
+  return items
+    .filter((item) => item.submittedAt)
+    .map((item) => ({
+      ...item,
+      weekLabel: "Earlier self-paced work",
+      canSubmit: false,
+      blockedReason: "You've joined a cohort. This is work you did at your own pace.",
+    }));
 }
 
 /**
