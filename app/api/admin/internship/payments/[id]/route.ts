@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 
 import { InternshipPaymentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
-import {
-  assignApplicationCohort,
-  type CohortDb,
-} from "@/lib/internship-cohort";
+import { settleLearningModeOnPayment } from "@/lib/learning-mode";
 import { requireAdminApi } from "@/lib/api-guards";
 import { activatePromotion } from "@/lib/internship-progression";
 import { recordAffiliateCommission } from "@/lib/affiliates";
@@ -54,7 +51,7 @@ export async function PATCH(
     where: { id },
     include: {
       application: {
-        select: { id: true, programId: true, levelId: true, cohortId: true },
+        select: { id: true, programId: true, levelId: true, cohortId: true, learningMode: true },
       },
     },
   });
@@ -74,12 +71,9 @@ export async function PATCH(
   });
 
   if (normalizedStatus === InternshipPaymentStatus.PAID) {
-    await assignApplicationCohort(
-      prisma as unknown as CohortDb,
-      payment.application,
-      // Marking it paid again never moves an intern who already joined.
-      { joining: payment.status !== InternshipPaymentStatus.PAID },
-    );
+    // Self-paced or cohort, when only one is allowed (else the intern
+    // chooses). Marking it paid again never moves an intern who has chosen.
+    await settleLearningModeOnPayment(payment.application.id);
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(payment.application.id);
     await recordAffiliateCommission(updatedPayment.id);

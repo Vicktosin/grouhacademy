@@ -70,8 +70,9 @@ test("marks internship payment as paid when Paystack charge.success arrives for 
 
   assert.equal(result.updatedInternshipPayment, true);
   assert.equal(calls.some((call) => call.model === "internshipPayment" && call.data.status === "PAID"), true);
-  // …and placed in the upcoming cohort.
-  assert.equal(calls.some((call) => call.model === "internshipApplication" && call.data.cohortId === "cohort-1"), true);
+  // Placement isn't decided here: the webhook route then settles self-paced
+  // vs cohort (lib/learning-mode), so the intern's choice is respected.
+  assert.equal(calls.some((call) => call.model === "internshipApplication" && call.data.cohortId === "cohort-1"), false);
 });
 
 test("settles an earlier attempt after the applicant tapped Pay again", async () => {

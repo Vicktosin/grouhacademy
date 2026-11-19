@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import {
-  assignApplicationCohort,
-  type CohortDb,
-} from "@/lib/internship-cohort";
 import { activatePromotion } from "@/lib/internship-progression";
 import { recordAffiliateCommission } from "@/lib/affiliates";
-import { activateSelfPacedMode } from "@/lib/self-paced-tasks";
+import { settleLearningModeOnPayment } from "@/lib/learning-mode";
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get("reference");
@@ -122,32 +118,11 @@ export async function GET(request: Request) {
       await recordAffiliateCommission(paid.id);
     }
 
-    // Only a payment being made now picks a cohort to join; revisiting this
-    // page later never moves an intern.
-    if (joining) {
-      const settings = await prisma.platformSettings.findFirst({
-        select: { cohortSystemEnabled: true },
-      });
-
-      if (!settings?.cohortSystemEnabled && !application.program.excludeFromSelfPacedAndPools) {
-        // Cohort system is OFF: start self-paced immediately without assigning
-        // a cohort, even if one is open for this track.
-        await activateSelfPacedMode(applicationId);
-      } else {
-        await assignApplicationCohort(
-          prisma as unknown as CohortDb,
-          application,
-          { joining },
-        );
-      }
-    } else {
-      // Revisit after already paid: re-confirm cohort but never move an intern.
-      await assignApplicationCohort(
-        prisma as unknown as CohortDb,
-        application,
-        { joining: false },
-      );
-    }
+    // Self-paced or cohort: decided here when only one is allowed, else the
+    // intern chooses next (/internship/choose). The webhook does the same,
+    // so whichever arrives first settles it; repeating is harmless and never
+    // moves an intern who has chosen.
+    await settleLearningModeOnPayment(applicationId);
 
     // A paid move up to the next level becomes the intern's current level.
     await activatePromotion(application.id);

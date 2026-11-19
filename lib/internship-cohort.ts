@@ -30,9 +30,17 @@ export async function assignApplicationCohort(
     programId: string;
     levelId: string;
     cohortId: string | null;
+    /**
+     * Only interns learning with a cohort are placed. Self-paced interns
+     * and those who haven't chosen yet (lib/learning-mode) are left alone:
+     * running this for everyone (admin Interns page, payment revisits)
+     * must never move them into a cohort.
+     */
+    learningMode: "SELF_PACED" | "COHORT" | null;
   },
   { joining = false }: { joining?: boolean } = {},
 ) {
+  if (application.learningMode !== "COHORT") return application.cohortId;
   const now = new Date();
   // Only keep the current cohort if it still belongs to this programme and
   // level; cohorts run separately for each level of a track.

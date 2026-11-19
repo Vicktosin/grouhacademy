@@ -159,6 +159,7 @@ export async function GET() {
             programId: application.programId,
             levelId: application.levelId,
             cohortId: application.cohortId,
+            learningMode: application.learningMode,
           }),
     ),
   );

@@ -1,4 +1,3 @@
-import { assignApplicationCohort } from "@/lib/internship-cohort";
 import { recordAffiliateCommission } from "@/lib/affiliates";
 
 export type PaystackWebhookEvent = {
@@ -31,6 +30,7 @@ export type PaystackSettlementPrisma = {
         programId: string;
         levelId: string;
         cohortId: string | null;
+        learningMode: "SELF_PACED" | "COHORT" | null;
       } | null;
     } | null>;
     update(args: Record<string, unknown>): Promise<unknown>;
@@ -156,13 +156,8 @@ export async function settleSuccessfulPaystackPayment(
       await recordAffiliateCommission(internshipPayment.id);
 
       updatedInternshipPayment = true;
-
-      if (internshipPayment.application)
-        await assignApplicationCohort(
-          prisma,
-          internshipPayment.application,
-          { joining: true },
-        ).catch(() => null);
+      // The caller then settles self-paced vs cohort
+      // (lib/learning-mode settleLearningModeOnPayment).
     } else if (internshipPayment) {
       console.warn("[paystack-webhook] Acceptance payment validation failed.", {
         reference,

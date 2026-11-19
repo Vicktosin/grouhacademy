@@ -1,3 +1,4 @@
+import { settleLearningModeOnPayment } from "@/lib/learning-mode";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
@@ -83,10 +84,15 @@ export async function POST(request: Request) {
       where: { reference: data.reference },
       select: { applicationId: true },
     });
-    if (paid)
+    if (paid) {
+      // Self-paced or cohort, when only one is allowed (else the intern chooses).
+      await settleLearningModeOnPayment(paid.applicationId).catch((error) =>
+        console.error("[paystack-webhook] Learning mode failed.", error),
+      );
       await activatePromotion(paid.applicationId).catch((error) =>
         console.error("[paystack-webhook] Promotion activation failed.", error),
       );
+    }
   }
 
   return NextResponse.json({ status: "success" });

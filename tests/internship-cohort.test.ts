@@ -51,7 +51,7 @@ function fakeDb(cohorts: Cohort[]) {
 
 const running: Cohort = { id: "october", programId: "dm", levelId: "entry", startDate: at(-2), endDate: at(20) };
 const next: Cohort = { id: "cohort-22", programId: "dm", levelId: "entry", startDate: at(9), endDate: at(36) };
-const application = (cohortId: string | null) => ({ id: "app", programId: "dm", levelId: "entry", cohortId });
+const application = (cohortId: string | null) => ({ id: "app", programId: "dm", levelId: "entry", cohortId, learningMode: "COHORT" as const });
 
 test("an intern in a running cohort stays when a newer cohort is created", async () => {
   const { db, saved } = fakeDb([running, next]);
@@ -93,4 +93,16 @@ test("someone paying now keeps a cohort that hasn't started yet", async () => {
   const { db, saved } = fakeDb([running, next]);
   assert.equal(await assignApplicationCohort(db, application("cohort-22"), { joining: true }), "cohort-22");
   assert.deepEqual(saved, []);
+});
+
+test("self-paced and undecided interns are never placed in a cohort", async () => {
+  for (const learningMode of ["SELF_PACED", null] as const) {
+    const { db, saved } = fakeDb([next]);
+    assert.equal(
+      await assignApplicationCohort(db, { ...application(null), learningMode }, { joining: true }),
+      null,
+      `${learningMode} stays without a cohort`,
+    );
+    assert.deepEqual(saved, []);
+  }
 });

@@ -47,6 +47,20 @@ enum CohortStatus {
   COMPLETED
 }
 
+// How an intern learns a level: on their own schedule, or with a cohort.
+enum LearningMode {
+  SELF_PACED
+  COHORT
+}
+
+// Who decides the learning mode (PlatformSettings.learningModePolicy).
+enum LearningModePolicy {
+  // Each intern picks self-paced or the next cohort after paying.
+  CHOOSE
+  COHORT_ONLY
+  SELF_PACED_ONLY
+}
+
 enum AssessmentAttemptStatus {
   NOT_STARTED
   IN_PROGRESS
@@ -250,6 +264,9 @@ model PlatformSettings {
   // Group size for mixed-track pool groups (separate from maxGroupSize which
   // applies to cohort-scoped groups).
   poolGroupSize                Int     @default(4)
+  // Who decides self-paced vs cohort. Kept in step with cohortSystemEnabled:
+  // SELF_PACED_ONLY = the old switch off; CHOOSE and COHORT_ONLY = on.
+  learningModePolicy           LearningModePolicy @default(CHOOSE)
 
   // Testimonials: the Drive folder interns upload videos to when their
   // cohort has none of its own (InternshipCohort.testimonialDriveUrl).
@@ -573,6 +590,14 @@ model InternshipApplication {
   // cohortSystemEnabled is false (or no cohort exists). NULL for all cohort
   // interns (including Special Class). Special Class always keeps cohortId.
   selfPacedStartDate DateTime?
+  // The intern's choice for this level (null: not chosen yet). COHORT with
+  // no cohortId = on the waiting list for the next cohort (cohortWaitlistedAt).
+  learningMode         LearningMode?
+  learningModeChosenAt DateTime?
+  cohortWaitlistedAt   DateTime?
+  // A self-paced intern may join the next cohort once per level (keeping
+  // their self-paced work); set when they do.
+  switchedToCohortAt   DateTime?
 
   certificates    InternshipCertificate[]
   followUp        InternshipFollowUp?

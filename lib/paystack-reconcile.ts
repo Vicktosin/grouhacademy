@@ -1,3 +1,4 @@
+import { settleLearningModeOnPayment } from "@/lib/learning-mode";
 import { getPrisma } from "@/lib/prisma";
 import {
   settleSuccessfulPaystackPayment,
@@ -250,9 +251,13 @@ export async function settleVerifiedReference({
     where: { reference },
     select: { applicationId: true },
   });
-  if (paid)
+  if (paid) {
+    await settleLearningModeOnPayment(paid.applicationId).catch((error) =>
+      console.error("[paystack-reconcile] Learning mode failed.", error),
+    );
     await activatePromotion(paid.applicationId).catch((error) =>
       console.error("[paystack-reconcile] Promotion activation failed.", error),
     );
+  }
   return { settled: true };
 }
