@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CACHE_MS, cachedJson } from "@/lib/client-cache";
 import InternshipSidebar from "./InternshipSidebar";
@@ -32,6 +32,7 @@ type AccessStatus = {
   programName: string | null;
   acceptanceFeeAmount: number | null;
   currency: string | null;
+  needsLearningModeChoice?: boolean;
 };
 
 export default function InternshipShell({
@@ -45,6 +46,7 @@ export default function InternshipShell({
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const pathname = usePathname() || "/internship/dashboard";
+  const router = useRouter();
 
   const isExemptRoute = EXEMPT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
@@ -61,6 +63,12 @@ export default function InternshipShell({
       .then((data) => setStatus(data))
       .finally(() => setLoadingStatus(false));
   }, []);
+
+  // Paid but hasn't chosen self-paced or cohort for this level yet.
+  const mustChoose = !isExemptRoute && Boolean(status?.needsLearningModeChoice);
+  useEffect(() => {
+    if (mustChoose) router.replace("/internship/dashboard/choose");
+  }, [mustChoose, router]);
 
   async function payAcceptanceFee() {
     setPaying(true);
@@ -83,7 +91,7 @@ export default function InternshipShell({
     }
   }
 
-  if (loadingStatus) {
+  if (loadingStatus || mustChoose) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#F0F7FF] px-6">
         <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-[0_8px_24px_rgba(28,29,82,0.09)]">

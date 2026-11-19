@@ -1,6 +1,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/route-guards";
 import { getAcceptanceFee } from "@/lib/internship-levels";
+import { effectiveLearningMode } from "@/lib/learning-mode-rules";
 
 export type InternshipAccessStatus = {
   hasApplication: boolean;
@@ -10,6 +11,8 @@ export type InternshipAccessStatus = {
   acceptanceFeeAmount: number | null;
   currency: string | null;
   premiumTier: "NONE" | "TIER_100K" | "TIER_400K";
+  /** Paid but hasn't chosen self-paced or cohort yet (/internship/choose). */
+  needsLearningModeChoice: boolean;
 };
 
 export async function getInternshipAccessStatus(
@@ -36,6 +39,7 @@ export async function getInternshipAccessStatus(
       acceptanceFeeAmount: null,
       currency: null,
       premiumTier: "NONE",
+      needsLearningModeChoice: false,
     };
   }
 
@@ -52,6 +56,8 @@ export async function getInternshipAccessStatus(
       : await getAcceptanceFee(application.programId, application.levelId),
     currency: application.payment?.currency ?? "NGN",
     premiumTier: application.premiumTier,
+    needsLearningModeChoice:
+      acceptanceFeePaid && application.status !== "REMOVED" && effectiveLearningMode(application) === null,
   };
 }
 
