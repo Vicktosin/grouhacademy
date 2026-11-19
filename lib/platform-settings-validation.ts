@@ -23,6 +23,7 @@ export type PlatformSettingsPatch = Partial<{
   certificateMinimumCompletion: number;
   automaticCertificateIssue: boolean;
   cohortSystemEnabled: boolean;
+  learningModePolicy: "CHOOSE" | "COHORT_ONLY" | "SELF_PACED_ONLY";
   selfPacedCertificatePassMark: number;
   poolGroupSize: number;
   testimonialDriveUrl: string | null;
@@ -126,6 +127,12 @@ export function parsePlatformSettingsPatch(body: Record<string, unknown>): {
     const value = body[key];
     if (typeof value === "number" && Number.isInteger(value) && value >= min && value <= max) data[key] = value;
     else errors.push(`${key} must be a whole number from ${min} to ${max}.`);
+  }
+
+  if (body.learningModePolicy !== undefined) {
+    const value = body.learningModePolicy;
+    if (value === "CHOOSE" || value === "COHORT_ONLY" || value === "SELF_PACED_ONLY") data.learningModePolicy = value;
+    else errors.push("learningModePolicy must be CHOOSE, COHORT_ONLY or SELF_PACED_ONLY.");
   }
 
   // Optional links: empty string or null clears them.

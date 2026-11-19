@@ -14,15 +14,22 @@ export async function applyPlatformSettingsPatch(
   updatedById: string | null,
   db: PrismaClient = getPrisma(),
 ) {
+  // Self-paced vs cohort: the three-way policy and the old on/off switch
+  // stay in step (an old caller setting only the switch means cohort only
+  // or self-paced only, as it always did).
+  if (data.learningModePolicy) data = { ...data, cohortSystemEnabled: data.learningModePolicy !== "SELF_PACED_ONLY" };
+  else if (data.cohortSystemEnabled !== undefined)
+    data = { ...data, learningModePolicy: data.cohortSystemEnabled ? "COHORT_ONLY" : "SELF_PACED_ONLY" };
+
   const settings = await db.platformSettings.upsert({
     where: { id: SETTINGS_ID },
     create: { id: SETTINGS_ID, ...data, updatedById },
     update: { ...data, updatedById },
   });
 
-  // When the cohort system is switched OFF, start self-paced mode for every
-  // paid intern still waiting for a cohort.
-  if (data.cohortSystemEnabled === false) {
+  // Self-paced only: start self-paced for every paid intern without a
+  // cohort (waiting or not chosen yet). Interns in cohorts never change.
+  if (data.learningModePolicy === "SELF_PACED_ONLY") {
     const stranded = await db.internshipApplication.findMany({
       where: {
         cohortId: null,
@@ -36,7 +43,12 @@ export async function applyPlatformSettingsPatch(
     if (stranded.length > 0) {
       await db.internshipApplication.updateMany({
         where: { id: { in: stranded.map((a) => a.id) } },
-        data: { selfPacedStartDate: new Date() },
+        data: {
+          selfPacedStartDate: new Date(),
+          learningMode: "SELF_PACED",
+          learningModeChosenAt: new Date(),
+          cohortWaitlistedAt: null,
+        },
       });
       console.info(
         `[cohort-switch] Activated self-paced for ${stranded.length} stranded intern(s).`,

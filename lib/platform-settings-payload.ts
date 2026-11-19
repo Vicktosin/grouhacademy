@@ -20,6 +20,7 @@ export type PlatformSettingsPayload = {
   certificateMinimumCompletion: number;
   automaticCertificateIssue: boolean;
   cohortSystemEnabled: boolean;
+  learningModePolicy: "CHOOSE" | "COHORT_ONLY" | "SELF_PACED_ONLY";
   selfPacedCertificatePassMark: number;
   poolGroupSize: number;
   notifyAdminOnRegistration: boolean;

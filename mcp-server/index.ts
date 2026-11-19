@@ -33,6 +33,7 @@ import {
 } from "../lib/announcements";
 import { parsePlatformSettingsPatch } from "../lib/platform-settings-validation";
 import { applyPlatformSettingsPatch } from "../lib/platform-settings-update";
+import { copyCohortTasksToLibrary } from "../lib/task-library-copy";
 import { internshipCertificateNumber, internshipCertificatePrefix } from "../lib/certificate-branding";
 import { notifyCertificateIssued } from "../lib/internship-certificate-notify";
 import {
@@ -1838,6 +1839,7 @@ server.tool(
           certificateLogoUrl: settings.certificateLogoUrl,
           testimonialDriveUrl: settings.testimonialDriveUrl,
           cohortSystemEnabled: settings.cohortSystemEnabled,
+          learningModePolicy: settings.learningModePolicy,
           selfPacedCertificatePassMark: settings.selfPacedCertificatePassMark,
           automaticCertificateIssue: settings.automaticCertificateIssue,
           certificateMinimumCompletion: settings.certificateMinimumCompletion,
@@ -1854,50 +1856,38 @@ server.tool(
 
 server.tool(
   "set_cohort_system_enabled",
-  "Turn the cohort system ON or OFF. When switched OFF, any paid intern with no cohort is immediately moved to self-paced mode (tasks from the Task Library, no GROUP tasks). Programs with excludeFromSelfPacedAndPools=true (e.g. Special Class) are never affected. Confirm this is intentional before calling.",
+  "Old on/off switch, kept for compatibility: true = Cohort only, false = Self-paced only. Prefer set_learning_mode_policy (which also has 'Let interns choose', the default). Switching to self-paced only starts self-paced for every paid intern without a cohort (waiting or still choosing); interns in cohorts never change, and Special Class always uses cohorts. Confirm this is intentional before calling.",
   {
     enabled: z.boolean(),
   },
   async ({ enabled }) => {
-    // Check current state before switching
-    const current = await db.platformSettings.findFirst({ select: { cohortSystemEnabled: true } });
-    await db.platformSettings.upsert({
-      where: { id: "singleton" },
-      create: { id: "singleton" },
-      update: { cohortSystemEnabled: enabled },
-    });
+    const settings = await applyPlatformSettingsPatch({ cohortSystemEnabled: enabled }, null, db);
+    return { content: [{ type: "text", text: JSON.stringify({ cohortSystemEnabled: settings.cohortSystemEnabled, learningModePolicy: settings.learningModePolicy }, null, 2) }] };
+  },
+);
 
-    let movedCount = 0;
-    // When switching OFF: move stranded interns (paid, no cohort) to self-paced.
-    if (!enabled && current?.cohortSystemEnabled !== false) {
-      const stranded = await db.internshipApplication.findMany({
-        where: {
-          cohortId: null,
-          selfPacedStartDate: null,
-          status: { not: "REMOVED" },
-          payment: { is: { status: "PAID" } },
-          program: { excludeFromSelfPacedAndPools: false },
-        },
-        select: { id: true },
-      });
-      if (stranded.length > 0) {
-        await db.internshipApplication.updateMany({
-          where: { id: { in: stranded.map((a) => a.id) } },
-          data: { selfPacedStartDate: new Date() },
-        });
-        movedCount = stranded.length;
-      }
-    }
+server.tool(
+  "set_learning_mode_policy",
+  "How newly paid interns learn each level: CHOOSE (each intern picks self-paced now or the next cohort; the default), COHORT_ONLY, or SELF_PACED_ONLY (also starts self-paced for every paid intern without a cohort). Interns already in cohorts never change; Special Class always uses cohorts. Confirm SELF_PACED_ONLY before calling.",
+  {
+    policy: z.enum(["CHOOSE", "COHORT_ONLY", "SELF_PACED_ONLY"]),
+  },
+  async ({ policy }) => {
+    const settings = await applyPlatformSettingsPatch({ learningModePolicy: policy }, null, db);
+    return { content: [{ type: "text", text: JSON.stringify({ learningModePolicy: settings.learningModePolicy, cohortSystemEnabled: settings.cohortSystemEnabled }, null, 2) }] };
+  },
+);
 
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          cohortSystemEnabled: enabled,
-          strandeInternsMovedToSelfPaced: movedCount,
-        }, null, 2),
-      }],
-    };
+server.tool(
+  "copy_cohort_tasks_to_library",
+  "Fill the Task Library (where self-paced interns' tasks come from) by copying one cohort's tasks for its track and level. Real open/due dates become week/day/time offsets from the cohort start, so the order and spacing match the cohort. Safe to repeat: tasks already in the library (same title, track and level) are skipped. Use list_cohorts to find cohort IDs (e.g. the October 22 Level 1 cohorts).",
+  {
+    cohortId: z.string(),
+  },
+  async ({ cohortId }) => {
+    const result = await copyCohortTasksToLibrary(cohortId, db);
+    if (!result.ok) return { content: [{ type: "text", text: result.error }], isError: true };
+    return { content: [{ type: "text", text: `Copied ${result.created} task(s) from ${result.cohort} into the Task Library (${result.skipped} already there).` }] };
   },
 );
 
