@@ -1,4 +1,5 @@
-// The move from grouhacademy.space to grouhacademy.com. Used by
+// The move to sabirole.com (Grouh Academy is now SabiRole), from
+// grouhacademy.com and the older grouhacademy.space. Used by
 // next.config.ts (the redirects), so it has no imports.
 //
 // The old domain redirects every page to the same page on the new one,
@@ -16,8 +17,13 @@
 // Installed apps (PWAs) can't move to another domain, so the old one keeps
 // opening and lands on the new domain; people can install it again there.
 
-export const NEW_ORIGIN = "https://grouhacademy.com";
-export const OLD_HOSTS = ["grouhacademy.space", "www.grouhacademy.space"];
+export const NEW_ORIGIN = "https://sabirole.com";
+export const OLD_HOSTS = [
+  "grouhacademy.com",
+  "www.grouhacademy.com",
+  "grouhacademy.space",
+  "www.grouhacademy.space",
+];
 
 /** Whether the move is switched on (NEXT_PUBLIC_APP_URL is the new domain). */
 export function isDomainMoveActive(appUrl = process.env.NEXT_PUBLIC_APP_URL) {

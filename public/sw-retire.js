@@ -1,10 +1,10 @@
-// Served as /sw.js on the old domain (grouhacademy.space) after the move to
-// grouhacademy.com (see lib/domain-move.ts). It replaces the installed app's
+// Served as /sw.js on the old domains (grouhacademy.com, grouhacademy.space)
+// after the move to sabirole.com (see lib/domain-move.ts). It replaces the installed app's
 // old worker there: clears its caches, sends any open pages to the same page
 // on the new domain, and removes itself. The installed app keeps opening;
 // the old domain then redirects it to the new one.
 
-const NEW_ORIGIN = 'https://grouhacademy.com'
+const NEW_ORIGIN = 'https://sabirole.com'
 
 self.addEventListener('install', () => self.skipWaiting())
 

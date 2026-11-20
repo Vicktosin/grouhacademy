@@ -72,7 +72,7 @@ export default function MovedNotice() {
       >
         <X className="h-4 w-4" />
       </button>
-      <p className="pr-6 text-sm font-bold">Grouh Academy has moved to grouhacademy.com</p>
+      <p className="pr-6 text-sm font-bold">Grouh Academy is now SabiRole: welcome to sabirole.com</p>
       <p className="mt-1 text-xs leading-5 text-white/80">
         Your account and work are the same; you may need to sign in once more. If you installed
         the app before, install it again from here, then you can remove the old one.
