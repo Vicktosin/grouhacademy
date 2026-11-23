@@ -13,9 +13,10 @@ import {
 } from "@/lib/learning-mode-rules";
 
 // Each intern chooses, per level, to start now at their own pace or join
-// the next cohort (rules: lib/learning-mode-rules). Paying decides on its
-// own only when one way is allowed (policy or an always-cohort track);
-// otherwise the intern sees the choice screen (/internship/choose).
+// the next cohort (rules: lib/learning-mode-rules). New applicants choose
+// during onboarding (saved on the unpaid application, acted on at payment).
+// If that choice is no longer open when they pay, paying decides when only
+// one way is allowed, else the intern sees the choice screen.
 
 export async function learningModePolicy(db: PrismaClient = getPrisma()): Promise<LearningModePolicyValue> {
   const settings = await db.platformSettings.findFirst({ select: { learningModePolicy: true } });
@@ -181,15 +182,94 @@ export async function switchToCohort(userId: string, db: PrismaClient = getPrism
 export async function settleLearningModeOnPayment(applicationId: string, db: PrismaClient = getPrisma()) {
   const application = await db.internshipApplication.findUnique({ where: { id: applicationId }, select: applicationSelect });
   if (!application || application.payment?.status !== "PAID") return null;
-  const current = effectiveLearningMode(application);
-  if (current === "COHORT") {
-    // Already a cohort intern (or waiting): place them if a cohort exists.
+  if (application.cohortId) return "COHORT";
+  if (application.learningMode === "COHORT" && application.cohortWaitlistedAt) {
+    // Already waiting for a cohort: place them if one exists now.
     await assignApplicationCohort(db as unknown as CohortDb, { ...application, learningMode: "COHORT" });
     return "COHORT";
   }
-  if (current === "SELF_PACED") return "SELF_PACED";
-  const mode = automaticModeOnPayment(await learningModePolicy(db), application.program.excludeFromSelfPacedAndPools);
+  // Self-paced and already started (including interns from before the choice).
+  if (application.selfPacedStartDate && application.learningMode !== "COHORT") return "SELF_PACED";
+
+  const [policy, nextCohort] = await Promise.all([
+    learningModePolicy(db),
+    nextUpcomingCohort(application.programId, application.levelId, db),
+  ]);
+  const programExcluded = application.program.excludeFromSelfPacedAndPools;
+  // The way chosen during onboarding (before paying), if it's still open.
+  const options = choiceOptions({ policy, programExcluded, nextCohort });
+  if (application.learningMode === "SELF_PACED" && options.selfPaced.available) {
+    await startSelfPaced(application, db);
+    return "SELF_PACED";
+  }
+  if (application.learningMode === "COHORT" && options.cohort.available) {
+    await joinCohort(application, db, { joining: true });
+    return "COHORT";
+  }
+
+  const mode = automaticModeOnPayment(policy, programExcluded);
   if (mode === "SELF_PACED") await startSelfPaced(application, db);
   else if (mode === "COHORT") await joinCohort(application, db, { joining: true });
+  // The onboarding choice is no longer possible (e.g. that cohort started):
+  // clear it so the intern sees the choice screen with what's open now.
+  else if (application.learningMode)
+    await db.internshipApplication.update({
+      where: { id: application.id },
+      data: { learningMode: null, learningModeChosenAt: null },
+    });
   return mode;
+}
+
+/**
+ * The learning options for each open level, for onboarding: interns choose
+ * how to learn before the assessment and payment. Keyed by level id.
+ */
+export async function onboardingLearningOptions(
+  programs: { id: string; excludeFromSelfPacedAndPools: boolean; levelIds: string[] }[],
+  db: PrismaClient = getPrisma(),
+) {
+  const now = new Date();
+  const [policy, cohorts] = await Promise.all([
+    learningModePolicy(db),
+    db.internshipCohort.findMany({
+      where: { programId: { in: programs.map((p) => p.id) }, startDate: { gt: now } },
+      orderBy: { startDate: "asc" },
+      select: { id: true, name: true, startDate: true, programId: true, levelId: true },
+    }),
+  ]);
+  const result: Record<string, ReturnType<typeof choiceOptions>> = {};
+  for (const program of programs)
+    for (const levelId of program.levelIds) {
+      const nextCohort = cohorts.find((c) => c.programId === program.id && c.levelId === levelId) ?? null;
+      result[`${program.id}:${levelId}`] = choiceOptions({
+        policy,
+        programExcluded: program.excludeFromSelfPacedAndPools,
+        nextCohort,
+        now,
+      });
+    }
+  return result;
+}
+
+/** Saves the onboarding choice on an unpaid application (acted on at payment). */
+export async function saveOnboardingLearningMode(
+  applicationId: string,
+  mode: LearningModeValue,
+  db: PrismaClient = getPrisma(),
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const application = await db.internshipApplication.findUnique({ where: { id: applicationId }, select: applicationSelect });
+  if (!application) return { ok: false, error: "No internship application found." };
+  if (application.payment?.status === "PAID") return { ok: true };
+  const [policy, nextCohort] = await Promise.all([
+    learningModePolicy(db),
+    nextUpcomingCohort(application.programId, application.levelId, db),
+  ]);
+  const options = choiceOptions({ policy, programExcluded: application.program.excludeFromSelfPacedAndPools, nextCohort });
+  const available = mode === "SELF_PACED" ? options.selfPaced.available : options.cohort.available;
+  if (!available) return { ok: false, error: options.note ?? "That way of learning isn't open right now." };
+  await db.internshipApplication.update({
+    where: { id: application.id },
+    data: { learningMode: mode, learningModeChosenAt: new Date() },
+  });
+  return { ok: true };
 }

@@ -6,6 +6,7 @@ import {
   getEntryLevel,
   getOpenLevels,
 } from "@/lib/internship-levels";
+import { onboardingLearningOptions, saveOnboardingLearningMode } from "@/lib/learning-mode";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -28,6 +29,7 @@ export async function GET() {
           slug: true,
           duration: true,
           description: true,
+          excludeFromSelfPacedAndPools: true,
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -45,15 +47,29 @@ export async function GET() {
     // Applicants choose a level as well as a track; only levels with a fee
     // and an entrance assessment are offered.
     const openLevels = await getOpenLevels(programs.map((item) => item.id));
+    // Self-paced or the next cohort, per track and level.
+    const learning = await onboardingLearningOptions(
+      programs.map((program) => ({
+        id: program.id,
+        excludeFromSelfPacedAndPools: program.excludeFromSelfPacedAndPools,
+        levelIds: (openLevels.get(program.id) ?? []).map((level) => level.id),
+      })),
+      prisma,
+    );
 
     return NextResponse.json({
       programs: programs.map((program) => ({
-        ...program,
+        id: program.id,
+        name: program.name,
+        slug: program.slug,
+        duration: program.duration,
+        description: program.description,
         levels: (openLevels.get(program.id) ?? []).map((level) => ({
           id: level.id,
           name: level.name,
           description: level.description,
           acceptanceFee: level.acceptanceFee,
+          learning: learning[`${program.id}:${level.id}`],
         })),
       })),
       questions: questions.map((question) => ({
@@ -67,6 +83,7 @@ export async function GET() {
       existingProgramId: existingApplication?.programId ?? null,
       existingLevelId: existingApplication?.levelId ?? null,
       existingAnswers: existingApplication?.onboardingAnswers ?? null,
+      existingLearningMode: existingApplication?.learningMode ?? null,
     });
   } catch (error) {
     console.error("Failed to load onboarding data:", error);
@@ -90,6 +107,10 @@ export async function POST(request: Request) {
   const programId = typeof body?.programId === "string" ? body.programId : null;
   const answers =
     body?.answers && typeof body.answers === "object" ? body.answers : {};
+  const learningMode =
+    body?.learningMode === "SELF_PACED" || body?.learningMode === "COHORT"
+      ? body.learningMode
+      : null;
 
   if (!programId) {
     return NextResponse.json(
@@ -138,6 +159,16 @@ export async function POST(request: Request) {
         { error: result.error },
         { status: result.status },
       );
+
+    if (learningMode) {
+      const saved = await saveOnboardingLearningMode(
+        result.applicationId,
+        learningMode,
+        prisma,
+      );
+      if (!saved.ok)
+        return NextResponse.json({ error: saved.error }, { status: 400 });
+    }
 
     return NextResponse.json({ applicationId: result.applicationId });
   } catch (error) {

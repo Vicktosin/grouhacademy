@@ -11,6 +11,8 @@ type FlowExitBarProps = {
   backHref: string;
   backLabel?: string;
   showSignOut?: boolean;
+  /** Steps inside one page (onboarding): go back a step instead of leaving. */
+  onBack?: () => void;
 };
 
 /**
@@ -21,6 +23,7 @@ export default function FlowExitBar({
   backHref,
   backLabel = "Back",
   showSignOut = true,
+  onBack,
 }: FlowExitBarProps) {
   const router = useRouter();
 
@@ -33,13 +36,24 @@ export default function FlowExitBar({
 
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-      <Link
-        href={backHref}
-        className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[#1C1D52] transition hover:bg-slate-100"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {backLabel}
-      </Link>
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[#1C1D52] transition hover:bg-slate-100"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {backLabel}
+        </button>
+      ) : (
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[#1C1D52] transition hover:bg-slate-100"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {backLabel}
+        </Link>
+      )}
       {showSignOut && (
         <button
           type="button"
