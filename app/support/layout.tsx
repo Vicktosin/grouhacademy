@@ -4,7 +4,7 @@ import { userHasRole } from "@/lib/rbac";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Support Admin | Grouh Academy",
+  title: "Support Admin | SabiRole",
 };
 
 // The Support Admin workspace. Its pages reuse the admin's internship pages

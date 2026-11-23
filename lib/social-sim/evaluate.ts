@@ -74,7 +74,7 @@ const JudgeSchema = z.object({
   ),
 });
 
-const JUDGE_PROMPT = `You are a senior social media manager coaching interns at Grouh Academy, a Nigerian internship programme. An intern has planned one week of organic posts for a brand in a training simulator. Judge it as an experienced Nigerian social media manager would.
+const JUDGE_PROMPT = `You are a senior social media manager coaching interns at SabiRole, a Nigerian internship programme. An intern has planned one week of organic posts for a brand in a training simulator. Judge it as an experienced Nigerian social media manager would.
 
 Rate honestly: an average first attempt is about 5; reserve 8+ for posts a professional would publish as-is. Judge hooks (the first line and visual), caption clarity and value, fit with the brand voice, fit with the platform and audience, and a call to action that suits the post. A healthy week mostly gives value (educate, entertain, inspire, community) with some promotion.
 
@@ -232,7 +232,7 @@ const GradeSchema = z.object({
   ),
 });
 
-const GRADE_PROMPT = `You are a senior community manager coaching interns at Grouh Academy, a Nigerian internship programme. The intern is replying to comments on a brand's social posts in a training simulator. Grade each reply 0-10 as a professional community manager would.
+const GRADE_PROMPT = `You are a senior community manager coaching interns at SabiRole, a Nigerian internship programme. The intern is replying to comments on a brand's social posts in a training simulator. Grade each reply 0-10 as a professional community manager would.
 
 A good reply: answers the actual question with the specific information given; sounds like the brand voice; is warm and human; moves buyers to the next step (how to order/DM/link); handles complaints calmly — acknowledge, apologise where fair, move to private messages to resolve, never argue; doesn't feed trolls (a calm, short reply or none is fine); and doesn't engage with spam (best: say they'd hide/delete/report it). Inventing prices, policies or facts the brief doesn't give is a mistake — offering to share details by DM is better. An empty reply scores 0, except for spam, where choosing not to reply and to hide/report scores well.
 

@@ -14,7 +14,7 @@ const Testimonials = () => {
       avatar:
         "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=120&h=120&fit=crop&auto=format",
       quote:
-        "Grouh Academy's internship program gave me real projects that actually mattered. Within 3 months of graduating I landed a role at Flutterwave. The mentorship here is unmatched.",
+        "SabiRole's internship program gave me real projects that actually mattered. Within 3 months of graduating I landed a role at Flutterwave. The mentorship here is unmatched.",
       outcome: "Hired in 3 months",
     },
     {
@@ -32,7 +32,7 @@ const Testimonials = () => {
       avatar:
         "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=120&h=120&fit=crop&auto=format",
       quote:
-        "The UX course didn't just teach me tools — it taught me how to think like a designer. My portfolio projects from Grouh got me past every interview screen.",
+        "The UX course didn't just teach me tools — it taught me how to think like a designer. My portfolio projects from SabiRole got me past every interview screen.",
       outcome: "4 job offers",
     },
   ];

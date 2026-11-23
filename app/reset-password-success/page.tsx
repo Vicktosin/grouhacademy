@@ -35,7 +35,7 @@ export default async function ResetPasswordSuccessPage({
 
                 <Image
                   src="/logo.png"
-                  alt="Grouh Academy logo"
+                  alt="SabiRole logo"
                   width={160}
                   height={40}
                   className="mx-auto mb-4 h-10 w-auto"

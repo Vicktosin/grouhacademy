@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Grouh Academy",
+  title: "Privacy Policy | SabiRole",
   description:
-    "Learn how Grouh Academy collects, uses, and protects your personal information.",
+    "Learn how SabiRole collects, uses, and protects your personal information.",
 };
 
 const sections = [
@@ -21,12 +21,12 @@ const sections = [
   {
     title: "Payments",
     content:
-      "Payments are processed by trusted payment providers. Grouh Academy does not store your full card or bank details. We retain payment references, amounts, status, and related records needed to confirm your purchase, provide support, prevent fraud, and meet accounting obligations.",
+      "Payments are processed by trusted payment providers. SabiRole does not store your full card or bank details. We retain payment references, amounts, status, and related records needed to confirm your purchase, provide support, prevent fraud, and meet accounting obligations.",
   },
   {
     title: "When we share information",
     content:
-      "We share information only when needed to operate our services—for example, with payment processors, cloud and communications providers, mentors assigned to your internship, and service providers acting on our instructions. We may also disclose information where required by law or to protect the safety, rights, and security of Grouh Academy, our learners, or others. We do not sell your personal information.",
+      "We share information only when needed to operate our services—for example, with payment processors, cloud and communications providers, mentors assigned to your internship, and service providers acting on our instructions. We may also disclose information where required by law or to protect the safety, rights, and security of SabiRole, our learners, or others. We do not sell your personal information.",
   },
   {
     title: "Your choices and rights",
@@ -41,7 +41,7 @@ const sections = [
   {
     title: "Children",
     content:
-      "Grouh Academy is not intended for children who cannot lawfully consent to data processing in their country. If you believe a child has provided us personal information without appropriate consent, please contact us so we can take appropriate action.",
+      "SabiRole is not intended for children who cannot lawfully consent to data processing in their country. If you believe a child has provided us personal information without appropriate consent, please contact us so we can take appropriate action.",
   },
   {
     title: "Changes to this policy",
@@ -58,7 +58,7 @@ export default function PrivacyPolicyPage() {
           href="/"
           className="text-sm font-semibold text-[#397d3a] hover:text-[#1C1D52]"
         >
-          ← Back to Grouh Academy
+          ← Back to SabiRole
         </Link>
         <header className="mt-8 rounded-3xl bg-[#1C1D52] px-7 py-10 text-white shadow-[0_16px_45px_rgba(28,29,82,0.18)] sm:px-10">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#9be28a]">
@@ -74,7 +74,7 @@ export default function PrivacyPolicyPage() {
 
         <div className="mt-8 rounded-3xl bg-white px-7 py-8 shadow-[0_8px_24px_rgba(28,29,82,0.08)] sm:px-10 sm:py-10">
           <p className="text-sm leading-7 text-slate-600">
-            Grouh Academy respects your privacy. This policy explains what
+            SabiRole respects your privacy. This policy explains what
             personal information we collect, why we collect it, and the choices
             available to you when you use our website, courses, internship
             programmes, and related services.

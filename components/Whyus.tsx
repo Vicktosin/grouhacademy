@@ -139,7 +139,7 @@ const Whyus = () => {
                 className="text-sm font-semibold tracking-widest uppercase"
                 style={{ color: "#4db848" }}
               >
-                Why Grouh
+                Why SabiRole
               </span>
             </div>
             <h2

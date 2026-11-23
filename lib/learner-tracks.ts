@@ -1,6 +1,6 @@
 import { isSafeInternalPath } from "@/lib/safe-redirect";
 
-// Grouh Academy has two separate learner sides that share one account: the
+// SabiRole has two separate learner sides that share one account: the
 // internship and the courses (LMS). Which login or sign-up page someone uses
 // decides which side they enter; using the other side's pages with the same
 // email and password adds them to that side too. Safe to import anywhere.
@@ -15,10 +15,10 @@ export const LEARNER_TRACKS = {
     home: "/internship/onboarding",
     name: "Internship",
     loginTitle: "Welcome back",
-    loginSubtitle: "Sign in to continue your Grouh Academy internship journey.",
+    loginSubtitle: "Sign in to continue your SabiRole internship journey.",
     registerTitle: "Create account",
     registerSubtitle:
-      "Join the Grouh Academy internship and start building practical, career-ready experience.",
+      "Join the SabiRole internship and start building practical, career-ready experience.",
     continueLabel: "Continue to the internship",
   },
   courses: {
@@ -27,10 +27,10 @@ export const LEARNER_TRACKS = {
     home: "/student",
     name: "Courses",
     loginTitle: "Welcome back, learner",
-    loginSubtitle: "Sign in to continue your Grouh Academy courses.",
+    loginSubtitle: "Sign in to continue your SabiRole courses.",
     registerTitle: "Start learning",
     registerSubtitle:
-      "Create your free Grouh Academy student account and start learning at your own pace.",
+      "Create your free SabiRole student account and start learning at your own pace.",
     continueLabel: "Continue to my courses",
   },
 } as const;

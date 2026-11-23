@@ -7,12 +7,12 @@ import { useChatPolling } from "@/lib/use-chat-polling";
 
 // Admin tools for talking to internship groups: read and post in one
 // group's discussion, or send the same message to several groups. Members
-// see admin posts as "Grouh Academy team" (Support Admins' as "Support
+// see admin posts as "SabiRole team" (Support Admins' as "Support
 // Admin") and get a notification.
 
 /** How members see this workspace's messages. */
 function useSenderName() {
-  return useAdminSupportMode() ? "Support Admin" : "Grouh Academy team";
+  return useAdminSupportMode() ? "Support Admin" : "SabiRole team";
 }
 
 type ChatMessage = {
@@ -150,7 +150,7 @@ export function GroupChatDialog({
             <article key={message.id} className={message.fromTeam ? "ml-auto max-w-[85%] text-right" : "max-w-[85%]"}>
               <p className="text-[11px] font-bold text-[#1C1D52]">
                 {message.fromTeam
-                  ? `${message.teamRole === "SUPPORT_ADMIN" ? "Support Admin" : "Grouh Academy team"} (${message.senderName})`
+                  ? `${message.teamRole === "SUPPORT_ADMIN" ? "Support Admin" : "SabiRole team"} (${message.senderName})`
                   : message.senderName}
                 <span className="ml-2 font-normal text-slate-400">
                   {new Date(message.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}

@@ -10,7 +10,7 @@ export default function WelcomePage() {
           <div className="w-full max-w-sm flex flex-col gap-10 items-center justify-start">
             <img
               src="/logo.png"
-              alt="Grouh Academy logo"
+              alt="SabiRole logo"
               className="mb-4 h-10 w-auto"
             />
             <div className="flex flex-col items-center justify-start">

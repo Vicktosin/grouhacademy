@@ -382,7 +382,7 @@ export default function DiscussionPage() {
                         <span className="inline-flex items-center gap-1.5">
                           {message.teamRole === "SUPPORT_ADMIN"
                             ? "Support Admin"
-                            : "Grouh Academy team"}
+                            : "SabiRole team"}
                           <span className="rounded-full bg-[#1C1D52] px-2 py-0.5 text-[9px] font-semibold text-white">
                             {message.teamRole === "SUPPORT_ADMIN" ? "Support" : "Admin"}
                           </span>

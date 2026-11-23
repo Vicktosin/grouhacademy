@@ -49,7 +49,7 @@ export default function ResetPasswordView({ track }: { track: LearnerTrack }) {
       >
         <Image
           src="/logo.png"
-          alt="Grouh Academy logo"
+          alt="SabiRole logo"
           width={160}
           height={40}
           className="mb-6 h-10 w-auto"
@@ -58,7 +58,7 @@ export default function ResetPasswordView({ track }: { track: LearnerTrack }) {
           Set a new password
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          Choose a new password for your Grouh Academy account.
+          Choose a new password for your SabiRole account.
         </p>
         <label className="mt-6 block text-sm font-semibold text-slate-700">
           New password

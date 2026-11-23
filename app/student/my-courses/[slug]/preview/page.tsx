@@ -36,13 +36,13 @@ export default async function CoursePreviewPage({
               {course.title}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-              {course.description ?? "A practical course from Grouh Academy."}
+              {course.description ?? "A practical course from SabiRole."}
             </p>
             <p className="mt-4 text-xs text-white/60">
               {course.category?.name ?? "Academy course"} · Taught by{" "}
               {course.instructors[0]?.instructor.name ??
                 course.creator.name ??
-                "Grouh Academy"}
+                "SabiRole"}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <EnrollButton slug={slug} />

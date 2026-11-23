@@ -125,7 +125,7 @@ const InternshipHero = () => {
               Launch Your Career with an Internship
             </h1>
             <p className="text-slate-400 text-lg leading-relaxed mb-8 max-w-lg">
-              Grouh Academy&apos;s internship program connects Africa&apos;s
+              SabiRole&apos;s internship program connects Africa&apos;s
               sharpest emerging talent with hands-on projects, expert
               mentorship, and a credential that actually opens doors.
             </p>
@@ -179,7 +179,7 @@ const InternshipHero = () => {
             >
               <img
                 src="https://images.unsplash.com/photo-1655720348590-c739c860beed?w=600&h=480&fit=crop&auto=format"
-                alt="Grouh Academy interns collaborating on laptops"
+                alt="SabiRole interns collaborating on laptops"
                 className="w-full block"
                 style={{ filter: "brightness(0.85)" }}
               />

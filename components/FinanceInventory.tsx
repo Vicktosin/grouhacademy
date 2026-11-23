@@ -463,7 +463,7 @@ export default function FinanceInventory() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5FBB46]">
-            Grouh Academy · Financial overview
+            SabiRole · Financial overview
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-[#1C1D52] sm:text-3xl">
             Finance &amp; inventory

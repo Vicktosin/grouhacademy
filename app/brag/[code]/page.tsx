@@ -11,18 +11,18 @@ type Props = { params: Promise<{ code: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const card = await loadShareCard((await params).code);
-  if (!card) return { title: "Grouh Academy", robots: { index: false } };
+  if (!card) return { title: "SabiRole", robots: { index: false } };
   const title = `${card.name} just unlocked "${card.title}"`;
   const description = card.track
-    ? `${card.name} earned this in Grouh Academy's ${card.track} internship. Start your own internship today.`
-    : `${card.name} earned this at Grouh Academy. Start your own internship today.`;
+    ? `${card.name} earned this in SabiRole's ${card.track} internship. Start your own internship today.`
+    : `${card.name} earned this at SabiRole. Start your own internship today.`;
   const image = { url: cardUrl(card.code, card.photoKey, "og"), width: 600, height: 600, alt: title };
   return {
     title,
     description,
     robots: { index: false, follow: false },
     alternates: { canonical: shareUrl(card.code) },
-    openGraph: { type: "website", siteName: "Grouh Academy", url: shareUrl(card.code), title, description, images: [image] },
+    openGraph: { type: "website", siteName: "SabiRole", url: shareUrl(card.code), title, description, images: [image] },
     twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
 }

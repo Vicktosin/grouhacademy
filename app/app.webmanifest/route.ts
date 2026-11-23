@@ -5,9 +5,9 @@ import type { MetadataRoute } from "next";
 // so the public website can't be installed.
 const manifest: MetadataRoute.Manifest = {
   id: "/app",
-  name: "Grouh Academy",
-  short_name: "Grouh Academy",
-  description: "Your Grouh Academy internship and learning workspace.",
+  name: "SabiRole",
+  short_name: "SabiRole",
+  description: "Your SabiRole internship and learning workspace.",
   start_url: "/app",
   scope: "/",
   display: "standalone",

@@ -56,7 +56,7 @@ export default async function MyCoursesPage() {
                   </Link>
                   <p className="mt-1 text-[11px] text-slate-500">
                     Instructor:{" "}
-                    {course.instructors[0]?.instructor.name ?? "Grouh Academy"}
+                    {course.instructors[0]?.instructor.name ?? "SabiRole"}
                   </p>
                   <div className="mt-4 flex items-center justify-between text-[10px] text-slate-500">
                     <span>{lessons.length} lessons</span>

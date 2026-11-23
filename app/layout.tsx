@@ -24,23 +24,24 @@ const lato = Lato({
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Grouh Academy | Practical Digital Skills and Internships",
-    template: "%s | Grouh Academy",
+    default: "SabiRole | Practical Digital Skills and Internships",
+    template: "%s | SabiRole",
   },
   description:
-    "Build practical digital skills through career-ready courses, expert mentorship, and real-world internship opportunities at Grouh Academy.",
-  applicationName: "Grouh Academy",
+    "Build practical digital skills through career-ready courses, expert mentorship, and real-world internship opportunities at SabiRole.",
+  applicationName: "SabiRole",
   keywords: [
     "online courses",
     "digital skills",
     "tech internship",
     "career development",
     "Nigeria",
+    "SabiRole",
     "Grouh Academy",
   ],
-  authors: [{ name: "Grouh Academy" }],
-  creator: "Grouh Academy",
-  publisher: "Grouh Academy",
+  authors: [{ name: "SabiRole" }],
+  creator: "SabiRole",
+  publisher: "SabiRole",
   alternates: { canonical: "/" },
   robots: {
     index: true,
@@ -57,23 +58,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_NG",
     url: "/",
-    siteName: "Grouh Academy",
-    title: "Grouh Academy | Practical Digital Skills and Internships",
+    siteName: "SabiRole",
+    title: "SabiRole | Practical Digital Skills and Internships",
     description:
       "Build practical digital skills through career-ready courses, expert mentorship, and real-world internship opportunities.",
     images: [
-      { url: "/logo.png", width: 512, height: 512, alt: "Grouh Academy" },
+      { url: "/logo.png", width: 512, height: 512, alt: "SabiRole" },
     ],
   },
   twitter: {
     card: "summary",
-    title: "Grouh Academy | Practical Digital Skills and Internships",
+    title: "SabiRole | Practical Digital Skills and Internships",
     description:
       "Career-ready courses, expert mentorship, and real-world internship opportunities.",
   },
   appleWebApp: {
     capable: true,
-    title: "Grouh Academy",
+    title: "SabiRole",
     statusBarStyle: "default",
   },
   icons: {

@@ -193,7 +193,7 @@ export default function RegisterView({ track }: { track: LearnerTrack }) {
                   <Link href="/" className="inline-flex">
                     <Image
                       src="/logo.png"
-                      alt="Grouh Academy logo"
+                      alt="SabiRole logo"
                       width={160}
                       height={64}
                       className="mb-3 h-10 w-auto"

@@ -62,7 +62,7 @@ export async function recordReferralRegistration(
 
 const CODE_ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-/** A short, unguessable code for share links (grouhacademy.com/brag/k3Fq9xPa). */
+/** A short, unguessable code for share links (sabirole.com/brag/k3Fq9xPa). */
 function newShareCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(9));
   return Array.from(bytes, (byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length]).join("");
@@ -138,7 +138,7 @@ export async function loadShareCard(code: string) {
   return {
     code: share.code,
     photoKey: share.photoKey,
-    name: share.referrer.name?.trim() || profileName.trim() || "A Grouh Academy intern",
+    name: share.referrer.name?.trim() || profileName.trim() || "A SabiRole intern",
     avatarUrl: share.referrer.avatarUrl,
     title: unlock.titleSnapshot,
     description: unlock.descriptionSnapshot,
@@ -158,6 +158,6 @@ export type ShareCard = NonNullable<Awaited<ReturnType<typeof loadShareCard>>>;
 
 /** The caption that goes out with the card. */
 export function shareText(card: Pick<ShareCard, "title" | "track">, url: string) {
-  const where = card.track ? `in Grouh Academy's ${card.track} internship` : "at Grouh Academy";
+  const where = card.track ? `in SabiRole's ${card.track} internship` : "at SabiRole";
   return `🏆 I just unlocked "${card.title}" ${where}! Start your own internship here 👉 ${url}`;
 }

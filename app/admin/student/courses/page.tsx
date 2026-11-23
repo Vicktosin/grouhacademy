@@ -159,7 +159,7 @@ export default function AdminCoursesPage() {
                     <td className="px-3 py-3.5 text-slate-500">
                       {course.instructors[0]?.instructor.name ??
                         course.creator?.name ??
-                        "Grouh Academy"}
+                        "SabiRole"}
                     </td>
                     <td className="px-3 py-3.5 text-slate-500">
                       {course.category?.name ?? "Uncategorized"}

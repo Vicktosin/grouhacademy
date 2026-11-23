@@ -1,6 +1,6 @@
 /**
- * Grouh Academy — Admin MCP Server
- * Director-level control over the Grouh Academy LMS: students, interns, courses,
+ * SabiRole — Admin MCP Server
+ * Director-level control over the SabiRole LMS: students, interns, courses,
  * cohorts, payments, follow-ups, announcements, and platform settings.
  * This is the ACADEMY product, NOT the internal management app.
  */
@@ -66,7 +66,7 @@ globalThis.__grouhPrismaClient = db;
 const server = new McpServer({ name: "bacatib", version: "1.0.0" });
 
 // ── DASHBOARD SUMMARY ──────────────────────────────────────────────────────────
-server.tool("get_academy_summary", "Overall snapshot of the Grouh Academy platform", {}, async () => {
+server.tool("get_academy_summary", "Overall snapshot of the SabiRole platform", {}, async () => {
   const [
     totalUsers, activeInterns, pendingApplications, paidPayments, pendingPayments,
     publishedCourses, activeCohorts, pendingCourses,
@@ -2247,6 +2247,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Grouh Academy MCP server fatal error:", err);
+  console.error("SabiRole MCP server fatal error:", err);
   process.exit(1);
 });

@@ -59,7 +59,7 @@ export default function AffiliateLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#edf3ff] px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex justify-center">
-          <Image src="/logo.png" alt="Grouh Academy" width={120} height={72} className="h-12 w-auto object-contain" />
+          <Image src="/logo.png" alt="SabiRole" width={120} height={72} className="h-12 w-auto object-contain" />
         </div>
         <form onSubmit={submit} className="space-y-5 rounded-3xl bg-white p-7 shadow-[0_15px_40px_rgba(28,29,82,0.1)] sm:p-8">
           <div>

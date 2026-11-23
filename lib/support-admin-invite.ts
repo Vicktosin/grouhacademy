@@ -55,25 +55,25 @@ async function sendInvite(email: string, name: string, link: string) {
   const { error } = await new Resend(apiKey).emails.send({
     from: CONTACT_SENDER,
     to: email,
-    subject: "You've been invited as a Grouh Academy Support Admin",
+    subject: "You've been invited as a SabiRole Support Admin",
     text: [
       `Hi ${firstName},`,
       "",
-      "An administrator has created a Support Admin account for you on Grouh Academy.",
+      "An administrator has created a Support Admin account for you on SabiRole.",
       "Open this link to confirm your email address:",
       link,
       "",
       "Then sign in with this email and the password your administrator gave you.",
       "If you weren't expecting this, you can ignore this email.",
       "",
-      "Grouh Academy",
+      "SabiRole",
     ].join("\n"),
     html: `<p>Hi ${escapeHtml(firstName)},</p>
-<p>An administrator has created a <strong>Support Admin</strong> account for you on Grouh Academy. Confirm your email address to activate it:</p>
+<p>An administrator has created a <strong>Support Admin</strong> account for you on SabiRole. Confirm your email address to activate it:</p>
 <p><a href="${escapeHtml(link)}" style="display:inline-block;background:#5FBB46;color:#14204f;padding:12px 20px;border-radius:10px;font-weight:bold;text-decoration:none">Confirm my email</a></p>
 <p>Then sign in with this email and the password your administrator gave you.</p>
 <p>If you weren't expecting this, you can ignore this email.</p>
-<p>Grouh Academy</p>`,
+<p>SabiRole</p>`,
   });
   if (error) throw new Error(`The invitation email was rejected: ${error.message}`);
   return { sent: true, devLink: null };
@@ -98,7 +98,7 @@ export async function inviteSupportAdmin(input: {
     throw new Error(
       existing.roles.some(({ role }) => role.name === RoleName.SUPPORT_ADMIN)
         ? "This Support Admin was already invited. Use Resend invitation below."
-        : "This email already has a Grouh Academy account. Use a different company email.",
+        : "This email already has a SabiRole account. Use a different company email.",
     );
 
   const auth = createSupabaseAdminClient();
@@ -114,7 +114,7 @@ export async function inviteSupportAdmin(input: {
     throw new Error(
       data?.user?.email_confirmed_at ||
         /already been registered|already exists/i.test(error?.message ?? "")
-        ? "This email already has a Grouh Academy account. Use a different company email."
+        ? "This email already has a SabiRole account. Use a different company email."
         : (error?.message ?? "Unable to create the account."),
     );
 

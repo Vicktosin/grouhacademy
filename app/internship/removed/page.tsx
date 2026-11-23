@@ -23,7 +23,7 @@ export default function InternshipRemovedPage() {
           kept safe.
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          If you think this is a mistake, please contact the Grouh Academy
+          If you think this is a mistake, please contact the SabiRole
           team and they can restore your access.
         </p>
         <Link

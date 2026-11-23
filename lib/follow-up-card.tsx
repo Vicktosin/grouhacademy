@@ -68,7 +68,7 @@ export function followUpCardImage(row: FollowUpRow) {
             fontWeight: 700,
           }}
         >
-          GROUH ACADEMY · INTERNSHIP
+          SABIROLE · INTERNSHIP
         </div>
         <div
           style={{

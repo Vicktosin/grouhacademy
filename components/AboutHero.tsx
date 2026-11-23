@@ -92,7 +92,7 @@ const AboutHero = () => {
             <p className="text-white/60 text-lg leading-relaxed max-w-lg">
               Between what schools teach and what employers need. Between
               ambition and opportunity. Between a degree and a career. That gap
-              is what Grouh Academy was built to close.
+              is what SabiRole was built to close.
             </p>
           </div>
           <div className="lg:text-right">
@@ -102,7 +102,7 @@ const AboutHero = () => {
             >
               <img
                 src="https://images.unsplash.com/photo-1758270705290-62b6294dd044?w=700&h=480&fit=crop&auto=format"
-                alt="Grouh Academy students collaborating"
+                alt="SabiRole students collaborating"
                 className="w-full object-cover"
                 style={{ aspectRatio: "4/3" }}
               />

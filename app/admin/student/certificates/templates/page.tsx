@@ -108,7 +108,7 @@ export default function CertificateTemplatesPage() {
               <div class="brand">
                 <div class="brand-mark">A</div>
                 <div>
-                  <p class="eyebrow">Grouh Academy</p>
+                  <p class="eyebrow">SabiRole</p>
                   <h1 class="title">${selectedTemplate.header}</h1>
                 </div>
               </div>
@@ -237,14 +237,14 @@ export default function CertificateTemplatesPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
                   <img
                     src="/logo.png"
-                    alt="Grouh Academy logo"
+                    alt="SabiRole logo"
                     className="h-8 w-auto"
                   />
                 </div>
 
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                    Grouh Academy
+                    SabiRole
                   </p>
                   <h3 className="mt-2 text-3xl font-bold text-[#1C1D52]">
                     {selectedTemplate.header}

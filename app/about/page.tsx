@@ -9,9 +9,9 @@ import React from "react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Grouh Academy",
+  title: "About SabiRole",
   description:
-    "Learn how Grouh Academy helps people build practical digital skills and move confidently into the next stage of their careers.",
+    "Learn how SabiRole helps people build practical digital skills and move confidently into the next stage of their careers.",
   alternates: { canonical: "/about" },
 };
 

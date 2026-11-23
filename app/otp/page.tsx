@@ -49,7 +49,7 @@ export default function OtpPage() {
           <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-xl">
             <img
               src="/logo.png"
-              alt="Grouh Academy logo"
+              alt="SabiRole logo"
               className="mb-6 h-10 w-auto"
             />
             <h1 className="text-3xl font-bold text-[#1c1d52]">

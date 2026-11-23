@@ -6,7 +6,7 @@ const LpFooter = () => {
   return (
     <footer className="border-t border-slate-100 bg-white">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-5 py-9 text-center sm:px-8">
-        <Image className="h-9 w-auto" src={logo} alt="Grouh Academy" />
+        <Image className="h-9 w-auto" src={logo} alt="SabiRole" />
         <p className="text-sm text-slate-500">
           Practical digital skills. Real experience. A stronger start.
         </p>

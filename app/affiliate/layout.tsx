@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Affiliate Program | Grouh Academy",
+  title: "Affiliate Program | SabiRole",
   robots: { index: false },
 };
 

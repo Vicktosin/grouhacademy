@@ -31,7 +31,7 @@ function categoryName(category: CourseCategory) {
 
 function getInstructorName(course: DbCourse) {
   const firstInstructor = course.instructors?.[0]?.instructor?.name;
-  return firstInstructor || course.creator?.name || "Grouh Academy";
+  return firstInstructor || course.creator?.name || "SabiRole";
 }
 
 function formatPrice(course: DbCourse) {

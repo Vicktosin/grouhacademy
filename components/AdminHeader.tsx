@@ -29,7 +29,7 @@ export default function AdminHeader({
       <Link href={supportAdmin ? "/support" : `/admin/${workspace}`} className="shrink-0">
         <Image
           src="/logo.png"
-          alt="Grouh Academy"
+          alt="SabiRole"
           width={104}
           height={62}
           className="h-8 w-auto object-contain sm:h-12"

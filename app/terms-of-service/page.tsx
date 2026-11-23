@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Grouh Academy",
-  description: "The terms governing your use of Grouh Academy.",
+  title: "Terms of Service | SabiRole",
+  description: "The terms governing your use of SabiRole.",
 };
 
 const sections = [
   {
-    title: "Using Grouh Academy",
+    title: "Using SabiRole",
     content:
-      "You may use Grouh Academy only in compliance with these terms and applicable law. You are responsible for the accuracy of information you submit, maintaining the confidentiality of your account credentials, and all activity that occurs through your account. Please notify us promptly if you believe your account has been accessed without permission.",
+      "You may use SabiRole only in compliance with these terms and applicable law. You are responsible for the accuracy of information you submit, maintaining the confidentiality of your account credentials, and all activity that occurs through your account. Please notify us promptly if you believe your account has been accessed without permission.",
   },
   {
     title: "Courses, assessments, and internships",
@@ -30,7 +30,7 @@ const sections = [
   {
     title: "Your content and our materials",
     content:
-      "You retain ownership of work you submit, but grant Grouh Academy a limited licence to host, review, and use it as needed to provide the service, assess your work, and operate the programme. Platform content, course materials, branding, software, and other materials provided by Grouh Academy are protected by intellectual-property laws and are for your personal, non-commercial use unless we agree otherwise in writing.",
+      "You retain ownership of work you submit, but grant SabiRole a limited licence to host, review, and use it as needed to provide the service, assess your work, and operate the programme. Platform content, course materials, branding, software, and other materials provided by SabiRole are protected by intellectual-property laws and are for your personal, non-commercial use unless we agree otherwise in writing.",
   },
   {
     title: "Suspension or termination",
@@ -40,12 +40,12 @@ const sections = [
   {
     title: "Disclaimers and liability",
     content:
-      "The platform is provided on an “as is” and “as available” basis to the extent permitted by law. We work to keep it reliable and useful, but do not guarantee uninterrupted, error-free, or fully secure service, or any specific learning, career, or employment result. To the extent permitted by law, Grouh Academy is not liable for indirect, incidental, special, consequential, or punitive damages arising from your use of the service.",
+      "The platform is provided on an “as is” and “as available” basis to the extent permitted by law. We work to keep it reliable and useful, but do not guarantee uninterrupted, error-free, or fully secure service, or any specific learning, career, or employment result. To the extent permitted by law, SabiRole is not liable for indirect, incidental, special, consequential, or punitive damages arising from your use of the service.",
   },
   {
     title: "Changes to these terms",
     content:
-      "We may revise these terms to reflect changes to our services, business, or legal obligations. We will post the updated terms here and update the effective date. If you continue to use Grouh Academy after changes take effect, you agree to the updated terms.",
+      "We may revise these terms to reflect changes to our services, business, or legal obligations. We will post the updated terms here and update the effective date. If you continue to use SabiRole after changes take effect, you agree to the updated terms.",
   },
 ];
 
@@ -57,7 +57,7 @@ export default function TermsOfServicePage() {
           href="/"
           className="text-sm font-semibold text-[#397d3a] hover:text-[#1C1D52]"
         >
-          ← Back to Grouh Academy
+          ← Back to SabiRole
         </Link>
         <header className="mt-8 rounded-3xl bg-[#1C1D52] px-7 py-10 text-white shadow-[0_16px_45px_rgba(28,29,82,0.18)] sm:px-10">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#9be28a]">

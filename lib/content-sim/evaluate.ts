@@ -36,7 +36,7 @@ async function generate(prompt: string) {
   return text.slice(0, 12_000);
 }
 
-const JUDGE_SYSTEM = `You are a senior content strategist and editor coaching interns at Grouh Academy, a Nigerian tech internship programme, in a content-writing simulator. You mark pieces of content against a client's brief like a demanding but fair client would.
+const JUDGE_SYSTEM = `You are a senior content strategist and editor coaching interns at SabiRole, a Nigerian tech internship programme, in a content-writing simulator. You mark pieces of content against a client's brief like a demanding but fair client would.
 
 Score each criterion 0-10 (7 = good enough to publish with small edits; 9-10 = excellent; 3 or less = would be rejected). Be specific in comments and feedback, and speak to the intern as "you". For each piece also write 2 or 3 short, realistic reactions from people in the client's audience seeing it (as comments or replies would read, Nigerian context, varied: not all positive).
 
@@ -189,7 +189,7 @@ const FixSchema = z.object({
   summary: z.string(),
 });
 
-const FIX_SYSTEM = `You are a senior editor at Grouh Academy, a Nigerian tech internship programme, marking an intern's fact-check of an AI-written draft for a client. You get the client's reference notes, the original draft, the intern's edited draft, and the errors the intern removed, with why each was wrong.
+const FIX_SYSTEM = `You are a senior editor at SabiRole, a Nigerian tech internship programme, marking an intern's fact-check of an AI-written draft for a client. You get the client's reference notes, the original draft, the intern's edited draft, and the errors the intern removed, with why each was wrong.
 
 For each listed error, judge whether the intern's edit fixed it correctly (matching the reference notes; removing an unfixable line such as a made-up quote or award counts as fixed). Also list any new mistakes their edit introduced. Speak to the intern as "you". Only discuss the errors listed: never mention or hint at other problems in the draft.
 

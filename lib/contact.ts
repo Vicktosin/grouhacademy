@@ -5,7 +5,7 @@
 export const CONTACT_INBOX = "hello@grouhacademy.space";
 
 /** Address the contact emails are sent from. */
-export const CONTACT_SENDER = "Grouh Academy <noreply@grouhacademy.space>";
+export const CONTACT_SENDER = "SabiRole <noreply@grouhacademy.space>";
 
 /** Topics offered in the contact form, keyed by the value it submits. */
 export const CONTACT_TOPICS: Record<string, string> = {

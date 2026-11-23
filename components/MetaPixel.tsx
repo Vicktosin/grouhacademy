@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 
-const PIXEL_ID = "1584608859445096"; // Grouh Academy Meta Pixel ID
+const PIXEL_ID = "1584608859445096"; // SabiRole Meta Pixel ID
 
 export default function MetaPixel() {
   return (

@@ -111,5 +111,5 @@ test("download name and share caption", () => {
 
 test("the flyer says Sabirole was Grouh Academy, and where to register", () => {
   assert.equal(FLYER_NOTES.formerly.text, "(formerly Grouh Academy)");
-  assert.equal(FLYER_NOTES.website.text, "www.grouhacademy.com/register");
+  assert.equal(FLYER_NOTES.website.text, "www.sabirole.com/register");
 });

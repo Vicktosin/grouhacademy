@@ -4,12 +4,12 @@ const Benefits = () => {
   const list = [
     "Hands-on projects with real-world constraints and deliverables",
     "1-on-1 mentorship from industry practitioners",
-    "Official Grouh Academy certificate recognized by partner employers",
+    "Official SabiRole certificate recognized by partner employers",
     "Portfolio-ready case studies to attach to job applications",
-    "Access to Grouh Academy alumni network across Africa",
+    "Access to SabiRole alumni network across Africa",
     "Weekly live workshops, code reviews, and design critiques",
     "Career coaching and resume / portfolio review session",
-    "Priority referrals to Grouh Academy hiring partners",
+    "Priority referrals to SabiRole hiring partners",
   ];
 
   function IconCheck() {

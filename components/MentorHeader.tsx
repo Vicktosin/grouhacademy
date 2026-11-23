@@ -69,7 +69,7 @@ export default function MentorHeader() {
         >
           <Image
             src={logo}
-            alt="Grouh Academy logo"
+            alt="SabiRole logo"
             width={104}
             height={62}
             className="h-8 w-auto sm:h-12"

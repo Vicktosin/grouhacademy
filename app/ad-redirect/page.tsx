@@ -16,7 +16,7 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "Join our community",
   description:
-    "Learn more about the Grouh Academy internship program in our WhatsApp community.",
+    "Learn more about the SabiRole internship program in our WhatsApp community.",
   alternates: { canonical: "/ad-redirect" },
   // Ad traffic only; keep it out of search results.
   robots: { index: false, follow: false },
@@ -32,7 +32,7 @@ export default function AdRedirectPage() {
         <Image
           className="h-10 w-auto self-start"
           src={logo}
-          alt="Grouh Academy"
+          alt="SabiRole"
           priority
         />
 
@@ -59,7 +59,7 @@ export default function AdRedirectPage() {
               <Image
                 className="aspect-[4/3] w-full rounded-[1.45rem] object-cover"
                 src={teamImage}
-                alt="Grouh Academy interns collaborating on a project"
+                alt="SabiRole interns collaborating on a project"
                 priority
               />
             </div>

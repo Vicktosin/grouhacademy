@@ -75,7 +75,7 @@ const InternshipSection = () => {
             </h2>
 
             <p className="text-white/70 text-lg leading-relaxed mb-8">
-              The Grouh Internship is a structured, mentor-led, 12-week program
+              The SabiRole Internship is a structured, mentor-led, 12-week program
               where you work on real projects alongside experienced
               professionals. Every intern leaves with shipped work in their
               portfolio and a network that opens doors.

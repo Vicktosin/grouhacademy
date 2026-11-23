@@ -45,7 +45,7 @@ export default function AffiliatePage() {
           <h1 className="text-2xl font-semibold">The Affiliate Program is for interns</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Hi {data.me.firstName}, you can join once you&apos;re admitted to a
-            Grouh Academy internship (your acceptance fee is paid). Signed in as{" "}
+            SabiRole internship (your acceptance fee is paid). Signed in as{" "}
             {data.me.email}.
           </p>
           <Link
@@ -106,7 +106,7 @@ function JoinProgram({
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div className="rounded-3xl bg-[#1C1D52] p-7 text-white sm:p-9">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5FBB46]">For Grouh Academy interns</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5FBB46]">For SabiRole interns</p>
         <h1 className="mt-3 text-3xl font-semibold">Invite people, earn {terms.commissionPercent}% commission</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-white/75">
           Hi {firstName}! As an intern you can join our Affiliate Program. You
@@ -165,7 +165,7 @@ function Dashboard({
   const pending = dashboard.payouts.find((payout) => payout.status === "PENDING");
   const reached = balance.available >= payoutMinimum;
   const progress = Math.min(100, Math.round((balance.available / payoutMinimum) * 100));
-  const shareText = `Join a Grouh Academy internship and get real work experience. Sign up with my link: ${dashboard.link}`;
+  const shareText = `Join a SabiRole internship and get real work experience. Sign up with my link: ${dashboard.link}`;
 
   async function copy(kind: "code" | "link") {
     await navigator.clipboard.writeText(kind === "code" ? dashboard.code : dashboard.link).catch(() => undefined);

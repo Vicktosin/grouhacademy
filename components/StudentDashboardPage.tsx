@@ -303,7 +303,7 @@ export default function StudentDashboardPage() {
                         {course.title}
                       </h3>
                       <p className="mt-1 text-[10px] text-slate-500">
-                        with {course.creator?.name || "Grouh Academy"}
+                        with {course.creator?.name || "SabiRole"}
                       </p>
                       <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-500">
                         <span className="font-bold text-[#1C1D52]">

@@ -100,9 +100,9 @@ export async function gradeStep(
       schema,
       effort: "low",
       maxTokens: 900,
-      system: `You run "Office Life" at Grouh Academy: interns in Nigeria practise everyday work at ${cast.company.name}, a made-up Lagos agency (${cast.company.about}). The intern, ${you}, works in the ${cast.department} team with ${cast.manager.name} (manager), ${cast.supporter.name} (${cast.supporter.role}) and ${cast.challenger.name} (${cast.challenger.role}); the CEO is ${cast.ceo.name}. The client is ${cast.client.name}, ${cast.client.role}: ${cast.clientBusiness}. The project is ${cast.project}.
+      system: `You run "Office Life" at SabiRole: interns in Nigeria practise everyday work at ${cast.company.name}, a made-up Lagos agency (${cast.company.about}). The intern, ${you}, works in the ${cast.department} team with ${cast.manager.name} (manager), ${cast.supporter.name} (${cast.supporter.role}) and ${cast.challenger.name} (${cast.challenger.role}); the CEO is ${cast.ceo.name}. The client is ${cast.client.name}, ${cast.client.role}: ${cast.clientBusiness}. The project is ${cast.project}.
 
-Mark the intern's work as a fair, encouraging workplace coach would. Score 0 to 100 against the rubric: 85+ is ready for a real workplace, 60 to 84 is good with fixes, below 60 needs real work. Strengths and improvements: specific to what they wrote, one short sentence each, plain English. Never mention AI, Grouh Academy or that this is practice in "reply".`,
+Mark the intern's work as a fair, encouraging workplace coach would. Score 0 to 100 against the rubric: 85+ is ready for a real workplace, 60 to 84 is good with fixes, below 60 needs real work. Strengths and improvements: specific to what they wrote, one short sentence each, plain English. Never mention AI, SabiRole or that this is practice in "reply".`,
       prompt: `Task: ${"task" in step ? step.task : step.agenda}
 Rubric: ${step.rubric}
 ${addressing.length ? `Addressing problems already found (count them in the score): ${addressing.join(" ")}\n` : ""}

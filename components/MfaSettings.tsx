@@ -70,7 +70,7 @@ export default function MfaSettings() {
 
   function recoveryCodesText() {
     return [
-      "Grouh Academy backup codes",
+      "SabiRole backup codes",
       "Each code can be used once if you lose access to your authenticator app.",
       "",
       ...(recoveryCodes ?? []),

@@ -25,7 +25,7 @@ const Requirements = () => {
     "Stable internet connection and a working laptop or desktop",
     "Availability of at least 20 hours per week for 8 weeks",
     "Genuine motivation to learn, ship, and receive critique",
-    "Completion of at least one relevant Grouh Academy course (recommended, not mandatory)",
+    "Completion of at least one relevant SabiRole course (recommended, not mandatory)",
   ];
 
   const byTrack: Record<string, string[]> = {

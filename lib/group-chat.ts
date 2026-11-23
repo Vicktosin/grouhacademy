@@ -4,9 +4,9 @@ import { notifyChats } from "@/lib/realtime";
 
 // Group discussion messages, including ones the academy team posts into a
 // group's chat from the Groups page. Admins' messages are shown to interns
-// as "Grouh Academy team", Support Admins' as "Support Admin".
+// as "SabiRole team", Support Admins' as "Support Admin".
 
-export const TEAM_NAME = "Grouh Academy team";
+export const TEAM_NAME = "SabiRole team";
 export const SUPPORT_ADMIN_NAME = "Support Admin";
 export const MAX_MESSAGE_LENGTH = 2000;
 

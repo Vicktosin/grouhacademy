@@ -11,7 +11,7 @@ const Footer = () => {
           <div className="lg:col-span-1">
             <Image
               src={logoWhite}
-              alt="Grouh Academy"
+              alt="SabiRole"
               className="mb-4 h-10 w-auto opacity-90"
             />
             <p className="text-white/50 text-sm leading-relaxed max-w-xs">
@@ -124,7 +124,7 @@ const Footer = () => {
 
         <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/30 text-sm">
-            © 2026 Grouh Academy. All rights reserved.
+            © 2026 SabiRole. All rights reserved.
           </p>
           <p className="text-white/20 text-sm">
             Built for Africa&apos;s next generation of builders.

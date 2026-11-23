@@ -37,7 +37,7 @@ export const LAB_KIND_LABEL: Record<AnyLabKind, string> = {
 export const DEFAULT_STARTER: Record<LabKindKey, LabFiles> = {
   WEB: {
     "index.html": `<main class="card">
-  <h1>Hello, Grouh Academy!</h1>
+  <h1>Hello, SabiRole!</h1>
   <p>Edit index.html, styles.css and script.js.</p>
   <button id="greet">Say hi</button>
 </main>`,

@@ -18,7 +18,7 @@ import { REAL_USER } from "@/lib/real-user";
 // left out.
 
 /** Where applicants log in. Messages go to real people, so never localhost. */
-const PUBLIC_SITE_URL = "https://grouhacademy.com";
+const PUBLIC_SITE_URL = "https://sabirole.com";
 
 function publicSiteUrl() {
   const configured = getSiteUrl();

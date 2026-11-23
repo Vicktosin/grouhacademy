@@ -10,7 +10,7 @@ const Header = () => {
       <Link href="/" className="inline-flex items-center gap-3">
         <Image
           src={logo}
-          alt="Grouh Academy logo"
+          alt="SabiRole logo"
           width={104}
           height={62}
           className="h-10 w-auto sm:h-12"

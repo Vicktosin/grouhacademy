@@ -28,7 +28,7 @@ export default function OfflinePage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/icons/icon-192.png"
-          alt="Grouh Academy"
+          alt="SabiRole"
           className="mx-auto h-20 w-20 rounded-2xl"
         />
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-[#5FBB46]">
@@ -38,7 +38,7 @@ export default function OfflinePage() {
           Check your connection
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          Grouh Academy needs an internet connection to load the latest learning
+          SabiRole needs an internet connection to load the latest learning
           content and account information.
         </p>
         <p

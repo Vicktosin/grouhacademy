@@ -90,7 +90,7 @@ import {
 import { mediaSrc, shrinkImage } from "@/lib/lab-media-shared";
 import type { AdFeedback } from "@/lib/ads-sim/evaluate";
 
-// Grouh Academy Ads Studio: a practice ads manager. Its look and workflow
+// SabiRole Ads Studio: a practice ads manager. Its look and workflow
 // follow the big social platforms' ads managers (a campaigns table with
 // Campaigns / Ad sets / Ads tabs, on/off switches, an editing pane with the
 // structure on the left and a preview on the right, Publish), so interns
@@ -139,7 +139,7 @@ export function StudioNotice() {
     <p className="flex items-start gap-2 border-b border-[#DADDE1] bg-[#E7F3FF] px-4 py-2 text-[12px] leading-5 text-[#1C1E21]">
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1877F2]" />
       <span>
-        <strong>For learning only.</strong> Grouh Academy Ads Studio works like the ads managers of the big social platforms, but it
+        <strong>For learning only.</strong> SabiRole Ads Studio works like the ads managers of the big social platforms, but it
         isn&apos;t affiliated with or endorsed by Meta, Facebook, Instagram or any ad platform. No real ads run and no money is
         spent. To run real ads, use the platform&apos;s own ads manager.
       </span>
@@ -153,7 +153,7 @@ function StudioLogo() {
     <span className="flex items-center gap-2">
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1877F2] text-[15px] font-black text-white">G</span>
       <span className="leading-tight">
-        <span className="block text-[11px] font-semibold text-[#65676B]">Grouh Academy</span>
+        <span className="block text-[11px] font-semibold text-[#65676B]">SabiRole</span>
         <span className="block text-[15px] font-bold text-[#1C1E21]">Ads Studio</span>
       </span>
     </span>

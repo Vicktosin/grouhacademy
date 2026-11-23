@@ -166,8 +166,8 @@ async function askCompatible<S extends z.ZodType>(
       Authorization: `Bearer ${provider.key}`,
       "Content-Type": "application/json",
       // OpenRouter shows these on its dashboard; others ignore them.
-      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://grouhacademy.com",
-      "X-Title": "Grouh Academy",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://sabirole.com",
+      "X-Title": "SabiRole",
     },
     body: JSON.stringify({
       model: images.length ? provider.visionModel : provider.model,
@@ -282,8 +282,8 @@ async function writeWithCompatible(provider: CompatibleProvider, options: TextOp
     headers: {
       Authorization: `Bearer ${provider.key}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://grouhacademy.com",
-      "X-Title": "Grouh Academy",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://sabirole.com",
+      "X-Title": "SabiRole",
     },
     body: JSON.stringify({
       model: provider.model,

@@ -35,7 +35,7 @@ export default function AffiliateShell({
       <header className="border-b border-[#dfe7f5] bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link href="/affiliate" className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Grouh Academy" width={90} height={54} className="h-9 w-auto object-contain" />
+            <Image src="/logo.png" alt="SabiRole" width={90} height={54} className="h-9 w-auto object-contain" />
             <span className="hidden rounded-full bg-[#e8f7eb] px-3 py-1 text-[11px] font-bold text-[#397d3a] sm:inline">
               Affiliate Program
             </span>

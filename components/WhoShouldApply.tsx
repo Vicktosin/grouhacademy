@@ -100,7 +100,7 @@ const WhoShouldApply = () => {
               We don't require perfection — we require{" "}
               <strong className="text-white">drive</strong>. Whether you're
               fresh out of school, pivoting careers, or purely self-taught,
-              Grouh Academy's internship is built for builders who want to grow.
+              SabiRole's internship is built for builders who want to grow.
             </p>
             <a
               href="/register"

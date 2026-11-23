@@ -18,8 +18,8 @@ const HeaderLP = () => {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
-        <a href="#top" aria-label="Grouh Academy home">
-          <Image className="h-10 w-auto" src={logo} alt="Grouh Academy" priority />
+        <a href="#top" aria-label="SabiRole home">
+          <Image className="h-10 w-auto" src={logo} alt="SabiRole" priority />
         </a>
         <nav className="hidden items-center gap-8 text-sm font-semibold text-[#141650]/75 lg:flex">
           {navLinks.map(([label, href]) => (

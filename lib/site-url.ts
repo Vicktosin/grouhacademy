@@ -1,5 +1,5 @@
 export function getSiteUrl(): string {
-  // NEXT_PUBLIC_APP_URL is the canonical public domain for Grouh Academy.
+  // NEXT_PUBLIC_APP_URL is the canonical public domain for SabiRole.
   // Prefer it over the legacy SITE_URL variable so OAuth and email links do
   // not send learners back to a Vercel deployment hostname.
   const configuredUrl = (

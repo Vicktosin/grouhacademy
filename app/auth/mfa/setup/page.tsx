@@ -25,7 +25,7 @@ export default async function MfaSetupPage({
       <section className="mx-4 max-w-2xl rounded-2xl sm:mx-auto bg-white p-6 shadow-xl sm:p-8">
         <Image
           src="/logo.png"
-          alt="Grouh Academy logo"
+          alt="SabiRole logo"
           width={160}
           height={40}
           className="h-10 w-auto"

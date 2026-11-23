@@ -37,7 +37,7 @@ export default async function AdminCourseDetailPage({
             {course.category?.name ?? "Uncategorized"} ·{" "}
             {course.instructors[0]?.instructor.name ??
               course.creator.name ??
-              "Grouh Academy"}
+              "SabiRole"}
           </p>
           <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600">
             {course.description ?? "No description provided."}

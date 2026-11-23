@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Verify a certificate",
   description:
-    "Check whether a Grouh Academy certificate is genuine and still valid.",
+    "Check whether a SabiRole certificate is genuine and still valid.",
 };
 
 function firstParam(value: string | string[] | undefined) {
@@ -44,7 +44,7 @@ export default async function VerifyCertificatePage({
           Certificate verification
         </p>
         <h1 className="mt-3 text-center text-3xl font-bold text-[#1C1D52] sm:text-4xl">
-          Verify a Grouh Academy certificate
+          Verify a SabiRole certificate
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-6 text-slate-600">
           Enter both the certificate number and the verification ID. You&apos;ll
@@ -111,7 +111,7 @@ function ResultCard({ result }: { result: VerificationResult }) {
           No certificate found
         </h2>
         <p className="mt-2 text-sm leading-6 text-amber-800">
-          No Grouh Academy certificate matches that certificate number and
+          No SabiRole certificate matches that certificate number and
           verification ID together. Check both against the certificate and try
           again; they aren&apos;t case-sensitive.
         </p>
@@ -158,8 +158,8 @@ function ResultCard({ result }: { result: VerificationResult }) {
             className={`mt-1 text-sm ${revoked ? "text-red-700" : "text-emerald-700"}`}
           >
             {revoked
-              ? `This certificate was issued by Grouh Academy but revoked on ${certificate.revokedAt}. It is no longer valid.`
-              : `This ${certificate.kind === "internship" ? "internship " : ""}certificate was issued by Grouh Academy and is valid.`}
+              ? `This certificate was issued by SabiRole but revoked on ${certificate.revokedAt}. It is no longer valid.`
+              : `This ${certificate.kind === "internship" ? "internship " : ""}certificate was issued by SabiRole and is valid.`}
           </p>
         </div>
       </div>

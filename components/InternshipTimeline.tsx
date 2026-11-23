@@ -113,7 +113,7 @@ const events = [
   {
     phase: "Week 1",
     title: "Screening & Assessment",
-    desc: "Skills test and 20-minute virtual interview with a Grouh mentor.",
+    desc: "Skills test and 20-minute virtual interview with a SabiRole mentor.",
     icon: <IconUsers />,
   },
   {
@@ -137,7 +137,7 @@ const events = [
   {
     phase: "Week 10+",
     title: "Graduation & Certificate",
-    desc: "Receive your Grouh Academy certificate and join the alumni community.",
+    desc: "Receive your SabiRole certificate and join the alumni community.",
     icon: <IconCheck />,
   },
 ];

@@ -38,7 +38,7 @@ export const NAME_STYLE = {
 /** Small lines drawn on the template: under the logo, and under the name. */
 export const FLYER_NOTES = {
   formerly: { text: "(formerly Grouh Academy)", weight: 500, size: 46, color: "#3A4248", x: 1080, baseline: 612 },
-  website: { text: "www.grouhacademy.com/register", weight: 600, size: 56, color: "#0B7D54", x: 1080, gap: 44 },
+  website: { text: "www.sabirole.com/register", weight: 600, size: 56, color: "#0B7D54", x: 1080, gap: 44 },
 } as const;
 
 export const SHARE_CAPTION = "I just completed my internship program with Sabirole.";
@@ -124,7 +124,7 @@ export function flyerFileName(name: string, extension = "png") {
 /** Share links for when the device can't share the image file itself. */
 export function shareLinks(flyerUrl: string | null) {
   const text = encodeURIComponent(flyerUrl ? `${SHARE_CAPTION} ${flyerUrl}` : SHARE_CAPTION);
-  const url = encodeURIComponent(flyerUrl ?? "https://grouhacademy.com");
+  const url = encodeURIComponent(flyerUrl ?? "https://sabirole.com");
   return [
     { name: "WhatsApp", href: `https://wa.me/?text=${text}` },
     { name: "LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}` },

@@ -177,7 +177,7 @@ export default function CourseCatalog() {
                       {course.title}
                     </h3>
                     <p className="mt-2 text-sm text-slate-500">
-                      with {course.instructor || "Grouh Academy"}
+                      with {course.instructor || "SabiRole"}
                     </p>
                     <div className="mt-5 flex items-center gap-3 text-sm text-slate-500">
                       <span className="font-semibold text-[#141650]">

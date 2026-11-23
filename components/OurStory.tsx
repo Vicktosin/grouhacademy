@@ -87,7 +87,7 @@ const OurStory = () => {
                 className="text-white text-xl font-medium leading-relaxed"
                 style={{ fontFamily: "Fraunces, serif" }}
               >
-                "We didn't start Grouh to build a school. We started it because
+                "We didn't start SabiRole to build a school. We started it because
                 the students we knew were talented, hungry, and completely
                 unprepared for the real world."
               </p>

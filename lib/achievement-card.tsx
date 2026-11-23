@@ -136,7 +136,7 @@ export async function renderAchievementCard(card: ShareCard, size: "full" | "og"
 
         {/* Header: logo and rarity. */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: `${u(56)}px ${u(64)}px 0` }}>
-          <img src={logo} alt="Grouh Academy" width={u(151)} height={u(90)} style={{ objectFit: "contain" }} />
+          <img src={logo} alt="SabiRole" width={u(151)} height={u(90)} style={{ objectFit: "contain" }} />
           <div
             style={{
               display: "flex",
@@ -262,7 +262,7 @@ export async function renderAchievementCard(card: ShareCard, size: "full" | "og"
           <div style={{ display: "flex", flexDirection: "column", maxWidth: u(600) }}>
             <div style={{ display: "flex", fontSize: u(38), fontWeight: 900 }}>{clip(card.name, 26)}</div>
             <div style={{ display: "flex", marginTop: u(4), fontSize: u(25), fontWeight: 700, color: "#5B6170" }}>
-              {clip(`Grouh Academy · ${program}`, 64)}
+              {clip(`SabiRole · ${program}`, 64)}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>

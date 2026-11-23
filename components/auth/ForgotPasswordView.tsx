@@ -45,7 +45,7 @@ export default function ForgotPasswordView({ track }: { track: LearnerTrack }) {
                 <div className="mb-8">
                   <img
                     src="/logo.png"
-                    alt="Grouh Academy logo"
+                    alt="SabiRole logo"
                     className="mb-3 h-10 w-auto"
                   />
                   <h1 className="text-3xl font-bold tracking-tight text-[#1c1d52] sm:text-4xl">

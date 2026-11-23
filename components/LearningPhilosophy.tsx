@@ -71,7 +71,7 @@ const LearningPhilosophy = () => {
         >
           <img
             src="https://images.unsplash.com/photo-1522881193457-37ae97c905bf?w=1400&h=720&fit=crop&auto=format"
-            alt="Grouh instructor teaching a student"
+            alt="SabiRole instructor teaching a student"
             className="w-full h-full object-cover"
           />
         </div>

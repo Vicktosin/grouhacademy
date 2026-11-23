@@ -61,7 +61,7 @@ const HowItWorks = () => {
     {
       n: "06",
       title: "Graduate & Get Certified",
-      desc: "Complete deliverables, receive a Grouh Academy certificate, and gain a portfolio-ready case study.",
+      desc: "Complete deliverables, receive a SabiRole certificate, and gain a portfolio-ready case study.",
     },
   ];
 

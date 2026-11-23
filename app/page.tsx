@@ -12,7 +12,7 @@ import { getSiteUrl } from "@/lib/site-url";
 export const metadata: Metadata = {
   title: "Practical Digital Skills, Courses, and Internships",
   description:
-    "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with Grouh Academy courses and internships.",
+    "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with SabiRole courses and internships.",
   alternates: { canonical: "/" },
 };
 
@@ -24,7 +24,7 @@ const page = () => {
       {
         "@type": "EducationalOrganization",
         "@id": `${siteUrl}/#organization`,
-        name: "Grouh Academy",
+        name: "SabiRole",
         url: siteUrl,
         logo: `${siteUrl}/logo.png`,
         description:
@@ -33,7 +33,7 @@ const page = () => {
       {
         "@type": "WebSite",
         "@id": `${siteUrl}/#website`,
-        name: "Grouh Academy",
+        name: "SabiRole",
         url: siteUrl,
         publisher: { "@id": `${siteUrl}/#organization` },
       },

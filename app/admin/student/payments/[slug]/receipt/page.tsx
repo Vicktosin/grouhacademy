@@ -43,7 +43,7 @@ export default function StudentPaymentReceiptPage() {
   }, [slug]);
   const download = () => {
     if (!payment) return;
-    const html = `<html><body><h1>Grouh Academy Payment Receipt</h1><p>Reference: ${payment.reference}</p><p>Learner: ${payment.student}</p><p>Item: ${payment.item}</p><p>Amount: ${money(payment.amount, payment.currency)}</p><p>Provider: ${payment.provider}</p><p>Status: ${payment.status}</p><p>Date: ${payment.dateLabel}</p></body></html>`;
+    const html = `<html><body><h1>SabiRole Payment Receipt</h1><p>Reference: ${payment.reference}</p><p>Learner: ${payment.student}</p><p>Item: ${payment.item}</p><p>Amount: ${money(payment.amount, payment.currency)}</p><p>Provider: ${payment.provider}</p><p>Status: ${payment.status}</p><p>Date: ${payment.dateLabel}</p></body></html>`;
     const url = URL.createObjectURL(
       new Blob([html], { type: "text/html;charset=utf-8" }),
     );
