@@ -2,7 +2,7 @@ export const MILESTONES = [
   {
     year: "2020",
     event:
-      "Grouh founded in Lagos with 12 students and a shared Google Doc curriculum.",
+      "Grouh founded in Abuja with 12 students and a shared Google Doc curriculum.",
   },
   {
     year: "2021",
@@ -22,11 +22,11 @@ export const MILESTONES = [
   {
     year: "2024",
     event:
-      "Raised seed funding. Grew to 12 tracks, 20+ instructors, 40+ hiring partners.",
+      "Raised seed funding. Grew to 12 tracks and 20+ instructors.",
   },
   {
     year: "2026",
     event:
-      "Now 4,800+ students, 60+ partners, and Cohort 7 enrolling across the continent.",
+      "Grouh Academy becomes SabiRole, with 2,000+ people trained so far.",
   },
 ];

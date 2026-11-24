@@ -92,16 +92,17 @@ const OurStory = () => {
                 unprepared for the real world."
               </p>
               <div className="mt-5 flex items-center gap-3">
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format"
-                  alt="Oluwaseun"
-                  className="w-10 h-10 rounded-full object-cover"
-                />
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4db848] text-sm font-bold text-white"
+                >
+                  TE
+                </span>
                 <div>
                   <p className="text-white font-semibold text-sm">
-                    Oluwaseun Adeyemi
+                    Thomas Emmanuel
                   </p>
-                  <p className="text-white/50 text-xs">Founder & CEO</p>
+                  <p className="text-white/50 text-xs">CEO & Co-founder</p>
                 </div>
               </div>
             </div>

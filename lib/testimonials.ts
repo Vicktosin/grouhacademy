@@ -330,6 +330,50 @@ export async function listTestimonials(filter: TestimonialFilter, db: PrismaClie
   }));
 }
 
+/** A written testimonial as the public homepage shows it. */
+export type PublicTestimonial = { id: string; name: string; track: string; quote: string };
+
+/**
+ * Written testimonials for the homepage's Success Stories: every submitted one
+ * except those an admin rejected (the owner's decision: the form had no sharing
+ * checkbox for a while, so consent isn't checked; add it back here once the
+ * form asks again). One per person, newest first. Only the name, track and
+ * words leave the server (no email, photo or media), and nobody is named from
+ * their email address.
+ */
+export async function listPublicTestimonials(
+  limit = 50,
+  db: PrismaClient = getPrisma(),
+): Promise<PublicTestimonial[]> {
+  const rows = await db.internTestimonial.findMany({
+    where: {
+      status: { not: "REJECTED" },
+      testimonial: { not: "" },
+      user: REAL_USER,
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      userId: true,
+      testimonial: true,
+      user: { select: { name: true, profile: { select: { firstName: true, lastName: true } } } },
+      program: { select: { name: true } },
+    },
+  });
+  const seen = new Set<string>();
+  const items: PublicTestimonial[] = [];
+  for (const { id, userId, testimonial, user, program } of rows) {
+    const quote = testimonial.trim();
+    const name =
+      [user.profile?.firstName, user.profile?.lastName].filter(Boolean).join(" ").trim() || user.name?.trim() || "";
+    if (!name || !quote || name.includes("@") || seen.has(userId)) continue;
+    seen.add(userId);
+    items.push({ id, name, track: program.name, quote });
+    if (items.length === limit) break;
+  }
+  return items;
+}
+
 export type TestimonialListItem = Awaited<ReturnType<typeof listTestimonials>>[number];
 
 export function csvRows(items: TestimonialListItem[]): TestimonialCsvRow[] {

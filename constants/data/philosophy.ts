@@ -20,7 +20,7 @@ export const PHILOSOPHY_PILLARS = [
   {
     num: "04",
     heading: "Credentials that employers trust.",
-    body: "Our certificates are designed with hiring partners, not for the wall. Every assessment reflects the bar that companies actually use.",
+    body: "Our certificates are earned through practical work, not for the wall. Every assessment checks what you can actually do.",
     color: "#2b2e82",
   },
 ];

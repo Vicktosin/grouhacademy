@@ -82,7 +82,7 @@ const Whyus = () => {
         </svg>
       ),
       title: "Career Development",
-      desc: "Resume reviews, interview prep, and direct access to our network of 60+ hiring partners across the continent.",
+      desc: "Resume and portfolio reviews, and interview prep to help you get ready for work.",
     },
     {
       icon: (

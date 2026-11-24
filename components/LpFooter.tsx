@@ -11,7 +11,7 @@ const LpFooter = () => {
           Practical digital skills. Real experience. A stronger start.
         </p>
         <div className="flex items-center gap-5 text-sm font-semibold text-[#141650]">
-          <a className="hover:text-[#4aaa3e]" href="mailto:hello@grouhacademy.space">
+          <a className="hover:text-[#4aaa3e]" href="mailto:contact@sabirole.com">
             Contact
           </a>
           <a className="hover:text-[#4aaa3e]" href="#tuition">

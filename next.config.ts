@@ -114,6 +114,9 @@ const nextConfig: NextConfig = {
   // the proxy, so they work for logged-out visitors too.
   async redirects() {
     return [
+      // The public courses page is now the tracks page (/courses/login and
+      // /courses/register stay).
+      { source: "/courses", destination: "/tracks", permanent: true },
       // The old domain sends every page to the same page on the new one
       // (see lib/domain-move.ts).
       ...(isDomainMoveActive()

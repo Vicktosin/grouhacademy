@@ -4,12 +4,10 @@ const Benefits = () => {
   const list = [
     "Hands-on projects with real-world constraints and deliverables",
     "1-on-1 mentorship from industry practitioners",
-    "Official SabiRole certificate recognized by partner employers",
+    "Official SabiRole certificate",
     "Portfolio-ready case studies to attach to job applications",
     "Access to SabiRole alumni network across Africa",
-    "Weekly live workshops, code reviews, and design critiques",
-    "Career coaching and resume / portfolio review session",
-    "Priority referrals to SabiRole hiring partners",
+    "Occasional career coaching and resume / portfolio review sessions",
   ];
 
   function IconCheck() {

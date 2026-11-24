@@ -38,7 +38,7 @@ export default function MentorProfilePage() {
               </span>
               <span className="flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" />
-                Lagos, Nigeria
+                Abuja, Nigeria
               </span>
             </div>
           </div>

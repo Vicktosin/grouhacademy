@@ -3,22 +3,22 @@
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { CONTACT_INBOX, CONTACT_TOPICS } from "@/lib/contact";
+import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_TOPICS } from "@/lib/contact";
 
 const contactDetails = [
   {
     icon: Mail,
     label: "Email us",
-    value: CONTACT_INBOX,
-    href: `mailto:${CONTACT_INBOX}`,
+    value: CONTACT_EMAIL,
+    href: `mailto:${CONTACT_EMAIL}`,
   },
   {
     icon: Phone,
     label: "Call us",
-    value: "+234 800 123 4567",
-    href: "tel:+2348001234567",
+    value: CONTACT_PHONE,
+    href: `tel:${CONTACT_PHONE.replaceAll(" ", "")}`,
   },
-  { icon: MapPin, label: "Based in", value: "Lagos, Nigeria", href: "#" },
+  { icon: MapPin, label: "Based in", value: "Abuja, Nigeria", href: "#" },
 ];
 
 export default function ContactPage() {

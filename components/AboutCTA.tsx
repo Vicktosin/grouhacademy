@@ -1,12 +1,7 @@
-"use client";
-
+import Link from "next/link";
 import React from "react";
 
 const AboutCTA = () => {
-  const onNavigate = (_section: string) => {
-    // Placeholder for navigation logic when needed.
-  };
-
   return (
     <section className="py-24 lg:py-32 bg-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -47,25 +42,16 @@ const AboutCTA = () => {
               Now let's build your future.
             </h2>
             <p className="text-white/60 text-lg mb-10 max-w-lg mx-auto">
-              Join 4,800+ graduates who chose to learn differently — and land
+              Join 2,000+ people who chose to learn differently — and land
               differently.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={() => {
-                  onNavigate("home");
-                  setTimeout(
-                    () =>
-                      document
-                        .querySelector("#courses")
-                        ?.scrollIntoView({ behavior: "smooth" }),
-                    100,
-                  );
-                }}
+              <Link
+                href="/tracks"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white font-bold text-base transition-all hover:scale-105"
                 style={{ background: "#4db848" }}
               >
-                Browse Courses
+                Browse Tracks
                 <svg
                   width="16"
                   height="16"
@@ -80,23 +66,14 @@ const AboutCTA = () => {
                     strokeLinejoin="round"
                   />
                 </svg>
-              </button>
-              <button
-                onClick={() => {
-                  onNavigate("home");
-                  setTimeout(
-                    () =>
-                      document
-                        .querySelector("#internship")
-                        ?.scrollIntoView({ behavior: "smooth" }),
-                    100,
-                  );
-                }}
+              </Link>
+              <Link
+                href="/internship"
                 className="inline-flex items-center justify-center px-8 py-4 rounded-full font-bold text-base border-2 text-white transition-all hover:bg-white/10"
                 style={{ borderColor: "rgba(255,255,255,0.25)" }}
               >
                 Apply for Internship
-              </button>
+              </Link>
             </div>
           </div>
         </div>

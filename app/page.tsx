@@ -8,6 +8,11 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
+import { getPublicTracks } from "@/lib/public-tracks";
+import { listPublicTestimonials } from "@/lib/testimonials";
+
+// Newly approved testimonials appear within about ten minutes.
+export const revalidate = 600;
 
 export const metadata: Metadata = {
   title: "Get Work Experience with Our Virtual Internship",
@@ -16,7 +21,18 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const page = () => {
+/** The homepage still renders (and builds) if the database can't be reached. */
+async function internTestimonials() {
+  try {
+    return await listPublicTestimonials();
+  } catch (error) {
+    console.error("Unable to load intern testimonials for the homepage", error);
+    return [];
+  }
+}
+
+const page = async () => {
+  const [testimonials, tracks] = await Promise.all([internTestimonials(), getPublicTracks()]);
   const siteUrl = getSiteUrl();
   const structuredData = {
     "@context": "https://schema.org",
@@ -66,7 +82,7 @@ const page = () => {
             <div className="max-w-2xl bg-[#ffffff]/10 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl shadow-slate-950/30">
               <span className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/90 shadow-lg shadow-slate-950/20">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#5FBB46]" />
-                5,000+ students already learning
+                2,000+ people trained
               </span>
 
               <h1 className="hero-title mt-8 text-5xl font-bold tracking-tight text-white sm:text-7xl">
@@ -93,10 +109,10 @@ const page = () => {
         </Container>
       </section>
       <Whyus />
-      <CurriculumSection />
+      <CurriculumSection tracks={tracks} />
       <InternshipSection />
       <LearningProcess />
-      <Testimonials />
+      <Testimonials interns={testimonials} />
       <FAQ />
     </main>
   );
