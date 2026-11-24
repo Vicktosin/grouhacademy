@@ -117,6 +117,13 @@ const nextConfig: NextConfig = {
       // The public courses page is now the tracks page (/courses/login and
       // /courses/register stay).
       { source: "/courses", destination: "/tracks", permanent: true },
+      // careernavigator.sabirole.com opens the Career Navigator.
+      {
+        source: "/",
+        has: [{ type: "host" as const, value: "careernavigator\.sabirole\.com" }],
+        destination: "/career-navigator",
+        permanent: false,
+      },
       // The old domain sends every page to the same page on the new one
       // (see lib/domain-move.ts).
       ...(isDomainMoveActive()
