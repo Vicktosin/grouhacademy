@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grouh-academy-v3'
+const CACHE_NAME = 'sabirole-v4'
 
 // The installable app covers app pages only, never the public website.
 // Keep in step with isPwaRoute() in lib/app-routes.ts.

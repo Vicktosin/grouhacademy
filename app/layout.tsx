@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     description:
       "Build practical digital skills through career-ready courses, expert mentorship, and real-world internship opportunities.",
     images: [
-      { url: "/logo.png", width: 512, height: 512, alt: "SabiRole" },
+      { url: "/icons/icon-512.png", width: 512, height: 512, alt: "SabiRole" },
     ],
   },
   twitter: {
