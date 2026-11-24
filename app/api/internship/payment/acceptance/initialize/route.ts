@@ -86,20 +86,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const passedAttempt = await prisma.assessmentAttempt.findFirst({
-      where: { applicationId: application.id, status: "PASSED" },
-      select: { id: true },
-    });
-    if (!passedAttempt) {
-      return NextResponse.json(
-        {
-          message:
-            "Pass the entrance assessment before paying the acceptance fee.",
-        },
-        { status: 403 },
-      );
-    }
-
     if (application.payment?.status === "PAID") {
       return NextResponse.json(
         { message: "Your acceptance fee has already been paid." },

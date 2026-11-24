@@ -68,11 +68,14 @@ export async function getAcceptanceFee(programId: string, levelId: string) {
   return fee?.acceptanceFee ?? null;
 }
 
-export type OpenLevel = InternshipLevelOption & { acceptanceFee: number };
+export type OpenLevel = InternshipLevelOption & {
+  acceptanceFee: number;
+  assessmentAvailable: boolean;
+};
 
 /**
- * The levels applicants can choose for each track: those with a fee set and
- * an entrance assessment that has questions. Lowest level first.
+ * The levels applicants can choose for each track: those with a fee set.
+ * An entrance assessment is offered when configured, but is optional.
  */
 export async function getOpenLevels(
   programIds: string[],
@@ -107,8 +110,8 @@ export async function getOpenLevels(
         const key = `${program.id}:${level.id}`;
         const fee =
           level.id === entryId ? program.acceptanceFee : feeFor.get(key);
-        return fee !== undefined && hasAssessment.has(key)
-          ? [{ ...level, acceptanceFee: fee }]
+        return fee !== undefined
+          ? [{ ...level, acceptanceFee: fee, assessmentAvailable: hasAssessment.has(key) }]
           : [];
       }),
     ]),

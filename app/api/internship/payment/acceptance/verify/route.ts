@@ -74,20 +74,6 @@ export async function GET(request: Request) {
       );
     }
 
-    const passedAttempt = await prisma.assessmentAttempt.findFirst({
-      where: { applicationId, status: "PASSED" },
-      select: { id: true },
-    });
-    if (!passedAttempt) {
-      return NextResponse.json(
-        {
-          message:
-            "A passed entrance assessment is required to verify this payment.",
-        },
-        { status: 403 },
-      );
-    }
-
     // The amount was fixed (for this track and level) when the payment was
     // started; compare against that rather than today's fee.
     const expectedAmount = application.payment?.amount;

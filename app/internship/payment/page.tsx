@@ -15,8 +15,8 @@ import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type Result = {
   programName: string;
-  scorePercent: number;
-  passed: boolean;
+  scorePercent: number | null;
+  assessmentTaken: boolean;
   acceptanceFee: number;
   acceptanceFeePaid: boolean;
 };
@@ -33,7 +33,7 @@ export default function InternshipPaymentPage() {
         const data = await response.json();
         if (!response.ok)
           throw new Error(
-            data.error || "Complete your assessment before continuing.",
+            data.error || "Complete your onboarding before continuing.",
           );
         setResult(data);
       })
@@ -41,7 +41,7 @@ export default function InternshipPaymentPage() {
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Complete your assessment before continuing.",
+            : "Complete your onboarding before continuing.",
         ),
       )
       .finally(() => setLoading(false));
@@ -86,22 +86,22 @@ export default function InternshipPaymentPage() {
         <Loader2 className="h-6 w-6 animate-spin text-[#5FBB46]" />
       </div>
     );
-  if (error || !result || !result.passed)
+  if (error || !result)
     return (
       <div className="mx-auto my-8 max-w-xl rounded-2xl bg-white p-8 text-center sm:my-12 shadow-[0_8px_24px_rgba(28,29,82,0.09)]">
         <AlertCircle className="mx-auto h-9 w-9 text-amber-500" />
         <h1 className="mt-4 text-xl font-bold text-[#1C1D52]">
-          Assessment required
+          Application details required
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
           {error ||
-            "Pass the entrance assessment before paying the acceptance fee."}
+            "Complete your onboarding before paying the acceptance fee."}
         </p>
         <Link
-          href="/internship/assessment/readiness"
+          href="/internship/onboarding"
           className="mt-6 inline-flex rounded-lg bg-[#5FBB46] px-5 py-3 text-xs font-bold text-[#14204f]"
         >
-          Go to assessment
+          Return to onboarding
         </Link>
       </div>
     );
@@ -133,14 +133,15 @@ export default function InternshipPaymentPage() {
           </span>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5FBB46]">
-              You qualified
+              Your next step
             </p>
             <h1 className="mt-1 text-2xl font-bold text-[#1C1D52]">
               Pay your acceptance fee
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              You scored {result.scorePercent}% on the {result.programName}{" "}
-              entrance assessment.
+              {result.assessmentTaken && result.scorePercent !== null
+                ? `You scored ${result.scorePercent}% on your optional ${result.programName} skills assessment.`
+                : `Your ${result.programName} application is ready. Complete your payment to begin.`}
             </p>
           </div>
         </div>
@@ -152,8 +153,8 @@ export default function InternshipPaymentPage() {
             </strong>
           </div>
           <p className="mt-3 text-[11px] leading-5 text-white/65">
-            This one-time payment is available only after passing your entrance
-            assessment and unlocks the internship workspace.
+            This one-time payment unlocks your internship workspace. The skills
+            assessment is optional and does not affect your application.
           </p>
           <button
             type="button"

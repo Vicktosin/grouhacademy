@@ -15,8 +15,8 @@ import AnnouncementPopup from "./AnnouncementPopup";
 import GraduationModal from "./graduation/GraduationModal";
 import { Menu, X, LockKeyhole, Loader2, AlertCircle } from "lucide-react";
 
-// Routes reachable before the acceptance fee is paid — the onboarding →
-// assessment → results funnel (Phase 2 builds these pages) plus the
+// Routes reachable before the acceptance fee is paid — onboarding and its
+// optional assessment/results step, plus the
 // payment pages themselves. Everything else in /internship is gated.
 const EXEMPT_PREFIXES = [
   "/internship/onboarding",
@@ -54,7 +54,6 @@ export default function InternshipShell({
   const showPaywall =
     !isExemptRoute &&
     Boolean(status?.hasApplication) &&
-    Boolean(status?.assessmentPassed) &&
     !status?.acceptanceFeePaid;
 
   useEffect(() => {
@@ -177,8 +176,7 @@ export default function InternshipShell({
               Acceptance fee required to continue
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Your application has been approved, and you are now ready to begin
-              your internship. To unlock the full internship workspace and
+              Your application is ready. To unlock the full internship workspace and
               continue with your program, please pay your one-time acceptance
               fee of{" "}
               <strong className="text-[#1C1D52]">

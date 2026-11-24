@@ -9,11 +9,11 @@ export default function InternshipEnrollPage() {
           Internship application
         </p>
         <h1 className="mt-3 text-3xl font-bold">
-          Start with your entrance assessment.
+          Start with your internship application.
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-white/70">
-          Choose a track, tell us about your experience, and take the entrance
-          assessment at no cost. You will see your score immediately.
+          Choose a track and tell us about your experience. Then decide whether
+          to take the optional skills assessment or go straight to payment.
         </p>
       </div>
       <div className="p-6 sm:p-10">
@@ -21,12 +21,12 @@ export default function InternshipEnrollPage() {
           <ClipboardList className="h-6 w-6 shrink-0 text-[#5FBB46]" />
           <div>
             <h2 className="text-sm font-bold text-[#1C1D52]">
-              Acceptance fee only after you pass
+              The assessment is optional
             </h2>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Paystack payment is not available before the assessment.
-              Successful applicants are shown their score and then invited to
-              pay the one-time acceptance fee.
+              You can check your current skills and get an instant score, or
+              skip the assessment and continue directly to the one-time
+              acceptance fee.
             </p>
           </div>
         </div>

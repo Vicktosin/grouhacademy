@@ -50,7 +50,7 @@ export async function GET() {
     return NextResponse.json(
       {
         error:
-          "Pass the entrance assessment and pay the acceptance fee to access internship tasks.",
+          "Pay the acceptance fee to access internship tasks.",
       },
       { status: 403 },
     );

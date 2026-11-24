@@ -17,7 +17,7 @@ import FlowExitBar from "@/components/FlowExitBar";
 import type { ChoiceOptions } from "@/lib/learning-mode-rules";
 
 // Onboarding in four short steps (track → how you'll learn → about you →
-// check and start). Each step is in the URL (?step=) so the phone's back
+// review). Each step is in the URL (?step=) so the phone's back
 // button and the Back link move between steps instead of leaving. Mobile
 // first: most applicants are on phones.
 
@@ -27,6 +27,7 @@ type Level = {
   name: string;
   description: string | null;
   acceptanceFee: number;
+  assessmentAvailable: boolean;
   learning?: ChoiceOptions;
 };
 type Program = {
@@ -232,7 +233,7 @@ function OnboardingFlow() {
     goTo(STEPS[STEPS.indexOf(current) + 1]);
   }
 
-  async function startAssessment() {
+  async function saveOnboardingAndChooseNextStep() {
     setSubmitting(true);
     setError("");
     try {
@@ -249,14 +250,10 @@ function OnboardingFlow() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Unable to save your answers.");
 
-      const started = await fetch("/api/internship/assessment/start", { method: "POST" });
-      const startData = await started.json().catch(() => ({}));
       try {
         window.sessionStorage.removeItem(DRAFT_KEY);
       } catch {}
-      if (started.status === 409) return router.push("/internship/results");
-      if (!started.ok) throw new Error(startData.error || "Your answers are saved, but the assessment couldn't start. Please try again.");
-      router.push("/internship/assessment/take");
+      router.push("/internship/onboarding/assessment-choice");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to save your answers.");
       setSubmitting(false);
@@ -302,7 +299,7 @@ function OnboardingFlow() {
           <section className="mt-6">
             <h1 className="text-2xl font-bold leading-tight text-[#1C1D52]">Which track do you want to learn?</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Pick one. You can change it before you start the assessment.
+              Pick one. You can change it before you continue.
             </p>
             <div className="mt-5 space-y-2.5" role="radiogroup" aria-label="Track">
               {orderedPrograms.map((item) => {
@@ -381,7 +378,7 @@ function OnboardingFlow() {
               <p role="alert" className="mt-3 text-sm font-semibold text-red-600">Choose a track to continue.</p>
             )}
             <p className="mt-4 text-xs leading-5 text-slate-500">
-              The price is the acceptance fee. You only pay it after you pass the free entrance assessment.
+              The assessment is optional. You can go straight to payment after completing your details.
             </p>
           </section>
         )}
@@ -565,9 +562,9 @@ function OnboardingFlow() {
                 <ClipboardList className="h-5 w-5" aria-hidden="true" />
               </span>
               <div>
-                <p className="text-sm font-bold">Next: a short entrance assessment</p>
+                <p className="text-sm font-bold">Your details are ready</p>
                 <p className="mt-1 text-xs leading-5 text-white/75">
-                  Multiple choice, free, and marked instantly. You pay the {naira(level.acceptanceFee)} acceptance fee only after you pass.
+                  Next, choose whether to take the optional two-minute skills assessment or go straight to payment for your {naira(level.acceptanceFee)} acceptance fee.
                 </p>
               </div>
             </div>
@@ -583,14 +580,14 @@ function OnboardingFlow() {
       {/* The main action stays in reach of the thumb on phones. */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-auto sm:max-w-xl sm:border-0 sm:bg-transparent sm:px-4 sm:pb-12 sm:pt-0">
         {step === "review" ? (
-          <button type="button" onClick={() => void startAssessment()} disabled={submitting} className={primaryButton}>
+          <button type="button" onClick={() => void saveOnboardingAndChooseNextStep()} disabled={submitting} className={primaryButton}>
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Starting…
+                <Loader2 className="h-4 w-4 animate-spin" /> Saving…
               </>
             ) : (
               <>
-                Start my assessment <ArrowRight className="h-4 w-4" />
+                Choose my next step <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>

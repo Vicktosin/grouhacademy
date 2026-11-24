@@ -47,7 +47,7 @@ export type InternTrackAccess = { programId: string; rank: number };
 /**
  * The tracks an intern may see resources for, with their level in each:
  * every application that has unlocked the internship workspace (acceptance
- * fee paid and entrance assessment passed), matching
+ * fee paid), matching
  * hasInternshipWorkspaceAccess(). An intern has one application per level,
  * so the highest such level per track wins.
  */
@@ -59,7 +59,6 @@ export async function getInternTrackAccess(
       studentId: userId,
       status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
-      attempts: { some: { status: "PASSED" } },
     },
     select: { programId: true, level: { select: { rank: true } } },
   });

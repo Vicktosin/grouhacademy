@@ -44,12 +44,11 @@ export async function getInternTaskContext(userId: string) {
   const prisma = getPrisma();
   const application = await prisma.internshipApplication.findFirst({
     // An unpaid application for another track must not hide the tasks in
-    // the cohort the intern has joined. Use the workspace's admission rules.
+    // the cohort the intern has joined. Use the workspace's payment rules.
     where: {
       studentId: userId,
       status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
-      attempts: { some: { status: "PASSED" } },
     },
     orderBy: { createdAt: "desc" },
     select: { id: true, programId: true, levelId: true, cohortId: true, selfPacedStartDate: true },

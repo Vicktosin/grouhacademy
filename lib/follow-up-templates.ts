@@ -48,15 +48,15 @@ Your cohort starts {nextCohortDate}. {countdown}
 
 Thank you for taking the {track} ({level} level) entrance assessment. You scored {score}% and the pass mark is {passMark}%, so you're close!
 
-You can retake it any time: log in at {loginLink} and choose "Retry assessment". You can also apply at a lower level instead.
+Your score does not affect your application. Log in at {loginLink} to continue to payment, or optionally retake the assessment when you like.
 
 Want tips to prepare? Reply here and we'll help.
 — SabiRole`,
   NO_EXAM: `Hi {firstName},
 
-Thank you for starting your payment for the {track} internship ({level} level)!
+Your application for the {track} internship ({level} level) is ready.
 
-The next step is the entrance assessment. Log in at {loginLink} to take it; once you pass, you can complete your payment and join {nextCohort}, starting {nextCohortDate}.
+The skills assessment is optional. Log in at {loginLink} to continue to payment and start your internship. You can take the assessment whenever you like.
 
 Any questions? Reply here and we'll help.
 — SabiRole`,

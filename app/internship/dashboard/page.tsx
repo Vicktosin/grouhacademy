@@ -61,11 +61,11 @@ type DashboardData = {
 
 const assessmentLabels: Record<string, string> = {
   UNDER_REVIEW: "Submitted · Under review",
-  OBJECTIVE_SUBMITTED: "Theory in progress",
-  IN_PROGRESS: "In progress",
-  NOT_STARTED: "Not started",
-  PASSED: "Passed",
-  FAILED: "Failed",
+  OBJECTIVE_SUBMITTED: "In progress (optional)",
+  IN_PROGRESS: "In progress (optional)",
+  NOT_STARTED: "Optional - not taken",
+  PASSED: "Completed (optional)",
+  FAILED: "Completed (optional)",
 };
 
 export default function InternshipDashboardPage() {
@@ -120,9 +120,11 @@ export default function InternshipDashboardPage() {
     );
   }
 
-  const assessmentLabel = data.assessmentStatus
-    ? (assessmentLabels[data.assessmentStatus] ?? data.assessmentStatus)
-    : "Locked / pending";
+  const assessmentLabel = data.assessmentStatus === "NOT_STARTED"
+    ? "Optional · not taken"
+    : data.assessmentStatus
+      ? (assessmentLabels[data.assessmentStatus] ?? data.assessmentStatus)
+      : "Optional";
 
   return (
     <InternshipShell>
@@ -159,22 +161,12 @@ export default function InternshipDashboardPage() {
                   <strong className="text-[#1C1D52]">{assessmentLabel}</strong>
                 </p>
               </div>
-              {data.assessmentStatus === "PASSED" &&
-              data.paymentStatus !== "PAID" ? (
+              {data.paymentStatus !== "PAID" ? (
                 <Link
                   href="/internship/payment"
                   className="rounded-lg bg-[#5FBB46] px-4 py-2.5 text-center text-xs font-bold text-[#14204f]"
                 >
                   Pay acceptance fee
-                </Link>
-              ) : data.assessmentStatus !== "PASSED" ? (
-                <Link
-                  href="/internship/assessment/readiness"
-                  className="rounded-lg bg-[#5FBB46] px-4 py-2.5 text-center text-xs font-bold text-[#14204f]"
-                >
-                  {data.assessmentStatus === "IN_PROGRESS"
-                    ? "Continue assessment"
-                    : "Start assessment"}
                 </Link>
               ) : (
                 <span className="rounded-lg bg-[#e8f7eb] px-4 py-2.5 text-center text-xs font-bold text-[#397d3a]">

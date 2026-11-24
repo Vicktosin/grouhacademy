@@ -34,7 +34,6 @@ async function internContext(userId: string) {
         studentId: userId,
         status: { not: "REMOVED" },
         payment: { is: { status: "PAID" } },
-        attempts: { some: { status: "PASSED" } },
       },
       orderBy: [{ level: { rank: "desc" } }, { createdAt: "desc" }],
       select: { programId: true, levelId: true, level: { select: { name: true, rank: true } }, program: { select: { name: true } }, cohort: { select: { name: true, startDate: true, endDate: true } } },

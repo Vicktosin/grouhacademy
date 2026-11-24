@@ -20,7 +20,7 @@ const FAQ = () => {
     },
     {
       q: "How does the internship admission process work?",
-      a: "You submit an application, complete a short assessment, and submit a practical task. Accepted applicants receive a structured 12-week internship with dedicated mentorship.",
+      a: "You submit your application and can choose whether to take a short skills assessment. After the acceptance fee is paid, you can begin the internship and its practical work with dedicated mentorship.",
     },
     {
       q: "Can I take a course and do the internship simultaneously?",

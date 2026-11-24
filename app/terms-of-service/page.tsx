@@ -15,7 +15,7 @@ const sections = [
   {
     title: "Courses, assessments, and internships",
     content:
-      "Programme availability, entry requirements, assessment outcomes, mentors, cohorts, schedules, and learning materials may change. Passing an assessment or paying an acceptance fee grants access to the applicable programme as described at the time of purchase; it does not guarantee employment, a placement, certification, or a particular outcome.",
+      "Programme availability, entry requirements, assessment outcomes, mentors, cohorts, schedules, and learning materials may change. An optional assessment provides a skills snapshot. Access to an internship is granted after successful payment verification; this does not guarantee employment, a placement, certification, or a particular outcome.",
   },
   {
     title: "Fees and payments",

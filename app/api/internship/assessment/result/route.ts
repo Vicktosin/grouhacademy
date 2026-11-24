@@ -46,10 +46,21 @@ export async function GET() {
       }));
 
     if (!attempt) {
-      return NextResponse.json(
-        { error: "No completed assessment found." },
-        { status: 404 },
-      );
+      return NextResponse.json({
+        programName: application.program.name,
+        levelName: application.level.name,
+        lowerLevels: [],
+        assessmentTaken: false,
+        scorePercent: null,
+        score: null,
+        totalQuestions: null,
+        passed: false,
+        acceptanceFee:
+          (await getAcceptanceFee(application.programId, application.levelId)) ??
+          0,
+        acceptanceFeePaid: application.payment?.status === "PAID",
+        answerReview: [],
+      });
     }
 
     if (!attempt.assessmentId) {
@@ -111,6 +122,7 @@ export async function GET() {
       programName: application.program.name,
       levelName: application.level.name,
       lowerLevels,
+      assessmentTaken: true,
       scorePercent: attempt.scorePercent,
       score: attempt.score,
       totalQuestions: attempt.totalQuestions,

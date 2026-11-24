@@ -2,7 +2,6 @@ import { learningStatusLabel } from "@/lib/learning-mode-rules";
 import { NextResponse } from "next/server";
 
 import {
-  AssessmentAttemptStatus,
   InternshipApplicationStatus,
   InternshipPaymentStatus,
 } from "@/generated/prisma/client";
@@ -59,7 +58,6 @@ export async function GET() {
     where: {
       student: REAL_USER,
       payment: { status: InternshipPaymentStatus.PAID },
-      attempts: { some: { status: AssessmentAttemptStatus.PASSED } },
     },
     orderBy: { createdAt: "desc" },
     include: {

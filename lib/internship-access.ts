@@ -80,7 +80,6 @@ export async function hasInternshipWorkspaceAccess(
       // An intern an admin removed has no workspace until restored.
       status: { not: "REMOVED" },
       payment: { is: { status: "PAID" } },
-      attempts: { some: { status: "PASSED" } },
     },
     select: { id: true },
   });
@@ -89,8 +88,8 @@ export async function hasInternshipWorkspaceAccess(
 }
 
 /**
- * Where someone without the workspace belongs (removed, waiting on their
- * results, still to sit the assessment, or yet to apply), or null for an
+ * Where someone without the workspace belongs (removed, choosing an optional
+ * assessment, or yet to apply), or null for an
  * intern with access. The dashboard's pages are files served as they are,
  * so this decides on their behalf: in the shell request (the browser then
  * redirects) and in the dashboard's few server-rendered pages.
@@ -108,16 +107,22 @@ export async function internshipWorkspaceRedirect(userId: string): Promise<strin
       // Only attempts at the application's current level: an applicant
       // who moved to a lower level hasn't sat that level's exam yet.
       attempts: {
-        where: { status: { in: ["PASSED", "FAILED"] } },
-        select: { assessment: { select: { levelId: true } } },
+        where: { status: { in: ["PASSED", "FAILED", "IN_PROGRESS"] } },
+        select: { status: true, assessment: { select: { levelId: true } } },
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: { createdAt: "desc" },
   });
-  return application?.attempts.some((attempt) => attempt.assessment?.levelId === application.levelId)
-    ? "/internship/results"
+  const currentAttempt = application?.attempts.find(
+    (attempt) => attempt.assessment?.levelId === application.levelId,
+  );
+  if (currentAttempt && currentAttempt.status !== "IN_PROGRESS")
+    return "/internship/results";
+  return application?.onboardingAnswers
+    ? "/internship/onboarding/assessment-choice"
     : application
-      ? "/internship/assessment/readiness"
+      ? "/internship/onboarding"
       : "/internship/onboarding";
 }
 

@@ -44,8 +44,8 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    // Applicants choose a level as well as a track; only levels with a fee
-    // and an entrance assessment are offered.
+    // Applicants choose a level as well as a track; levels with a fee are
+    // available, while the assessment is optional.
     const openLevels = await getOpenLevels(programs.map((item) => item.id));
     // Self-paced or the next cohort, per track and level.
     const learning = await onboardingLearningOptions(
@@ -64,7 +64,7 @@ export async function GET() {
         slug: program.slug,
         duration: program.duration,
         description: program.description,
-        levels: (openLevels.get(program.id) ?? []).map((level) => ({
+      levels: (openLevels.get(program.id) ?? []).map((level) => ({
           id: level.id,
           name: level.name,
           description: level.description,

@@ -9,8 +9,8 @@ const AssessmentProcess = () => {
     },
     {
       n: 2,
-      title: "Skills Test",
-      desc: "A 60-minute asynchronous test tailored to your chosen track — practical tasks, not trivia.",
+      title: "Optional Skills Check",
+      desc: "Take a free two-minute check to see your current skills and knowledge. You can skip it and go straight to payment.",
     },
     {
       n: 3,
