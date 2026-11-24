@@ -37,13 +37,10 @@ const InternshipSection = () => {
               style={{ backgroundColor: "#4db848" }}
             >
               <div
-                className="text-white font-black text-3xl mb-0.5"
+                className="text-white font-black text-lg leading-tight"
                 style={{ fontFamily: "Fraunces, serif" }}
               >
-                12
-              </div>
-              <div className="text-white/90 text-sm font-medium">
-                Week Program
+                Built for you
               </div>
             </div>
           </div>
@@ -75,10 +72,9 @@ const InternshipSection = () => {
             </h2>
 
             <p className="text-white/70 text-lg leading-relaxed mb-8">
-              The SabiRole Internship is a structured, mentor-led, 12-week program
-              where you work on real projects alongside experienced
-              professionals. Every intern leaves with shipped work in their
-              portfolio and a network that opens doors.
+              Our internship gives you real-world experience, helping you ship
+              real projects, build a personal portfolio, and grow your
+              confidence.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -116,7 +112,7 @@ const InternshipSection = () => {
             </div>
 
             <a
-              href="#"
+              href="/register"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-semibold text-base transition-all hover:scale-105"
               style={{ backgroundColor: "#4db848" }}
             >

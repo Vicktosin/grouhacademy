@@ -69,9 +69,7 @@ const Footer = () => {
             {
               heading: "Platform",
               links: [
-                "Courses",
                 "Internship Program",
-                "Instructor Portal",
                 "Blog",
               ],
             },
@@ -99,8 +97,8 @@ const Footer = () => {
                   <li key={link}>
                     <Link
                       href={
-                        link === "Courses"
-                          ? "/courses"
+                        link === "Internship Program"
+                          ? "/internship"
                           : link === "About Us"
                             ? "/about"
                             : link === "Contact"

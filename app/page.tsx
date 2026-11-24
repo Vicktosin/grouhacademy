@@ -1,4 +1,4 @@
-import FeaturedCourses from "@/components/FeaturedCourses";
+import CurriculumSection from "@/components/CurriculumSection";
 import Whyus from "@/components/Whyus";
 import Container from "../components/Container";
 import React from "react";
@@ -10,9 +10,9 @@ import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const metadata: Metadata = {
-  title: "Practical Digital Skills, Courses, and Internships",
+  title: "Get Work Experience with Our Virtual Internship",
   description:
-    "Learn in-demand digital skills, practise with real projects, and prepare for your next opportunity with SabiRole courses and internships.",
+    "Your gateway to rewarding internship experience. Build practical skills through SabiRole's virtual internship.",
   alternates: { canonical: "/" },
 };
 
@@ -28,7 +28,7 @@ const page = () => {
         url: siteUrl,
         logo: `${siteUrl}/logo.png`,
         description:
-          "Practical digital skills, career-ready courses, and real-world internship opportunities.",
+          "Virtual internships that build practical work experience.",
       },
       {
         "@type": "WebSite",
@@ -70,80 +70,30 @@ const page = () => {
               </span>
 
               <h1 className="hero-title mt-8 text-5xl font-bold tracking-tight text-white sm:text-7xl">
-                Become <span className="whitespace-nowrap">Job-Ready</span> With Our{" "}
-                <span className="text-[#5FBB46]">Internship</span>.
+                Get work experience with our{" "}
+                <span className="text-[#5FBB46]">virtual internship</span>
               </h1>
 
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/75">
-                Your gateway to real-world internships. Explore our interactive simulators and industry-relevant curricula.
+                Your gateway to rewarding internship.
               </p>
 
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <a
-                  href="#courses"
+                  href="/register"
                   className="inline-flex items-center justify-center rounded-full bg-[#5FBB46] px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-[#5FBB46]/30 transition hover:bg-[#4aaa3e]"
-                >
-                  Explore Courses
-                </a>
-                <a
-                  href="#internship"
-                  className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-7 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
                 >
                   Apply for Internship
                 </a>
               </div>
             </div>
 
-            {/* <div className="grid gap-5">
-              <div
-                className="rounded-[2rem] border border-white/10 bg-[#ffffff]/10 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl opacity-0 animate-slide-in-up"
-                style={{ animationDelay: "0.15s" }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-emerald-400">98% Success Rate</h3>
-                    <p className="text-xs text-slate-400">In internship placements</p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="rounded-[2rem] border border-white/10 bg-[#ffffff]/10 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl opacity-0 animate-slide-in-up"
-                style={{ animationDelay: "0.3s" }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                    <Star className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Expert Mentors</h3>
-                    <p className="text-xs text-slate-400">From top tech giants</p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="rounded-[2rem] border border-white/10 bg-[#ffffff]/10 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl opacity-0 animate-slide-in-up"
-                style={{ animationDelay: "0.45s" }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-[#F0BE43]/10 text-[#F0BE43] text-xl font-semibold">
-                    <BookOpen className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-emerald-400">30+ Courses</h3>
-                    <p className="text-xs text-slate-400">Updated for the future</p>
-                  </div>
-                </div>
-              </div>
-            </div>*/}
           </div>
 
         </Container>
       </section>
       <Whyus />
-      <FeaturedCourses />
+      <CurriculumSection />
       <InternshipSection />
       <LearningProcess />
       <Testimonials />

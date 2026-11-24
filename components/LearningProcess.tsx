@@ -1,16 +1,11 @@
 import React from "react";
 
 const PROCESS_STEPS: { num: string; label: string; desc: string }[] = [
-  { num: "01", label: "Introduction", desc: "Overview and getting started." },
-  { num: "02", label: "Fundamentals", desc: "Core concepts and theory." },
-  { num: "03", label: "Hands-on", desc: "Practical projects and exercises." },
-  { num: "04", label: "Portfolio", desc: "Build real-world portfolio pieces." },
-  { num: "05", label: "Interview Prep", desc: "Mock interviews and feedback." },
-  {
-    num: "06",
-    label: "Job Support",
-    desc: "Apply and secure your first role.",
-  },
+  { num: "01", label: "Onboarding", desc: "Choose your internship track and level." },
+  { num: "02", label: "Optional assessment", desc: "Take a short skills check if you want to." },
+  { num: "03", label: "Payment", desc: "Complete payment to secure your place." },
+  { num: "04", label: "Start internship", desc: "Begin your tailored internship journey." },
+  { num: "05", label: "Build", desc: "Work on practical tasks and build real projects." },
 ];
 
 const LearningProcess = () => {
@@ -32,7 +27,7 @@ const LearningProcess = () => {
             className="text-4xl lg:text-5xl font-black leading-tight"
             style={{ fontFamily: "Fraunces, serif", color: "#141650" }}
           >
-            From first lesson to first job.
+            Your path to practical work experience.
           </h2>
         </div>
 
@@ -47,7 +42,7 @@ const LearningProcess = () => {
             }}
           />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-6 lg:gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-4">
             {PROCESS_STEPS.map((step, i) => (
               <div
                 key={i}
@@ -58,14 +53,14 @@ const LearningProcess = () => {
                   className="relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center mb-4 z-10 border-2 transition-all duration-300 group-hover:shadow-lg"
                   style={{
                     backgroundColor:
-                      i === 5 ? "#141650" : i % 2 === 0 ? "#f2fbf2" : "#f3f4fc",
+                      i === 4 ? "#141650" : i % 2 === 0 ? "#f2fbf2" : "#f3f4fc",
                     borderColor:
-                      i === 5 ? "#141650" : i % 2 === 0 ? "#4db848" : "#e8e9f8",
+                      i === 4 ? "#141650" : i % 2 === 0 ? "#4db848" : "#e8e9f8",
                   }}
                 >
                   <span
                     className="text-xs font-bold tracking-widest"
-                    style={{ color: i === 5 ? "#4db848" : "#a0a3c4" }}
+                    style={{ color: i === 4 ? "#4db848" : "#a0a3c4" }}
                   >
                     {step.num}
                   </span>

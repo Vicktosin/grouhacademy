@@ -44,8 +44,8 @@ const Whyus = () => {
           />
         </svg>
       ),
-      title: "Experienced Instructors",
-      desc: "Learn from practitioners who are currently working in their fields — not just theorists. Real experience, real insights.",
+      title: "Advanced Practical Simulators",
+      desc: "Our world-class simulators help you see and experience how real-world tools work in a professional office setting.",
     },
     {
       icon: (
@@ -99,7 +99,7 @@ const Whyus = () => {
         </svg>
       ),
       title: "Structured Internships",
-      desc: "A 12-week program with mentors, weekly milestones, and a real team. Not coffee-fetching — actual work that matters.",
+      desc: "An internship designed around your strengths and built to help you grow in the areas you want to improve.",
     },
     {
       icon: (
@@ -121,6 +121,23 @@ const Whyus = () => {
       ),
       title: "Industry Exposure",
       desc: "Cohort learning puts you alongside peers building their careers. Guest speakers, company visits, and live demos monthly.",
+    },
+    {
+      icon: (
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M8 9h8M8 13h5M8 17h3" strokeLinecap="round" />
+        </svg>
+      ),
+      title: "Professional Office Experience",
+      desc: "Graduates experience a simulated professional office through our Office Life gamification.",
     },
   ];
 
@@ -146,15 +163,14 @@ const Whyus = () => {
               className="text-4xl lg:text-5xl font-black leading-tight mb-6"
               style={{ fontFamily: "Fraunces, serif", color: "#141650" }}
             >
-              Built for people who want to actually
+              Built for people who want to gain
               <em className="not-italic" style={{ color: "#4db848" }}>
-                {" "}
-                build things.
+                {" "}practical work experience in any field.
               </em>
             </h2>
             <p className="text-gray-500 text-lg leading-relaxed">
-              We designed the academy around the gap between classroom theory
-              and employer expectations. Every decision reflects that.
+              We designed the software to bridge the gap between theoretical
+              knowledge and the practical experience learners need.
             </p>
           </div>
 
