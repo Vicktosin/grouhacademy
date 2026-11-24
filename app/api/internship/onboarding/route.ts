@@ -64,11 +64,12 @@ export async function GET() {
         slug: program.slug,
         duration: program.duration,
         description: program.description,
-      levels: (openLevels.get(program.id) ?? []).map((level) => ({
+        levels: (openLevels.get(program.id) ?? []).map((level) => ({
           id: level.id,
           name: level.name,
           description: level.description,
           acceptanceFee: level.acceptanceFee,
+          assessmentAvailable: level.assessmentAvailable,
           learning: learning[`${program.id}:${level.id}`],
         })),
       })),

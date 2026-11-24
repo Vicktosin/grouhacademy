@@ -42,7 +42,9 @@ export default function AssessmentResultsPage() {
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Unable to load your application.");
-        setResult(data);
+        // Someone who chose to skip never sees a score (even an old one).
+        const skipped = new URLSearchParams(window.location.search).get("skipped") === "1";
+        setResult(skipped ? { ...data, assessmentTaken: false, scorePercent: null, score: null } : data);
       })
       .catch((loadError: unknown) =>
         setError(loadError instanceof Error ? loadError.message : "Unable to load your application."),
@@ -94,62 +96,47 @@ export default function AssessmentResultsPage() {
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           {result.assessmentTaken && result.scorePercent !== null
-            ? <>You completed your optional skills assessment and scored <strong className="text-[#1C1D52]">{result.scorePercent}%</strong>. Ready to start your {result.programName} internship journey? Complete your payment to get started.</>
-            : <>Your application is ready. You can skip the assessment and go straight to payment. Complete your payment to start your {result.programName} internship journey.</>}
+            ? <>You&apos;re done with your onboarding and scored <strong className="text-[#1C1D52]">{result.scorePercent}%</strong> on your assessment.</>
+            : <>You&apos;re done with your onboarding process.</>}{" "}
+          {result.acceptanceFeePaid
+            ? "Your internship workspace is ready."
+            : <>Complete your payment to start your {result.programName} internship.</>}
         </p>
-
-        {result.assessmentTaken && result.score !== null && result.totalQuestions !== null && (
-          <p className="mt-4 inline-flex rounded-full bg-[#f3f6fb] px-4 py-2 text-xs font-semibold text-[#1C1D52]">
-            Skills check: {result.score}/{result.totalQuestions} correct
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={() => router.push(result.acceptanceFeePaid ? "/internship/dashboard" : "/internship/payment")}
-          className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-[#14204f] shadow-[0_10px_24px_rgba(95,187,70,0.22)] transition hover:-translate-y-px sm:w-auto"
-        >
-          {result.acceptanceFeePaid ? "Go to your dashboard" : "Complete payment"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
       </div>
 
-      {result.assessmentTaken && result.answerReview.length > 0 && (
-        <section className="mx-auto mt-5 max-w-xl rounded-2xl bg-white p-6 shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:p-8">
-          <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#5FBB46]">Optional assessment</p>
-              <h2 className="mt-1 text-lg font-bold text-[#1C1D52]">Your answers and the correct answers</h2>
-            </div>
-            <span className="text-xs font-semibold text-slate-500">
-              {result.answerReview.filter((answer) => answer.isCorrect).length}/{result.answerReview.length} correct
-            </span>
-          </div>
-          <div className="mt-4 space-y-3">
-            {result.answerReview.map((answer, index) => (
-              <article key={answer.questionId} className="rounded-xl border border-slate-200 bg-[#f8fbff] p-4">
-                <p className="text-xs font-bold leading-5 text-[#1C1D52]">{index + 1}. {answer.question}</p>
-                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                  <p className={`rounded-lg px-3 py-2 ${answer.isCorrect ? "bg-[#e8f7eb] text-[#397d3a]" : "bg-red-50 text-red-700"}`}>
-                    <span className="font-semibold">Your answer:</span> {answer.selectedAnswer}
-                  </p>
-                  <p className="rounded-lg bg-[#e8f7eb] px-3 py-2 text-[#397d3a]">
-                    <span className="font-semibold">Correct answer:</span> {answer.correctAnswer}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!result.acceptanceFeePaid && (
-        <CommunityInvite
-          location="results_page"
-          className="mx-auto mt-5 max-w-xl"
-          title="Have questions before you pay?"
-          description="Join our WhatsApp community to learn more about the programme and hear from current interns before you secure your place."
-        />
+      {result.acceptanceFeePaid ? (
+        <div className="mx-auto mt-5 max-w-xl text-center">
+          <button
+            type="button"
+            onClick={() => router.push("/internship/dashboard")}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-[#14204f] sm:w-auto"
+          >
+            Go to your dashboard <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <section className="mx-auto mt-5 max-w-xl rounded-2xl bg-[#1C1D52] p-6 text-left text-white shadow-[0_8px_24px_rgba(28,29,82,0.15)] sm:p-7">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#5FBB46]">Ready to start?</p>
+            <h2 className="mt-1 text-lg font-bold">Complete your payment</h2>
+            <p className="mt-1 text-sm text-white/75">
+              Acceptance fee: <strong className="text-white">₦{result.acceptanceFee.toLocaleString()}</strong>
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/internship/payment")}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5FBB46] px-6 py-3.5 text-sm font-bold text-[#14204f] shadow-[0_10px_24px_rgba(95,187,70,0.22)] transition hover:-translate-y-px"
+            >
+              Complete payment <ArrowRight className="h-4 w-4" />
+            </button>
+          </section>
+          <CommunityInvite
+            location="results_page"
+            className="mx-auto mt-4 max-w-xl"
+            title="Not ready to pay now?"
+            description="Join our WhatsApp community to learn more about the programme and hear from current interns."
+          />
+        </>
       )}
     </main>
   );
