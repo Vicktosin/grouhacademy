@@ -9,6 +9,8 @@
 //
 // Safe to import anywhere: plain data and functions.
 
+import { OFFICE_DEPARTMENTS, OFFICE_PROJECTS } from "@/data/office-projects";
+
 export type PersonId = "ceo" | "manager" | "supporter" | "challenger" | "client";
 
 export type Person = {
@@ -335,8 +337,25 @@ function departmentFor(trackName: string): Department {
 const emailFor = (name: string, domain: string) => `${name.split(" ")[0].toLowerCase()}@${domain}`;
 
 /** Everyone the intern works with, for their track. */
-export function castFor(trackName: string): Cast {
+export function castFor(trackName: string, levelName?: string): Cast {
   const dept = departmentFor(trackName);
+  // With a level: that level's own client and project, the same as its
+  // Practice Lab (data/office-projects). Without one: the older story.
+  const own = levelName ? OFFICE_PROJECTS[trackName]?.[levelName] : undefined;
+  if (own) {
+    const base = castFor(trackName);
+    const domain = `${own.company.toLowerCase().replace(/[^a-z]+/g, "")}.ng`;
+    return {
+      ...base,
+      department: OFFICE_DEPARTMENTS[trackName] ?? base.department,
+      clientCompany: own.company,
+      clientBusiness: own.business,
+      project: own.project,
+      labTool: "the Practice Lab",
+      manager: { ...base.manager, role: `${OFFICE_DEPARTMENTS[trackName] ?? base.department} Manager` },
+      client: { id: "client", name: own.contact, role: `${own.role}, ${own.company}`, email: emailFor(own.contact.replace(/^Dr /, ""), domain), voice: own.voice },
+    };
+  }
   return {
     company: COMPANY,
     department: dept.department,

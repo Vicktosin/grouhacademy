@@ -1897,10 +1897,11 @@ server.tool(
   "Load the approved curriculum (data/curriculum.json) into the app: missing tracks, level fees, entry assessments and the Task Library. Creates the Practice Lab exercises in data/lab-exercises where a week has none. A week that still has no exercise gets no lab task (they're listed); make the exercise and rerun to add it. Safe to rerun. Reports only, unless dryRun is false. Apply the 20261125120000_task_library_curriculum migration and deploy the app first.",
   {
     dryRun: z.boolean().default(true).describe("true (default): only report what would change"),
+    resetOfficeLife: z.boolean().default(false).describe("Remove saved Office Life plans so each track and level uses its built-in client and project. Workdays already started keep theirs"),
     overwrite: z.boolean().default(false).describe("Also reset already imported templates to the curriculum's wording, losing admins' edits to them"),
   },
-  async ({ dryRun, overwrite }) => ({
-    content: [{ type: "text", text: JSON.stringify(await importCurriculum({ dryRun, overwrite }, db), null, 2) }],
+  async ({ dryRun, overwrite, resetOfficeLife }) => ({
+    content: [{ type: "text", text: JSON.stringify(await importCurriculum({ dryRun, overwrite, resetOfficeLife }, db), null, 2) }],
   }),
 );
 

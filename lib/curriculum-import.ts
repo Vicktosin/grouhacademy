@@ -38,17 +38,21 @@ export type ImportReport = {
   /** Weeks with no exercise yet: they have no Practice Lab task until one is made and the import is rerun. */
   missingLabs: string[];
   missingOfficeLife: string[];
+  /** Tracks and levels with a saved Office Life plan (removed by resetOfficeLife). */
+  savedOfficeLife: string[];
   assessmentsCreated: string[];
   assessmentsMissing: string[];
 };
 
 /**
  * Runs the import. `overwrite` also resets templates already imported to the
- * curriculum's wording (admins' edits are kept without it). `dryRun` only
+ * curriculum's wording (admins' edits are kept without it). `resetOfficeLife`
+ * removes saved Office Life plans, so the built-in ones for each track and
+ * level are used; workdays already started keep their own. `dryRun` only
  * reports.
  */
 export async function importCurriculum(
-  { dryRun = true, overwrite = false }: { dryRun?: boolean; overwrite?: boolean } = {},
+  { dryRun = true, overwrite = false, resetOfficeLife = false }: { dryRun?: boolean; overwrite?: boolean; resetOfficeLife?: boolean } = {},
   db: PrismaClient = getPrisma(),
 ): Promise<ImportReport> {
   const report: ImportReport = {
@@ -63,6 +67,7 @@ export async function importCurriculum(
     labsCreated: [],
     missingLabs: [],
     missingOfficeLife: [],
+    savedOfficeLife: [],
     assessmentsCreated: [],
     assessmentsMissing: [],
   };
@@ -133,7 +138,11 @@ export async function importCurriculum(
           ])
         : [[], [], null];
 
-      const plan = parseOfficeLifeContent(office?.content) ?? defaultOfficeLifeContent(track, level.name);
+      if (office) {
+        report.savedOfficeLife.push(`${track} ${level.name}`);
+        if (resetOfficeLife && !dryRun && programId) await db.officeLifeContent.deleteMany({ where: { programId, levelId } });
+      }
+      const plan = parseOfficeLifeContent(resetOfficeLife ? null : office?.content) ?? defaultOfficeLifeContent(track, level.name);
       for (const day of [1, 2, 3, 4])
         if (!plan.workdays.some((workday) => workday.day === day))
           report.missingOfficeLife.push(`${track} ${level.name}: Day ${day}`);
