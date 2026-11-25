@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { CURRICULUM, TRACK_DESCRIPTIONS, curriculumKey, plainTitle, taskPart, trackSlug, type CurriculumTask } from "@/lib/curriculum";
 import { createMissingAssessments } from "@/lib/entry-assessments";
@@ -23,38 +22,6 @@ export function templateDescription(task: CurriculumTask) {
   return `${task.instructions}\n\nHow to submit: ${task.submit}`;
 }
 
-const MIN_ANSWER = 60;
-const PLACEHOLDER_QUESTIONS = [
-  "What is this week's topic, in your own words?",
-  "Give one real example of it.",
-  "How would you use it at work?",
-];
-
-/** A short written exercise, so a week with no lab of its own still has one. */
-export function placeholderLab(week: number, topic: string) {
-  const answers = PLACEHOLDER_QUESTIONS.map(
-    (question, index) => `  <h2>${index + 1}. ${question}</h2>\n  <p id="answer${index + 1}"></p>`,
-  ).join("\n\n");
-  return {
-    kind: "WEB" as const,
-    title: `Week ${week}: ${topic}`.slice(0, 120),
-    brief: [
-      `Practise this week's topic: ${topic}`,
-      "",
-      "Answer the three questions in index.html. Type each answer between <p> and </p>.",
-      `Write at least ${MIN_ANSWER} letters for each one, using your own words.`,
-      "Then run the checks and submit.",
-    ].join("\n"),
-    starterFiles: { "index.html": `<main>\n${answers}\n</main>\n`, "styles.css": "", "script.js": "" },
-    checks: PLACEHOLDER_QUESTIONS.map((_, index) => ({
-      label: `Question ${index + 1} is answered`,
-      code: `return (document.querySelector("#answer${index + 1}")?.textContent ?? "").trim().length >= ${MIN_ANSWER};`,
-    })),
-    config: { placeholder: true },
-    published: true,
-  };
-}
-
 export type ImportReport = {
   dryRun: boolean;
   tracksCreated: string[];
@@ -64,7 +31,8 @@ export type ImportReport = {
   templatesUnchanged: number;
   templatesArchived: number;
   labsLinked: number;
-  placeholderLabs: string[];
+  /** Weeks with no exercise yet: they have no Practice Lab task until one is made and the import is rerun. */
+  missingLabs: string[];
   missingOfficeLife: string[];
   assessmentsCreated: string[];
   assessmentsMissing: string[];
@@ -88,7 +56,7 @@ export async function importCurriculum(
     templatesUnchanged: 0,
     templatesArchived: 0,
     labsLinked: 0,
-    placeholderLabs: [],
+    missingLabs: [],
     missingOfficeLife: [],
     assessmentsCreated: [],
     assessmentsMissing: [],
@@ -151,7 +119,7 @@ export async function importCurriculum(
             db.labScenario.findMany({
               where: { programId, levelId, published: true },
               orderBy: { createdAt: "asc" },
-              select: { id: true, title: true, config: true },
+              select: { id: true, title: true },
             }),
             db.officeLifeContent.findUnique({
               where: { programId_levelId: { programId, levelId } },
@@ -174,19 +142,17 @@ export async function importCurriculum(
         (item) => !item.curriculumKey && !item.archived && item.kind === "INDIVIDUAL" && item.createdAt.getTime() < firstImport,
       );
       report.templatesArchived += old.length;
-      const newLabs: Prisma.LabScenarioCreateManyInput[] = [];
       const newTemplates: Prisma.InternshipTaskTemplateCreateManyInput[] = [];
 
       for (const week of level.weeks) {
-        const lab =
-          labs.find((item) => weekOf(item.title) === week.week && !isPlaceholder(item.config)) ??
-          labs.find((item) => weekOf(item.title) === week.week);
-        let labId = lab?.id ?? null;
-        if (lab && !isPlaceholder(lab.config)) report.labsLinked += 1;
-        else report.placeholderLabs.push(`${track} ${level.name} Week ${week.week}: ${week.topic}`);
+        const lab = labs.find((item) => weekOf(item.title) === week.week);
+        if (lab) report.labsLinked += 1;
+        else report.missingLabs.push(`${track} ${level.name} Week ${week.week}: ${week.topic}`);
 
         for (const task of week.tasks) {
           const part = taskPart(task);
+          // Never a Practice Lab task with nothing real to do.
+          if (part === "lab" && !lab) continue;
           const key = curriculumKey(track, level.name, week.week, part);
           const current = byKey.get(key);
           if (current && !overwrite) {
@@ -196,14 +162,10 @@ export async function importCurriculum(
           if (current) report.templatesUpdated += 1;
           else report.templatesCreated += 1;
           if (dryRun || !programId) continue;
-          if (part === "lab" && !labId) {
-            labId = randomUUID();
-            newLabs.push({ id: labId, programId, levelId, ...placeholderLab(week.week, week.topic) });
-          }
           const data = {
             title: plainTitle(task),
             description: templateDescription(task),
-            labScenarioId: part === "lab" ? labId : null,
+            labScenarioId: part === "lab" ? lab!.id : null,
             officeLifeDay: part === "office" ? week.officeLifeDay : null,
           };
           if (current) await db.internshipTaskTemplate.update({ where: { id: current.id }, data });
@@ -227,7 +189,6 @@ export async function importCurriculum(
       // Together, so a track and level is never left half done.
       if (!dryRun && (newTemplates.length || old.length))
         await db.$transaction([
-          db.labScenario.createMany({ data: newLabs }),
           db.internshipTaskTemplate.createMany({ data: newTemplates, skipDuplicates: true }),
           db.internshipTaskTemplate.updateMany({ where: { id: { in: old.map((item) => item.id) } }, data: { archived: true } }),
         ]);
@@ -244,8 +205,4 @@ export async function importCurriculum(
 
 function weekOf(title: string) {
   return Number(/^Week (\d+)\b/.exec(title)?.[1] ?? 0);
-}
-
-function isPlaceholder(config: unknown) {
-  return Boolean(config && typeof config === "object" && (config as { placeholder?: unknown }).placeholder === true);
 }

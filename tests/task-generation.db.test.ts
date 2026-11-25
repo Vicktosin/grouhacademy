@@ -99,17 +99,18 @@ after(async () => {
 
 test("a dry run changes nothing", async () => {
   const report = await importCurriculum({ dryRun: true }, db);
-  assert.equal(report.templatesCreated, 514);
+  assert.equal(report.templatesCreated, 335); // 514 without the 179 labs that don't exist
   assert.equal(report.tracksCreated.length, 8);
   assert.equal(await db.internshipTaskTemplate.count(), 1);
 });
 
 test("the import loads every track, level and week once", async () => {
   const report = await importCurriculum({ dryRun: false }, db);
-  assert.equal(report.templatesCreated, 514);
+  assert.equal(report.templatesCreated, 335); // 514 without the 179 labs that don't exist
   assert.equal(report.templatesArchived, 1);
   assert.equal(report.labsLinked, 1);
-  assert.equal(report.placeholderLabs.length, 179);
+  assert.equal(report.missingLabs.length, 179);
+  assert.equal(await db.labScenario.count(), 1);
   assert.deepEqual(report.missingOfficeLife, []);
   assert.equal(await db.internshipProgram.count({ where: { status: "PUBLISHED" } }), CURRICULUM.length);
   // An admin's fee is kept; the rest are added.
@@ -117,14 +118,24 @@ test("the import loads every track, level and week once", async () => {
   assert.equal((await db.internshipLevelFee.findFirstOrThrow({ where: { programId, levelId } })).acceptanceFee, 2500);
   const cyber = await place("Cybersecurity", "Professional");
   assert.equal((await db.internshipLevelFee.findFirstOrThrow({ where: cyber })).acceptanceFee, 25000);
-  // Every week has a lab and its Office Life day, and says how to submit.
+  // Every week has its Office Life day, no empty lab, and says how to submit.
   const tasks = await db.internshipTaskTemplate.findMany({ where: { ...cyber, archived: false } });
   for (const week of [1, 2, 3, 4]) {
     const own = tasks.filter((task) => task.opensWeek === week);
-    assert.equal(own.filter((task) => task.labScenarioId).length, 1);
     assert.equal(own.filter((task) => task.officeLifeDay === week).length, 1);
   }
   assert.ok(tasks.every((task) => task.description?.includes("How to submit: ")));
+  assert.ok(tasks.every((task) => !task.title.startsWith("Practice Lab")));
+});
+
+test("a lab made later joins its week when the import is rerun", async () => {
+  const at = await place("Virtual Assistant", "Novice");
+  const lab = await db.labScenario.create({
+    data: { ...at, kind: "CONTENT", title: "Week 1: Client task board", brief: "x", starterFiles: {}, published: true },
+  });
+  const report = await importCurriculum({ dryRun: false }, db);
+  assert.equal(report.templatesCreated, 1);
+  assert.equal((await db.internshipTaskTemplate.findFirstOrThrow({ where: { ...at, labScenarioId: { not: null } } })).labScenarioId, lab.id);
 });
 
 test("running it again adds nothing and keeps admins' edits and new templates", async () => {
