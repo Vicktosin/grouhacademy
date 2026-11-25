@@ -10,8 +10,14 @@ export type CurriculumTask = {
   submit: string;
   capstone: boolean;
 };
-export type CurriculumWeek = { week: number; topic: string; capstone: boolean; officeLifeDay: number; tasks: CurriculumTask[] };
-export type CurriculumLevel = { level: number; name: string; weeks: CurriculumWeek[] };
+export type CurriculumWeek = {
+  /** "By the end of this week you can..." (data/milestones). */
+  outcome: string;
+  week: number; topic: string; capstone: boolean; officeLifeDay: number; tasks: CurriculumTask[] };
+export type CurriculumLevel = {
+  /** What the intern has finished at the end of the level. */
+  milestone: string;
+  level: number; name: string; weeks: CurriculumWeek[] };
 export type CurriculumTrack = { track: string; levels: CurriculumLevel[] };
 
 export function trackSlug(name: string) {

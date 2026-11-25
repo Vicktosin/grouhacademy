@@ -93,6 +93,10 @@ export default function TracksExplorer({ tracks }: { tracks: CurriculumTrack[] }
                 +
               </span>
             </summary>
+            <p className="border-t border-slate-100 bg-[#f7f8fc] px-5 py-4 text-sm leading-6 text-[#141650]">
+              <strong className="block">What you finish with</strong>
+              {level.milestone}
+            </p>
             <ol className="divide-y divide-slate-100 border-t border-slate-100">
               {level.weeks.map((week) => (
                 <li key={week.week} className={`px-5 py-5 ${week.capstone ? "bg-[#f2fbf2]" : ""}`}>
@@ -103,6 +107,7 @@ export default function TracksExplorer({ tracks }: { tracks: CurriculumTrack[] }
                     )}
                   </div>
                   <p className="mt-1 font-semibold text-[#141650]">{week.topic.replace(/^(FINAL )?CAPSTONE( \d)?: ?/, "") || week.topic}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">By the end, you can {week.outcome}.</p>
                   <ul className="mt-3 space-y-3">
                     {week.tasks
                       .filter((task) => taskPart(task) !== "office")

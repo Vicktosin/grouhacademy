@@ -18,8 +18,8 @@ export const LEVEL_FEES: Record<string, number> = {
   Professional: 25000,
 };
 
-export function templateDescription(task: CurriculumTask) {
-  return `${task.instructions}\n\nHow to submit: ${task.submit}`;
+export function templateDescription(task: CurriculumTask, outcome: string) {
+  return `${task.instructions}\n\nBy the end of this week, you can ${outcome}.\n\nHow to submit: ${task.submit}`;
 }
 
 export type ImportReport = {
@@ -164,7 +164,7 @@ export async function importCurriculum(
           if (dryRun || !programId) continue;
           const data = {
             title: plainTitle(task),
-            description: templateDescription(task),
+            description: templateDescription(task, week.outcome),
             labScenarioId: part === "lab" ? lab!.id : null,
             officeLifeDay: part === "office" ? week.officeLifeDay : null,
           };
