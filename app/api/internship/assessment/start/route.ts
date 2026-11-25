@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/route-guards";
+import { alertMissingAssessment } from "@/lib/entry-assessments";
 import { getPrisma } from "@/lib/prisma";
 
 export async function POST() {
@@ -17,7 +18,7 @@ export async function POST() {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const application = await prisma.internshipApplication.findFirst({
       where: { studentId: userId },
-      include: { program: true },
+      include: { program: true, level: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -38,6 +39,20 @@ export async function POST() {
       );
     }
 
+    // First, whoever already passed goes on: an intern moving up with their
+    // certificate has a pass with no assessment (startNextLevel), and must
+    // never be asked for an exam.
+    const passedAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { applicationId: application.id, status: "PASSED" },
+      select: { id: true },
+    });
+    if (passedAttempt) {
+      return NextResponse.json(
+        { error: "You have already passed this entrance assessment.", code: "ALREADY_PASSED" },
+        { status: 409 },
+      );
+    }
+
     const assessment = await prisma.internshipAssessment.findFirst({
       where: {
         programId: application.programId,
@@ -48,27 +63,14 @@ export async function POST() {
     });
 
     if (!assessment) {
+      await alertMissingAssessment(application.program.name, application.level.name);
       return NextResponse.json(
         {
           error:
-            "No assessment has been set up for this track and level yet. Please check back soon.",
+            "There's no assessment for this level yet. We've told the team. You can continue without it.",
+          code: "ASSESSMENT_MISSING",
         },
         { status: 404 },
-      );
-    }
-
-    const passedAttempt = await prisma.assessmentAttempt.findFirst({
-      where: {
-        applicationId: application.id,
-        assessmentId: assessment.id,
-        status: "PASSED",
-      },
-      select: { id: true },
-    });
-    if (passedAttempt) {
-      return NextResponse.json(
-        { error: "You have already passed this entrance assessment." },
-        { status: 409 },
       );
     }
 

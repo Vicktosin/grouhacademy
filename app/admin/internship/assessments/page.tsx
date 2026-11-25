@@ -33,6 +33,7 @@ export default function InternshipAssessmentsPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [missing, setMissing] = useState<{ track: string; level: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/internship/assessments", { cache: "no-store" })
@@ -44,7 +45,9 @@ export default function InternshipAssessmentsPage() {
         const payload = (await response.json()) as {
           questions?: QuestionRow[];
           assessments?: AssessmentRow[];
+          missing?: { track: string; level: string }[];
         };
+        setMissing(payload.missing ?? []);
         setQuestions(payload.questions ?? []);
         setAssessments(payload.assessments ?? []);
       })
@@ -139,6 +142,20 @@ export default function InternshipAssessmentsPage() {
   return (
     <AdminShell workspace="internship">
       <div className="mx-auto max-w-[1400px] space-y-5">
+        {missing.length > 0 && (
+          <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">
+              {missing.length} track and level {missing.length === 1 ? "has" : "combinations have"} no assessment
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+              {missing.map((gap) => (
+                <li key={`${gap.track}:${gap.level}`}>
+                  {gap.track}: {gap.level}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5FBB46]">

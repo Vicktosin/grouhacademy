@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { missingAssessments } from "@/lib/entry-assessments";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/api-guards";
 import { listLevels, resolveLevelId } from "@/lib/internship-levels";
@@ -106,6 +107,7 @@ export async function GET() {
   );
 
   return NextResponse.json({
+    missing: await missingAssessments(prisma),
     programs,
     levels,
     assessments: assessments.map((assessment) => ({

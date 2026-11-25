@@ -8,6 +8,7 @@ export default function AssessmentReadinessPage() {
   const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
+  const [missing, setMissing] = useState(false);
 
   async function startAssessment() {
     setStarting(true);
@@ -21,6 +22,11 @@ export default function AssessmentReadinessPage() {
         router.replace("/internship/onboarding");
         return;
       }
+      if (data.code === "ALREADY_PASSED") {
+        router.push("/internship/results");
+        return;
+      }
+      setMissing(data.code === "ASSESSMENT_MISSING");
       if (!response.ok)
         throw new Error(data.error || "Unable to start your assessment.");
       router.push("/internship/assessment/take");
@@ -60,6 +66,15 @@ export default function AssessmentReadinessPage() {
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
+        )}
+        {missing && (
+          <button
+            type="button"
+            onClick={() => router.push("/internship/results?skipped=1")}
+            className="mt-5 w-full rounded-xl bg-[#1C1D52] px-6 py-3.5 text-sm font-bold text-white"
+          >
+            Continue without it
+          </button>
         )}
 
         <button
