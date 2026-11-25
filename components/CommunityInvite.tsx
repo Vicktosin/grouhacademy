@@ -24,27 +24,30 @@ export default function CommunityInvite({
   description,
   location,
   className = "",
+  compact = false,
 }: {
   title: string;
   description: string;
   /** Where the invite is shown, reported with the GA click event. */
   location: string;
   className?: string;
+  /** Shorter, for pages where it must show without scrolling. */
+  compact?: boolean;
 }) {
   return (
     <aside
-      className={`flex flex-col gap-5 rounded-2xl border border-[#25D366]/25 bg-white p-6 text-left shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:flex-row sm:items-center sm:p-7 ${className}`}
+      className={`flex flex-col rounded-2xl border border-[#25D366]/25 bg-white text-left shadow-[0_8px_24px_rgba(28,29,82,0.09)] sm:flex-row sm:items-center ${compact ? "gap-3 p-4 sm:gap-4 sm:p-5" : "gap-5 p-6 sm:p-7"} ${className}`}
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e7faef] text-[#1fae55]">
+      <span className={`h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e7faef] text-[#1fae55] ${compact ? "hidden sm:flex" : "flex"}`}>
         <WhatsAppIcon className="h-6 w-6" />
       </span>
       <div className="flex-1">
         <h2 className="text-base font-bold text-[#1C1D52]">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+        <p className={`text-slate-500 ${compact ? "mt-0.5 text-[13px] leading-5" : "mt-1 text-sm leading-6"}`}>{description}</p>
       </div>
       <CommunityLink
         location={location}
-        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(37,211,102,0.3)] transition hover:-translate-y-px hover:bg-[#1ebe5b]"
+        className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 ${compact ? "py-3" : "py-3.5"} text-sm font-bold text-white shadow-[0_10px_24px_rgba(37,211,102,0.3)] transition hover:-translate-y-px hover:bg-[#1ebe5b]`}
       >
         <WhatsAppIcon className="h-5 w-5" />
         Join the community
