@@ -1,4 +1,4 @@
-import { RoleName } from "@/generated/prisma/client";
+import { RoleName, UserStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getUserRBAC } from "@/lib/rbac";
 import type { LearnerTrack } from "@/lib/learner-tracks";
@@ -8,6 +8,9 @@ export type SupabaseAuthUser = {
   email?: string | null;
   user_metadata?: Record<string, unknown> | null;
 };
+
+/** This email's account can't be opened by this sign-in; an admin must help. */
+export class AccountConflictError extends Error {}
 
 const rolePriority: RoleName[] = [
   RoleName.ADMIN,
@@ -82,6 +85,47 @@ export async function getAuthorizedHomeRouteForUserId(
 }
 
 /**
+ * Someone whose old sign-in was deleted, signing in afresh with the same
+ * email: gives their account to the new sign-in. Only learners', only with a
+ * verified email, and only when the old sign-in is really gone. False when
+ * the email has no account here.
+ */
+async function reconnectAccount(
+  loginId: string,
+  login: { email: string | null; confirmed: boolean },
+): Promise<boolean> {
+  if (!login.email) return false;
+  const prisma = getPrisma();
+  const account = await prisma.user.findFirst({
+    where: { email: { equals: login.email, mode: "insensitive" } },
+    select: {
+      id: true,
+      status: true,
+      isPreview: true,
+      roles: { select: { role: { select: { name: true } } } },
+    },
+  });
+  if (!account) return false;
+  // Another request of theirs got here first.
+  if (account.id === loginId) return true;
+
+  const [old] = await prisma.$queryRaw<{ exists: boolean }[]>`
+    select exists(select 1 from auth.users where id = ${account.id}::uuid) as exists`;
+  const learner = account.roles.every(
+    ({ role }) => role.name === RoleName.INTERN || role.name === RoleName.STUDENT,
+  );
+  if (old?.exists || !login.confirmed || !learner || account.isPreview || account.status !== UserStatus.ACTIVE)
+    throw new AccountConflictError(
+      `Sign-in ${loginId} has the email of account ${account.id}, which it can't take over.`,
+    );
+
+  // Everything that refers to the account follows its id (ON UPDATE CASCADE).
+  await prisma.user.updateMany({ where: { id: account.id }, data: { id: loginId } });
+  console.info(`Account ${account.id} reconnected to its new sign-in ${loginId}.`);
+  return true;
+}
+
+/**
  * Finds or creates the app user for a Supabase login. New users (and users
  * without any role) get `defaultRole`: interns by default, since the
  * existing sign-up pages are the internship's; the courses pages pass
@@ -136,6 +180,17 @@ export async function ensurePrismaUserWithRoles(
 
     return { id: existingUser.id, roles: existingUser.roles.map((userRole) => userRole.role.name) };
   }
+
+  // A sign-in new to us. Read it from Supabase's own table: a deleted
+  // person's browser keeps its token for a while, and must not bring an
+  // empty account back.
+  const [login] = await prisma.$queryRaw<{ email: string | null; confirmed: boolean }[]>`
+    select email, email_confirmed_at is not null as confirmed
+    from auth.users where id = ${authUser.id}::uuid`;
+  if (!login) throw new AccountConflictError("This sign-in no longer exists.");
+
+  const reconnected = await reconnectAccount(authUser.id, login);
+  if (reconnected) return ensurePrismaUserWithRoles(authUser, defaultRole);
 
   const defaultRoleRecord = await prisma.role.findUnique({
     where: { name: defaultRole },

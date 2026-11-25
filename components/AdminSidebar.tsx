@@ -26,6 +26,7 @@ import {
   Settings,
   ShieldCheck,
   UserCircle2,
+  UserCog,
   UserRound,
   Users,
   UsersRound,
@@ -70,6 +71,7 @@ const internshipItems = [
     icon: ClipboardCheck,
   },
   { label: "Enrollees", href: "/admin/internship/enrollees", icon: UserRound },
+  { label: "Accounts", href: "/admin/internship/accounts", icon: UserCog },
   {
     label: "Follow-ups",
     href: "/admin/internship/follow-ups",

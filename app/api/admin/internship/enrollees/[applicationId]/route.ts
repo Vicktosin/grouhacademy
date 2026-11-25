@@ -27,6 +27,7 @@ export async function GET(
     include: {
       student: {
         select: {
+          id: true,
           name: true,
           email: true,
           profile: {
@@ -107,6 +108,7 @@ export async function GET(
 
   return NextResponse.json({
     enrollee: {
+      userId: application.student.id,
       applicationId: application.id,
       name:
         student.name ||
