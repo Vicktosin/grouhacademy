@@ -2,11 +2,13 @@
 
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import DeleteAccountButton from "@/components/admin/DeleteAccountButton";
 
 type Enrollee = {
+  userId: string;
   applicationId: string;
   name: string;
   email: string;
@@ -41,6 +43,7 @@ const paymentLabels: Record<string, string> = {
 
 export default function EnrolleeOnboardingReviewPage() {
   const { applicationId } = useParams<{ applicationId: string }>();
+  const router = useRouter();
   const [enrollee, setEnrollee] = useState<Enrollee | null>(null);
   const [responses, setResponses] = useState<OnboardingResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +143,13 @@ export default function EnrolleeOnboardingReviewPage() {
                     value={enrollee.onboardingUpdatedOn}
                   />
                 </dl>
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <DeleteAccountButton
+                    userId={enrollee.userId}
+                    name={enrollee.name}
+                    onDeleted={() => router.replace("/admin/internship/enrollees")}
+                  />
+                </div>
               </section>
 
               <section className="rounded-2xl bg-white p-5 shadow-[0_7px_20px_rgba(28,29,82,0.08)]">

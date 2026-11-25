@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  AccountConflictError,
   ensurePrismaUserForSupabaseAuth,
   getAuthorizedHomeRouteForUserId,
 } from "@/lib/supabase/auth";
@@ -16,6 +17,26 @@ import { recordReferralRegistration } from "@/lib/referrals";
 import { recordAffiliateRegistration } from "@/lib/affiliates";
 
 export async function GET(request: NextRequest) {
+  try {
+    return await completeSignIn(request);
+  } catch (error) {
+    console.error("Sign-in callback failed:", error);
+    // Not left half signed in, where every page would send them back.
+    await createSupabaseServerClient()
+      .then((supabase) => supabase.auth.signOut({ scope: "local" }))
+      .catch(() => undefined);
+    const params = request.nextUrl.searchParams;
+    const track = parseTrack(params.get("track")) ?? trackForPath(params.get("next"));
+    const url = new URL(track === "courses" ? "/courses/login" : "/login", request.url);
+    url.searchParams.set(
+      "error",
+      error instanceof AccountConflictError ? "account_conflict" : "auth_callback_failed",
+    );
+    return NextResponse.redirect(url);
+  }
+}
+
+async function completeSignIn(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const next = request.nextUrl.searchParams.get("next");
   // The side whose sign-up/login page started this (Google sign-in,

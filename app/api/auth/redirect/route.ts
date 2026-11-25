@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { grantTrackRole, TRACK_ROLE } from "@/lib/learner-roles";
 import { parseTrack } from "@/lib/learner-tracks";
 import {
+  AccountConflictError,
   ensurePrismaUserForSupabaseAuth,
   getAuthorizedHomeRouteForUserId,
 } from "@/lib/supabase/auth";
@@ -10,6 +11,7 @@ import {
   isMfaVerificationPending,
   MFA_CHALLENGE_PATH,
 } from "@/lib/supabase/mfa";
+import { LOGIN_ERRORS } from "@/lib/login-errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordReferralRegistration } from "@/lib/referrals";
 import { recordAffiliateRegistration } from "@/lib/affiliates";
@@ -62,6 +64,12 @@ export async function GET(request: NextRequest) {
       error,
     );
 
-    return NextResponse.json({ redirectTo: loginPath }, { status: 500 });
+    return NextResponse.json(
+      {
+        redirectTo: loginPath,
+        ...(error instanceof AccountConflictError && { error: LOGIN_ERRORS.account_conflict }),
+      },
+      { status: 500 },
+    );
   }
 }

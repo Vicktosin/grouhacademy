@@ -11,6 +11,7 @@ import {
   type CohortDb,
 } from "@/lib/internship-cohort";
 import { requireAdminApi } from "@/lib/api-guards";
+import { DELETED_EMAIL_DOMAIN } from "@/lib/account-deletion";
 import { REAL_USER } from "@/lib/real-user";
 
 function formatTier(value: string | null | undefined) {
@@ -56,7 +57,8 @@ export async function GET() {
 
   const paidApplications = await prisma.internshipApplication.findMany({
     where: {
-      student: REAL_USER,
+      // Not the placeholders that keep deleted interns' payments.
+      student: { ...REAL_USER, NOT: { email: { endsWith: DELETED_EMAIL_DOMAIN } } },
       payment: { status: InternshipPaymentStatus.PAID },
     },
     orderBy: { createdAt: "desc" },

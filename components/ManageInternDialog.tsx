@@ -2,6 +2,7 @@
 
 import { Loader2, RotateCcw, Save, UserX, X } from "lucide-react";
 import { useState } from "react";
+import DeleteAccountButton from "@/components/admin/DeleteAccountButton";
 
 // Admin panel for one intern: move them to another track, level, cohort or
 // group, or remove/restore them. Opens as a bottom sheet on phones.
@@ -27,6 +28,8 @@ export type InternOptions = {
 };
 
 export type ManagedIntern = {
+  /** The person (an intern has one application per track and level). */
+  id: string;
   applicationId: string;
   name: string;
   email: string;
@@ -333,6 +336,12 @@ export default function ManageInternDialog({
               <UserX className="h-4 w-4" /> Remove from internship
             </button>
           )}
+          <DeleteAccountButton
+            userId={intern.id}
+            name={intern.name}
+            onDeleted={() => onSaved("permanently deleted.")}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+          />
         </div>
       </div>
     </div>

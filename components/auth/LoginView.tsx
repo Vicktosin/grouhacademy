@@ -15,6 +15,7 @@ import {
   type LearnerTrack,
 } from "@/lib/learner-tracks";
 import { MFA_CHALLENGE_PATH } from "@/lib/supabase/mfa";
+import { LOGIN_ERRORS } from "@/lib/login-errors";
 import { getSiteUrl } from "@/lib/site-url";
 import GoogleIcon from "@/components/GoogleIcon";
 import { Eye, EyeOff } from "lucide-react";
@@ -38,6 +39,7 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the browser-only URL once
     setInvite(new URLSearchParams(window.location.search).get("invite"));
+    setError(LOGIN_ERRORS[new URLSearchParams(window.location.search).get("error") ?? ""] ?? null);
   }, []);
 
   // Someone already signed in (e.g. an intern opening the courses login)
@@ -69,8 +71,9 @@ export default function LoginView({ track }: { track: LearnerTrack }) {
     });
     const data = (await response.json().catch(() => ({}))) as {
       redirectTo?: string;
+      error?: string;
     };
-    if (!response.ok) throw new Error("Unable to determine your workspace.");
+    if (!response.ok) throw new Error(data.error ?? "Unable to determine your workspace.");
 
     if (data.redirectTo === MFA_CHALLENGE_PATH) {
       // After the second factor, continue to this side.
