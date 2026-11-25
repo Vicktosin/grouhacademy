@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { LAB_EXERCISES } from "@/data/lab-exercises";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { CURRICULUM, TRACK_DESCRIPTIONS, curriculumKey, plainTitle, taskPart, trackSlug, type CurriculumTask } from "@/lib/curriculum";
 import { createMissingAssessments } from "@/lib/entry-assessments";
+import { labRows } from "@/lib/lab-exercises";
 import { DEFAULT_LAB_PASS_MARK } from "@/lib/lab-task-grading";
 import { defaultOfficeLifeContent, parseOfficeLifeContent } from "@/lib/office-life/content";
 import { getPrisma } from "@/lib/prisma";
@@ -31,6 +34,7 @@ export type ImportReport = {
   templatesUnchanged: number;
   templatesArchived: number;
   labsLinked: number;
+  labsCreated: string[];
   /** Weeks with no exercise yet: they have no Practice Lab task until one is made and the import is rerun. */
   missingLabs: string[];
   missingOfficeLife: string[];
@@ -56,6 +60,7 @@ export async function importCurriculum(
     templatesUnchanged: 0,
     templatesArchived: 0,
     labsLinked: 0,
+    labsCreated: [],
     missingLabs: [],
     missingOfficeLife: [],
     assessmentsCreated: [],
@@ -142,12 +147,19 @@ export async function importCurriculum(
         (item) => !item.curriculumKey && !item.archived && item.kind === "INDIVIDUAL" && item.createdAt.getTime() < firstImport,
       );
       report.templatesArchived += old.length;
+      const newLabs: Prisma.LabScenarioCreateManyInput[] = [];
       const newTemplates: Prisma.InternshipTaskTemplateCreateManyInput[] = [];
 
       for (const week of level.weeks) {
-        const lab = labs.find((item) => weekOf(item.title) === week.week);
+        // The week's exercise: one that's there already, or a new one of ours.
+        let lab: { id: string } | undefined = labs.find((item) => weekOf(item.title) === week.week);
+        const exercise = LAB_EXERCISES.find((item) => item.track === track && item.level === level.name && item.week === week.week);
         if (lab) report.labsLinked += 1;
-        else report.missingLabs.push(`${track} ${level.name} Week ${week.week}: ${week.topic}`);
+        else if (exercise) {
+          report.labsCreated.push(`${track} ${level.name} Week ${week.week}: ${exercise.title}`);
+          lab = { id: randomUUID() };
+          if (programId) newLabs.push({ ...labRows(exercise), id: lab.id, programId, levelId });
+        } else report.missingLabs.push(`${track} ${level.name} Week ${week.week}: ${week.topic}`);
 
         for (const task of week.tasks) {
           const part = taskPart(task);
@@ -187,8 +199,9 @@ export async function importCurriculum(
         }
       }
       // Together, so a track and level is never left half done.
-      if (!dryRun && (newTemplates.length || old.length))
+      if (!dryRun && (newLabs.length || newTemplates.length || old.length))
         await db.$transaction([
+          db.labScenario.createMany({ data: newLabs }),
           db.internshipTaskTemplate.createMany({ data: newTemplates, skipDuplicates: true }),
           db.internshipTaskTemplate.updateMany({ where: { id: { in: old.map((item) => item.id) } }, data: { archived: true } }),
         ]);

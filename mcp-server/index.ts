@@ -1894,7 +1894,7 @@ server.tool(
 
 server.tool(
   "import_curriculum",
-  "Load the approved curriculum (data/curriculum.json) into the app: missing tracks, level fees, entry assessments and the Task Library. A week with no Practice Lab exercise gets no lab task (they're listed); make the exercise and rerun to add it. Safe to rerun. Reports only, unless dryRun is false. Apply the 20261125120000_task_library_curriculum migration and deploy the app first.",
+  "Load the approved curriculum (data/curriculum.json) into the app: missing tracks, level fees, entry assessments and the Task Library. Creates the Practice Lab exercises in data/lab-exercises where a week has none. A week that still has no exercise gets no lab task (they're listed); make the exercise and rerun to add it. Safe to rerun. Reports only, unless dryRun is false. Apply the 20261125120000_task_library_curriculum migration and deploy the app first.",
   {
     dryRun: z.boolean().default(true).describe("true (default): only report what would change"),
     overwrite: z.boolean().default(false).describe("Also reset already imported templates to the curriculum's wording, losing admins' edits to them"),

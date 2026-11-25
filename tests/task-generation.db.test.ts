@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
+import { LAB_EXERCISES } from "../data/lab-exercises";
 import { CURRICULUM } from "../lib/curriculum";
 import { importCurriculum, LEVEL_FEES } from "../lib/curriculum-import";
 import { generateCohortTasks, generateSelfPacedTasks, openWeekFor } from "../lib/task-generation";
@@ -99,18 +100,19 @@ after(async () => {
 
 test("a dry run changes nothing", async () => {
   const report = await importCurriculum({ dryRun: true }, db);
-  assert.equal(report.templatesCreated, 335); // 514 without the 179 labs that don't exist
+  assert.equal(report.templatesCreated, 335 + LAB_EXERCISES.length);
   assert.equal(report.tracksCreated.length, 8);
   assert.equal(await db.internshipTaskTemplate.count(), 1);
 });
 
 test("the import loads every track, level and week once", async () => {
   const report = await importCurriculum({ dryRun: false }, db);
-  assert.equal(report.templatesCreated, 335); // 514 without the 179 labs that don't exist
+  assert.equal(report.templatesCreated, 335 + LAB_EXERCISES.length);
   assert.equal(report.templatesArchived, 1);
   assert.equal(report.labsLinked, 1);
-  assert.equal(report.missingLabs.length, 179);
-  assert.equal(await db.labScenario.count(), 1);
+  assert.equal(report.labsCreated.length, LAB_EXERCISES.length);
+  assert.equal(report.missingLabs.length, 179 - LAB_EXERCISES.length);
+  assert.equal(await db.labScenario.count(), 1 + LAB_EXERCISES.length);
   assert.deepEqual(report.missingOfficeLife, []);
   assert.equal(await db.internshipProgram.count({ where: { status: "PUBLISHED" } }), CURRICULUM.length);
   // An admin's fee is kept; the rest are added.
@@ -129,12 +131,13 @@ test("the import loads every track, level and week once", async () => {
 });
 
 test("a lab made later joins its week when the import is rerun", async () => {
-  const at = await place("Virtual Assistant", "Novice");
+  const at = await place("Virtual Assistant", "Intermediate");
   const lab = await db.labScenario.create({
-    data: { ...at, kind: "CONTENT", title: "Week 1: Client task board", brief: "x", starterFiles: {}, published: true },
+    data: { ...at, kind: "CONTENT", title: "Week 1: Social media support", brief: "x", starterFiles: {}, published: true },
   });
   const report = await importCurriculum({ dryRun: false }, db);
   assert.equal(report.templatesCreated, 1);
+  assert.equal(report.labsCreated.length, 0);
   assert.equal((await db.internshipTaskTemplate.findFirstOrThrow({ where: { ...at, labScenarioId: { not: null } } })).labScenarioId, lab.id);
 });
 
