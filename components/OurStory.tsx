@@ -1,3 +1,4 @@
+import { FOUNDER_PHOTO } from "@/constants/data/team";
 import React from "react";
 import { MILESTONES } from "@/constants/data/milestone";
 
@@ -92,17 +93,16 @@ const OurStory = () => {
                 unprepared for the real world."
               </p>
               <div className="mt-5 flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4db848] text-sm font-bold text-white"
-                >
-                  TE
-                </span>
+                <img
+                  src={FOUNDER_PHOTO}
+                  alt="Thomas Emmanuel"
+                  className="h-12 w-12 rounded-full object-cover object-top"
+                />
                 <div>
                   <p className="text-white font-semibold text-sm">
                     Thomas Emmanuel
                   </p>
-                  <p className="text-white/50 text-xs">CEO & Co-founder</p>
+                  <p className="text-white/50 text-xs">Founder & CEO</p>
                 </div>
               </div>
             </div>

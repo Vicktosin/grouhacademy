@@ -38,7 +38,7 @@ const MeetTheTeam = () => {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 gap-5 max-w-3xl">
           {TEAM.map((member, i) => (
             <div
               key={i}
@@ -55,64 +55,14 @@ const MeetTheTeam = () => {
             >
               <div
                 className="relative overflow-hidden"
-                style={{ aspectRatio: "4/3", background: "#f3f4fc" }}
+                style={{ aspectRatio: "4/5", background: "#f3f4fc" }}
               >
                 <img
                   src={member.avatar}
-                  alt={member.name}
+                  alt={`${member.name}, ${member.role}`}
+                  loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                {/* Tag overlay */}
-                <div className="absolute top-4 left-4">
-                  <span
-                    className="px-3 py-1 rounded-full text-xs font-bold text-white"
-                    style={{
-                      background: "rgba(20,22,80,0.75)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    {member.tag}
-                  </span>
-                </div>
-                {/* Social on hover */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 pb-5 transition-all duration-300 ${active === i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-                >
-                  {[
-                    { icon: "linkedin", href: member.linkedin },
-                    { icon: "twitter", href: member.twitter },
-                  ].map(({ icon, href }) => (
-                    <a
-                      key={icon}
-                      href={href}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30 transition-colors hover:bg-white text-white hover:text-navy-900"
-                      style={
-                        {
-                          background: "rgba(20,22,80,0.6)",
-                          "--tw-text-opacity": "1",
-                        } as React.CSSProperties
-                      }
-                      aria-label={icon}
-                    >
-                      <svg
-                        width="13"
-                        height="13"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        {icon === "linkedin" ? (
-                          <>
-                            <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
-                            <circle cx="4" cy="4" r="2" />
-                          </>
-                        ) : (
-                          <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
-                        )}
-                      </svg>
-                    </a>
-                  ))}
-                </div>
               </div>
 
               <div className="p-6">
