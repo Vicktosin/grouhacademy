@@ -158,7 +158,7 @@ test("the task shows the workday's opening and due times, and whether it's open"
   assert.match(info.opensLabel ?? "", /Oct 17/);
   assert.match(info.dueLabel ?? "", /Oct 19/);
   assert.equal(officeLifeTaskInfo(2, workday, false, new Date("2026-10-16T00:00:00Z")).window, "UPCOMING");
-  assert.equal(officeLifeTaskInfo(2, workday, false, new Date("2026-10-20T00:00:00Z")).window, "CLOSED");
+  assert.equal(officeLifeTaskInfo(2, workday, false, new Date("2026-10-20T00:00:00Z")).window, "OPEN"); // stays open after it is due
   // Not placed in a cohort yet: no times.
   assert.equal(officeLifeTaskInfo(2, { ...workday, opensAt: null, dueAt: null }, false, during).window, null);
 });
@@ -178,9 +178,9 @@ test("the task card has a button to the workday and no text box", () => {
   assert.doesNotMatch(html, /<textarea|<form|<input/);
 });
 
-test("the task card says when the workday isn't open yet, has closed, or is done and accepted", () => {
+test("the task card says when the workday isn't open yet, stays open after it is due, or is done and accepted", () => {
   assert.match(card(officeLifeTaskInfo(2, workday, false, new Date("2026-10-16T00:00:00Z"))), /hasn(&#x27;|')t opened yet/);
-  assert.match(card(officeLifeTaskInfo(2, workday, false, new Date("2026-10-20T00:00:00Z"))), /closed on .* can no longer be completed/);
+  assert.match(card(officeLifeTaskInfo(2, workday, false, new Date("2026-10-20T00:00:00Z"))), /Open the workday in Office Life/);
   const done = officeLifeTaskInfo(2, { ...workday, stepsDone: 5, completedAt: "2026-10-17T15:00:00Z" }, true, during);
   const html = card(done, "Passed");
   assert.match(html, /Completed and submitted/);

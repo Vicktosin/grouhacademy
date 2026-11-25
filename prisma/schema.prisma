@@ -1334,6 +1334,9 @@ model InternshipTask {
   pool          InternshipGroupPool?    @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
+  // One task per template for a cohort or a self-paced intern.
+  @@unique([cohortId, templateId])
+  @@unique([applicationId, templateId])
   @@index([cohortId, dueDate])
   @@index([templateId])
   @@index([poolId])
@@ -2406,6 +2409,8 @@ model AffiliatePayout {
 
 model InternshipTaskTemplate {
   id            String   @id @default(cuid())
+  // Which curriculum task this is (lib/curriculum), for imported templates.
+  curriculumKey String?  @unique
   // programId null only when isShared = true (GROUP tasks visible to every
   // track in a pool). Otherwise equals the track the template belongs to.
   programId     String?

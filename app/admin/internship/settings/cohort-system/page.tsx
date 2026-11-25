@@ -164,30 +164,59 @@ function TaskLibrary() {
     void load();
   }
 
+  async function generate() {
+    if (!cohortId) return;
+    setBusy(true);
+    setMessage(null);
+    setFailure(null);
+    const response = await fetch("/api/admin/internship/task-library/generate-cohort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cohortId }),
+    });
+    const data = await response.json().catch(() => null);
+    setBusy(false);
+    if (!response.ok) return setFailure(data?.error ?? "Unable to generate the tasks.");
+    setMessage(
+      data.created
+        ? `Made ${data.created} task${data.created === 1 ? "" : "s"} for ${data.cohort} (week ${data.weeks.join(", ")}).`
+        : `${data.cohort} already has tasks for every week.`,
+    );
+    void load();
+  }
+
   return (
     <section className="rounded-2xl bg-white p-4 shadow-[0_7px_20px_rgba(28,29,82,0.08)] sm:p-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-[#1C1D52]">
         <Library className="h-4 w-4 text-[#5FBB46]" aria-hidden="true" /> Task Library
       </h2>
       <p className="mt-1 text-xs leading-5 text-slate-500">
-        Self-paced interns get their tasks from here, in the same order and spacing as the cohort they were copied from
-        (dates become week, day and time from the cohort&apos;s start). Group tasks are kept for cohorts and skipped for self-paced interns.
+        Every intern&apos;s tasks come from here. Cohorts get them Monday to Sunday on the cohort calendar; self-paced interns
+        unlock each week by finishing the one before. Generating only fills weeks a cohort has no tasks for.
       </p>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <label className="min-w-0 flex-1 text-[11px] font-semibold text-[#1C1D52]">
-          <span className="sr-only">Cohort to copy</span>
+          <span className="sr-only">Cohort</span>
           <select
             value={cohortId}
             onChange={(e) => setCohortId(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
           >
-            <option value="">Choose a cohort to copy…</option>
+            <option value="">Choose a cohort…</option>
             {info?.cohorts.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.tasks} tasks)</option>
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          onClick={() => void generate()}
+          disabled={!cohortId || busy}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#5FBB46] px-4 py-2 text-xs font-semibold text-[#14204f] disabled:opacity-50"
+        >
+          Generate tasks from library
+        </button>
         <button
           type="button"
           onClick={() => void copy()}

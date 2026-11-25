@@ -1,6 +1,7 @@
 import { durationLabel, getInternTasks, type InternTaskContext } from "@/lib/intern-tasks";
 import type { InternshipTaskItem } from "@/lib/internship-data";
 import { officeLifeOverview } from "@/lib/office-life/server";
+import { getSelfPacedTasks, isSelfPacedNow } from "@/lib/self-paced-tasks";
 import { officeLifeTaskInfo, submitOfficeLifeTasks } from "@/lib/office-life/tasks";
 
 /**
@@ -9,11 +10,16 @@ import { officeLifeTaskInfo, submitOfficeLifeTasks } from "@/lib/office-life/tas
  * (which decide the task) instead of a submission box.
  */
 export async function getInternTasksWithOfficeLife(userId: string, context: InternTaskContext, preview: boolean) {
-  let tasks = await getInternTasks(userId, context);
+  const start = context.selfPacedStartDate;
+  const load = () =>
+    start && isSelfPacedNow(context)
+      ? getSelfPacedTasks(userId, { ...context, selfPacedStartDate: start })
+      : getInternTasks(userId, context);
+  let tasks = await load();
   if (!tasks.some((task) => task.officeLifeDay !== null)) return tasks;
   // A workday finished before the task was linked to it still counts.
   if (tasks.some((task) => task.officeLifeDay !== null && !task.submittedAt) && (await submitOfficeLifeTasks({ userId })) > 0)
-    tasks = await getInternTasks(userId, context);
+    tasks = await load();
   const overview = await officeLifeOverview(userId, preview);
   const days = new Map(overview.enrolled ? overview.days.map((day) => [day.day, day]) : []);
   const now = new Date();
@@ -38,7 +44,9 @@ export async function getInternTasksWithOfficeLife(userId: string, context: Inte
           : window === "UPCOMING" && workday?.opensAt
             ? `Opens in ${durationLabel(new Date(workday.opensAt).getTime() - now.getTime())}`
             : window === "OPEN" && workday?.dueAt
-              ? `${durationLabel(new Date(workday.dueAt).getTime() - now.getTime())} left`
+              ? new Date(workday.dueAt) > now
+                ? `${durationLabel(new Date(workday.dueAt).getTime() - now.getTime())} left`
+                : "Still open"
               : task.timeLeftLabel,
       ...(unsubmitted
         ? window === "UPCOMING"

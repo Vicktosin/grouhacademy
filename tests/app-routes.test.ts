@@ -12,7 +12,7 @@ const PUBLIC_PAGES = new Set([
   "/about",
   "/apply",
   "/contact",
-  "/courses",
+  "/tracks",
   "/internship",
   "/privacy-policy",
   "/terms-of-service",

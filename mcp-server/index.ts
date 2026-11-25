@@ -34,6 +34,9 @@ import {
 import { parsePlatformSettingsPatch } from "../lib/platform-settings-validation";
 import { applyPlatformSettingsPatch } from "../lib/platform-settings-update";
 import { copyCohortTasksToLibrary } from "../lib/task-library-copy";
+import { generateCohortTasks } from "../lib/task-generation";
+import { importCurriculum } from "../lib/curriculum-import";
+import { missingAssessments } from "../lib/entry-assessments";
 import { learningStatusLabel } from "../lib/learning-mode-rules";
 import { internshipCertificateNumber, internshipCertificatePrefix } from "../lib/certificate-branding";
 import { notifyCertificateIssued } from "../lib/internship-certificate-notify";
@@ -778,7 +781,8 @@ server.tool("create_cohort", "Create a new internship cohort", {
   const cohort = await db.internshipCohort.create({
     data: { programId, levelId, name, slug, startDate: new Date(startDate), endDate: new Date(endDate), status: status as any },
   });
-  return { content: [{ type: "text", text: `Cohort created: ${cohort.id}` }] };
+  const tasks = await generateCohortTasks(cohort.id, {}, db);
+  return { content: [{ type: "text", text: `Cohort created: ${cohort.id}. ${tasks.ok ? `${tasks.created} task(s) made from the Task Library.` : tasks.error}` }] };
 });
 
 server.tool("delete_cohort", "Delete a cohort (only if it has no active interns)", {
@@ -1886,6 +1890,39 @@ server.tool(
     const settings = await applyPlatformSettingsPatch({ learningModePolicy: policy }, null, db);
     return { content: [{ type: "text", text: JSON.stringify({ learningModePolicy: settings.learningModePolicy, cohortSystemEnabled: settings.cohortSystemEnabled }, null, 2) }] };
   },
+);
+
+server.tool(
+  "import_curriculum",
+  "Load the approved curriculum (data/curriculum.json) into the app: missing tracks, level fees, entry assessments and the Task Library, with placeholder Practice Labs where a week has none. Safe to rerun. Reports only, unless dryRun is false. Apply the 20261125120000_task_library_curriculum migration and deploy the app first.",
+  {
+    dryRun: z.boolean().default(true).describe("true (default): only report what would change"),
+    overwrite: z.boolean().default(false).describe("Also reset already imported templates to the curriculum's wording, losing admins' edits to them"),
+  },
+  async ({ dryRun, overwrite }) => ({
+    content: [{ type: "text", text: JSON.stringify(await importCurriculum({ dryRun, overwrite }, db), null, 2) }],
+  }),
+);
+
+server.tool(
+  "generate_cohort_tasks",
+  "Make a cohort's tasks from the Task Library on its calendar. Only fills weeks it has no tasks for. replaceUnused first removes its existing tasks, and is refused if the cohort has interns or submissions.",
+  {
+    cohortId: z.string(),
+    replaceUnused: z.boolean().default(false),
+    dryRun: z.boolean().default(false).describe("true: only report what would change"),
+  },
+  async ({ cohortId, replaceUnused, dryRun }) => {
+    const result = await generateCohortTasks(cohortId, { replaceUnused, dryRun }, db);
+    return { content: [{ type: "text", text: result.ok ? JSON.stringify(result, null, 2) : result.error }], isError: !result.ok };
+  },
+);
+
+server.tool(
+  "list_missing_assessments",
+  "List every published track and level that has no entry assessment with questions.",
+  {},
+  async () => ({ content: [{ type: "text", text: JSON.stringify(await missingAssessments(db), null, 2) }] }),
 );
 
 server.tool(

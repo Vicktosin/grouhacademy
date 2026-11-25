@@ -8,6 +8,7 @@ import type {
 import { compareInternshipTaskOrder } from "@/lib/internship-task-order";
 import { formatWat, taskWindowState } from "@/lib/task-schedule";
 import { submissionBlockedReason } from "@/lib/task-submission";
+import { ensureCohortTasks } from "@/lib/task-generation";
 import { getPoolForCohort, materialisePoolGroupTasks } from "@/lib/internship-group-pools";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
@@ -111,6 +112,8 @@ export async function getInternTasks(
 
   // Materialise pool GROUP tasks lazily on first visit (idempotent).
   if (pool) await materialisePoolGroupTasks(pool);
+  // A cohort with no tasks yet gets them from the Task Library.
+  await ensureCohortTasks(context.cohortId);
 
   // Fetch cohort tasks + pool GROUP tasks (one task per pool, not per cohort).
   const tasks = await getPrisma().internshipTask.findMany({

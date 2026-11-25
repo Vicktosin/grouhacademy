@@ -5,7 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { hasInternshipWorkspaceAccess } from "@/lib/internship-access";
 import { getInternTaskContext } from "@/lib/intern-tasks";
 import { getInternTasksWithOfficeLife } from "@/lib/office-life/task-list";
-import { earlierSelfPacedWork, getSelfPacedTasks, isSelfPacedNow } from "@/lib/self-paced-tasks";
+import { earlierSelfPacedWork, isSelfPacedNow } from "@/lib/self-paced-tasks";
 import { audienceWhere } from "@/lib/learner-audience";
 import type {
   InternshipAlert,
@@ -76,7 +76,7 @@ export async function GET() {
 
   const selfPacedStart = context.selfPacedStartDate;
   const tasks = selfPacedStart && isSelfPacedNow(context)
-    ? await getSelfPacedTasks(userId, { ...context, selfPacedStartDate: selfPacedStart })
+    ? await getInternTasksWithOfficeLife(userId, context, await isPreviewSession())
     : [
         ...(await getInternTasksWithOfficeLife(userId, context, await isPreviewSession())),
         // Joined a cohort after starting self-paced: their earlier work stays visible.

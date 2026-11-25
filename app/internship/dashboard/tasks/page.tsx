@@ -91,6 +91,12 @@ export default function TasksPage() {
     (a, b) => a - b,
   );
 
+  // The one thing to do now: the first open task not handed in yet.
+  const nextTaskId =
+    [...allTasks]
+      .sort((a, b) => a.weekNumber - b.weekNumber)
+      .find((task) => task.window === "OPEN" && !task.submittedAt)?.id ?? null;
+
   return (
     <InternshipShell>
       <div className="space-y-5">
@@ -98,8 +104,9 @@ export default function TasksPage() {
         <section className="rounded-2xl bg-[#5FBB46] px-6 py-6 text-[#14204f] shadow-[0_12px_28px_rgba(95,187,70,0.18)] sm:px-8 sm:py-7">
           <h1 className="text-3xl font-bold tracking-tight">My Tasks</h1>
           <p className="mt-2 text-xs text-[#14204f]/75">
-            Submit each task between its opening and due time (WAT). Group tasks
-            are submitted once by your group leader.
+            Work from the top down. Each week has a main task, a Practice Lab and
+            an Office Life day. Group tasks are submitted once by your group
+            leader.
           </p>
         </section>
 
@@ -260,6 +267,7 @@ export default function TasksPage() {
                             <TaskCard
                               key={task.id}
                               task={task}
+                              next={task.id === nextTaskId}
                               onSubmitted={loadTasks}
                             />
                           ))}
@@ -352,9 +360,12 @@ function SummaryCard({
 
 function TaskCard({
   task,
+  next,
   onSubmitted,
 }: {
   task: InternshipTaskItem;
+  /** The task to do now. */
+  next: boolean;
   onSubmitted: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -428,6 +439,9 @@ function TaskCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
+            {next && (
+              <p className="mb-1 text-[11px] font-bold text-[#3d8a2c]">Do this next</p>
+            )}
             <p className="font-semibold text-[#1C1D52]">{task.title}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span

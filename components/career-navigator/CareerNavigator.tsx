@@ -228,7 +228,7 @@ function Result({
             )}
           </div>
           {offer && (
-            <a href={`${siteUrl}/tracks#${offer.slug}`} className="mt-4 inline-block py-1 text-sm font-semibold text-white/75 underline underline-offset-4">
+            <a href={`${siteUrl}/tracks?track=${offer.slug}`} className="mt-4 inline-block py-1 text-sm font-semibold text-white/75 underline underline-offset-4">
               See what you&apos;ll learn
             </a>
           )}
@@ -287,7 +287,7 @@ function Result({
                 <h3 className="text-xl font-extrabold">{SKILLS[item.id].name}</h3>
                 <p className="mt-1 text-white/75">{SKILLS[item.id].what}</p>
                 {other ? (
-                  <a href={`${siteUrl}/tracks#${other.slug}`} className="mt-3 inline-block py-1 text-sm font-semibold text-[#7BE05E] underline underline-offset-4">
+                  <a href={`${siteUrl}/tracks?track=${other.slug}`} className="mt-3 inline-block py-1 text-sm font-semibold text-[#7BE05E] underline underline-offset-4">
                     See what you&apos;ll learn
                   </a>
                 ) : (

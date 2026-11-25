@@ -8,6 +8,7 @@ import {
   MAX_SUBMISSION_LENGTH,
   submissionBlockedReason,
 } from "@/lib/task-submission";
+import { openWeekFor, pacedLockedReason } from "@/lib/task-generation";
 import { awardTaskSubmittedAchievements } from "@/lib/achievements";
 
 /**
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         applicationId: true,
         poolId: true,
         officeLifeDay: true,
+        opensWeek: true,
       },
     });
     // Cohort intern: task must belong to their cohort, OR be a pool GROUP task
@@ -102,7 +104,9 @@ export async function POST(request: Request) {
     });
 
     const blocked = submissionBlockedReason({
-      task,
+      task: isSelfPaced
+        ? { ...task, lockedReason: pacedLockedReason(task.opensWeek, await openWeekFor(context.id, userId)) }
+        : task,
       existingStatus: existing?.status,
       group,
       userId,

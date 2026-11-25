@@ -37,6 +37,16 @@ const tracks: { icon: IconName; title: string; text: string }[] = [
     title: 'WordPress / No-Code',
     text: 'Build functional websites and digital experiences without traditional programming.',
   },
+  {
+    icon: 'group',
+    title: 'Virtual Assistant',
+    text: 'Support clients from anywhere with email, calendars, research and admin.',
+  },
+  {
+    icon: 'code',
+    title: 'Cybersecurity',
+    text: 'Protect people and companies from scams, leaks and attacks.',
+  },
 ]
 
 const LpTracks = () => {

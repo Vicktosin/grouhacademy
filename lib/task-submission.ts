@@ -33,13 +33,20 @@ export function submissionBlockedReason({
   userId,
   now = new Date(),
 }: {
-  task: { kind: "INDIVIDUAL" | "GROUP"; opensAt: Date; dueDate: Date };
+  task: {
+    kind: "INDIVIDUAL" | "GROUP";
+    opensAt: Date;
+    dueDate: Date;
+    /** Self-paced: why it's locked, or null when open (no dates apply). */
+    lockedReason?: string | null;
+  };
   existingStatus: SubmissionStatus | null | undefined;
   group: { leaderId: string | null; leaderName: string | null } | null;
   userId: string;
   now?: Date;
 }): string | null {
-  const window = taskWindowState(task.opensAt, task.dueDate, now);
+  if (task.lockedReason) return task.lockedReason;
+  const window = task.lockedReason === null ? "OPEN" : taskWindowState(task.opensAt, task.dueDate, now);
   if (window === "UPCOMING")
     return `This task opens ${formatWat(task.opensAt)} (WAT).`;
   if (window === "CLOSED")

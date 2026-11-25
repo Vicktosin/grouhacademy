@@ -8,7 +8,6 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
-import { getPublicTracks } from "@/lib/public-tracks";
 import { listPublicTestimonials } from "@/lib/testimonials";
 
 // Newly approved testimonials appear within about ten minutes.
@@ -32,7 +31,7 @@ async function internTestimonials() {
 }
 
 const page = async () => {
-  const [testimonials, tracks] = await Promise.all([internTestimonials(), getPublicTracks()]);
+  const testimonials = await internTestimonials();
   const siteUrl = getSiteUrl();
   const structuredData = {
     "@context": "https://schema.org",
@@ -109,7 +108,7 @@ const page = async () => {
         </Container>
       </section>
       <Whyus />
-      <CurriculumSection tracks={tracks} />
+      <CurriculumSection />
       <InternshipSection />
       <LearningProcess />
       <Testimonials interns={testimonials} />

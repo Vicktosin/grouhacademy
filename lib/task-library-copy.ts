@@ -80,7 +80,6 @@ export async function copyCohortTasksToLibrary(cohortId: string, db: PrismaClien
 export async function taskLibrarySummary(db: PrismaClient = getPrisma()) {
   const [cohorts, templates] = await Promise.all([
     db.internshipCohort.findMany({
-      where: { tasks: { some: {} } },
       orderBy: [{ startDate: "desc" }, { name: "asc" }],
       select: { id: true, name: true, startDate: true, _count: { select: { tasks: true } } },
       take: 200,

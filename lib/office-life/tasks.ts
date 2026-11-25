@@ -4,7 +4,7 @@ import { awardTaskAchievements, awardTaskSubmittedAchievements } from "@/lib/ach
 import { recomputeInternProgress } from "@/lib/internship-progress";
 import { recordSubmissionEvent } from "@/lib/submission-history";
 import { MAX_SUBMISSION_LENGTH } from "@/lib/task-submission";
-import { formatWat, taskWindowState } from "@/lib/task-schedule";
+import { formatWat } from "@/lib/task-schedule";
 import type { InternshipOfficeLifeInfo } from "@/lib/internship-data";
 import type { DayState } from "@/lib/office-life/server";
 
@@ -71,7 +71,7 @@ export function officeLifeSubmissionText(input: {
 }
 
 type CompletedDay = { userId: string; programId: string; levelId: string; day: number };
-type LinkedTask = { id: string; cohortId: string; kind: "INDIVIDUAL" | "GROUP"; officeLifeDay: number | null; programId: string; levelId: string };
+type LinkedTask = { id: string; cohortId: string | null; /** Self-paced: the one intern whose task it is. */ ownerId?: string | null; kind: "INDIVIDUAL" | "GROUP"; officeLifeDay: number | null; programId: string; levelId: string };
 
 /**
  * Which submissions to create: every individual task linked to a finished
@@ -96,7 +96,7 @@ export function planOfficeLifeSubmissions({
     for (const task of tasks) {
       if (task.kind !== "INDIVIDUAL" || task.officeLifeDay !== day.day) continue;
       if (task.programId !== day.programId || task.levelId !== day.levelId) continue;
-      if (!enrolled.has(`${day.userId}:${task.cohortId}`)) continue;
+      if (task.ownerId ? task.ownerId !== day.userId : !enrolled.has(`${day.userId}:${task.cohortId}`)) continue;
       const key = `${task.id}:${day.userId}`;
       if (done.has(key)) continue;
       done.add(key);
@@ -138,9 +138,12 @@ export async function submitOfficeLifeTasks(
       ...(filter.taskId ? { id: filter.taskId } : {}),
       kind: "INDIVIDUAL",
       officeLifeDay: { in: [...new Set(rows.map((row) => row.day))] },
-      cohort: { programId: { in: [...new Set(rows.map((row) => row.programId))] }, levelId: { in: [...new Set(rows.map((row) => row.levelId))] } },
+      OR: [
+        { cohort: { programId: { in: [...new Set(rows.map((row) => row.programId))] }, levelId: { in: [...new Set(rows.map((row) => row.levelId))] } } },
+        { cohortId: null, application: { studentId: { in: [...new Set(rows.map((row) => row.userId))] }, status: { not: "REMOVED" } } },
+      ],
     },
-    select: { id: true, title: true, cohortId: true, kind: true, officeLifeDay: true, cohort: { select: { programId: true, levelId: true } } },
+    select: { id: true, title: true, cohortId: true, kind: true, officeLifeDay: true, cohort: { select: { programId: true, levelId: true } }, application: { select: { studentId: true, programId: true, levelId: true } } },
   });
   if (!tasks.length) return 0;
 
@@ -159,7 +162,10 @@ export async function submitOfficeLifeTasks(
 
   const plan = planOfficeLifeSubmissions({
     days: rows,
-    tasks: tasks.filter((t) => t.cohort !== null).map((task) => ({ ...task, cohortId: task.cohortId!, programId: task.cohort!.programId, levelId: task.cohort!.levelId })),
+    tasks: tasks.flatMap((task) => {
+      const place = task.cohort ?? task.application;
+      return place ? [{ ...task, programId: place.programId, levelId: place.levelId, ownerId: task.cohort ? null : task.application!.studentId }] : [];
+    }),
     enrolments: enrolments.flatMap((item) => (item.cohortId ? [{ userId: item.studentId, cohortId: item.cohortId }] : [])),
     existing,
   });
@@ -259,7 +265,8 @@ export function officeLifeTaskInfo(day: number, workday: OverviewDay | undefined
           : "Not started",
     stepsDone: workday?.stepsDone ?? 0,
     stepsTotal: workday?.stepsTotal ?? 0,
-    window: opensAt && dueAt ? taskWindowState(opensAt, dueAt, now) : null,
+    // Never closes: a workday stays open while the intern is on the level.
+    window: opensAt ? (now < opensAt ? "UPCOMING" : "OPEN") : null,
     opensLabel: opensAt ? formatWat(opensAt) : null,
     dueLabel: dueAt ? formatWat(dueAt) : null,
     completedLabel: workday?.completedAt ? formatWat(new Date(workday.completedAt)) : null,

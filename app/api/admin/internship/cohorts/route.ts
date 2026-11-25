@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { generateCohortTasks } from "@/lib/task-generation";
 import { requireAdminApi } from "@/lib/api-guards";
 import { cohortTimeline, scheduleToDate } from "@/lib/task-schedule";
 import { listLevels, resolveLevelId } from "@/lib/internship-levels";
@@ -180,9 +181,16 @@ export async function POST(request: Request) {
 
   // Link to a mixed-track pool if another eligible cohort shares level+startDate.
   await ensureCohortPool(cohort.id);
+  // Its tasks come from the Task Library. If that fails the cohort is still
+  // made, and its tasks are made on an intern's first visit.
+  const tasks = await generateCohortTasks(cohort.id).catch((error) => {
+    console.error("Unable to generate the new cohort's tasks:", error);
+    return null;
+  });
 
   return NextResponse.json({
     success: true,
+    tasksCreated: tasks?.ok ? tasks.created : 0,
     cohort: { id: cohort.id, name: cohort.name },
   });
 }

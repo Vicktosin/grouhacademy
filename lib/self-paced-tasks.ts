@@ -1,7 +1,7 @@
 import { getPrisma } from "@/lib/prisma";
-import { scheduleToDate, formatWat, taskWindowState } from "@/lib/task-schedule";
 import { submissionBlockedReason } from "@/lib/task-submission";
-import { durationLabel } from "@/lib/intern-tasks";
+import { compareWeekOrder } from "@/lib/internship-task-order";
+import { generateSelfPacedTasks, pacedLockedReason, pacedOpenWeek } from "@/lib/task-generation";
 import { SubmissionStatus } from "@/generated/prisma/client";
 import type { InternshipTaskItem, TaskStatusLabel, TaskTone } from "@/lib/internship-data";
 import type { InternTaskContext } from "@/lib/intern-tasks";
@@ -14,21 +14,6 @@ const REVIEW_STATUS: Record<SubmissionStatus, { status: TaskStatusLabel; tone: T
   REJECTED: { status: "Changes requested", tone: "red" },
 };
 
-async function weekModuleId(programId: string, week: number): Promise<string> {
-  const prisma = getPrisma();
-  const title = `Week ${week}`;
-  const existing = await prisma.internshipModule.findFirst({
-    where: { programId, title },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-  const created = await prisma.internshipModule.create({
-    data: { programId, title, order: week },
-    select: { id: true },
-  });
-  return created.id;
-}
-
 /** Sets selfPacedStartDate on an application to activate self-paced mode. */
 export async function activateSelfPacedMode(applicationId: string): Promise<void> {
   await getPrisma().internshipApplication.update({
@@ -37,71 +22,14 @@ export async function activateSelfPacedMode(applicationId: string): Promise<void
   });
 }
 
-/**
- * Idempotently creates InternshipTask rows from INDIVIDUAL non-archived
- * templates for this intern. Only creates tasks that don't exist yet.
- */
+/** Makes this intern's tasks from the Task Library (lib/task-generation). */
 export async function materialiseSelfPacedTasks(
   applicationId: string,
   programId: string,
   levelId: string,
   selfPacedStartDate: Date,
 ): Promise<number> {
-  const prisma = getPrisma();
-  const [templates, existing] = await Promise.all([
-    prisma.internshipTaskTemplate.findMany({
-      where: { levelId, programId, kind: "INDIVIDUAL", archived: false },
-      orderBy: [{ opensWeek: "asc" }, { opensDay: "asc" }],
-    }),
-    prisma.internshipTask.findMany({
-      where: { applicationId },
-      select: { templateId: true },
-    }),
-  ]);
-
-  const existingTemplateIds = new Set(
-    existing.map((t) => t.templateId).filter((id): id is string => id !== null),
-  );
-  const toCreate = templates.filter((t) => !existingTemplateIds.has(t.id));
-  if (toCreate.length === 0) return 0;
-
-  for (const template of toCreate) {
-    const moduleId = await weekModuleId(programId, template.opensWeek);
-    const opensAt = scheduleToDate(selfPacedStartDate, {
-      week: template.opensWeek,
-      day: template.opensDay,
-      time: template.opensTime,
-    });
-    const dueDate = scheduleToDate(selfPacedStartDate, {
-      week: template.dueWeek,
-      day: template.dueDay,
-      time: template.dueTime,
-    });
-    await prisma.internshipTask.create({
-      data: {
-        title: template.title,
-        description: template.description,
-        kind: "INDIVIDUAL",
-        moduleId,
-        cohortId: null,
-        applicationId,
-        templateId: template.id,
-        opensWeek: template.opensWeek,
-        opensDay: template.opensDay,
-        opensTime: template.opensTime,
-        dueWeek: template.dueWeek,
-        dueDay: template.dueDay,
-        dueTime: template.dueTime,
-        opensAt,
-        dueDate,
-        maxScore: template.maxScore,
-        labScenarioId: template.labScenarioId,
-        labPassMark: template.labPassMark,
-        officeLifeDay: template.officeLifeDay,
-      },
-    });
-  }
-  return toCreate.length;
+  return generateSelfPacedTasks({ id: applicationId, programId, levelId, selfPacedStartDate });
 }
 
 /**
@@ -133,30 +61,29 @@ export async function getSelfPacedTasks(
         },
       },
     },
-    orderBy: [{ opensAt: "asc" }, { dueDate: "asc" }, { title: "asc" }],
+    orderBy: [{ opensWeek: "asc" }, { opensAt: "asc" }, { dueDate: "asc" }, { title: "asc" }],
   });
 
-  const now = new Date();
-  return tasks.map((task) => {
+  const openWeek = pacedOpenWeek(tasks);
+  return [...tasks].sort(compareWeekOrder).map((task) => {
     const submission = task.submissions[0] ?? null;
-    const window = taskWindowState(task.opensAt, task.dueDate, now);
+    // Weeks open by finishing the one before; nothing closes.
+    const lockedReason = pacedLockedReason(task.opensWeek, openWeek);
+    const window = lockedReason ? ("UPCOMING" as const) : ("OPEN" as const);
     let label: { status: TaskStatusLabel; tone: TaskTone } | null =
       submission ? REVIEW_STATUS[submission.status] : null;
     if (!label)
       label =
         window === "UPCOMING"
           ? { status: "Not open yet", tone: "slate" }
-          : window === "OPEN"
-            ? { status: "Not submitted", tone: "slate" }
-            : { status: "Missed", tone: "red" };
+          : { status: "Not submitted", tone: "slate" };
 
     const score = submission?.score ?? null;
     const blockedReason = submissionBlockedReason({
-      task,
+      task: { ...task, lockedReason },
       existingStatus: submission?.status ?? undefined,
       group: null,
       userId,
-      now,
     });
 
     return {
@@ -167,14 +94,9 @@ export async function getSelfPacedTasks(
       weekLabel: `Week ${task.opensWeek}`,
       weekNumber: task.opensWeek,
       window,
-      opensLabel: formatWat(task.opensAt),
-      dueDateLabel: formatWat(task.dueDate),
-      timeLeftLabel:
-        window === "UPCOMING"
-          ? `Opens in ${durationLabel(task.opensAt.getTime() - now.getTime())}`
-          : window === "OPEN"
-            ? `${durationLabel(task.dueDate.getTime() - now.getTime())} left`
-            : "Closed",
+      opensLabel: lockedReason ? `When you finish Week ${task.opensWeek - 1}` : "Open now",
+      dueDateLabel: "No deadline",
+      timeLeftLabel: lockedReason ? "Locked" : "Go at your own speed",
       status: label.status,
       tone: label.tone,
       scoreLabel: score != null ? `${score}/${task.maxScore} marks` : `${task.maxScore} marks`,

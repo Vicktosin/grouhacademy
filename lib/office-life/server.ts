@@ -4,6 +4,7 @@ import { gradeStep, type Feedback, type Submission } from "@/lib/office-life/gra
 import { castFromOfficeLifeContent, defaultOfficeLifeContent, parseOfficeLifeContent, personalizeOfficeLifeContent, type OfficeLifeContent } from "@/lib/office-life/content";
 import { scheduleToDate } from "@/lib/task-schedule";
 import { awardOfficeLifeAchievement, awardOfficeLifeClockIn, awardOfficeLifeStep } from "@/lib/achievements";
+import { openWeekFor } from "@/lib/task-generation";
 import { submitOfficeLifeTasks } from "@/lib/office-life/tasks";
 import {
   castFor,
@@ -36,7 +37,7 @@ async function internContext(userId: string) {
         payment: { is: { status: "PAID" } },
       },
       orderBy: [{ level: { rank: "desc" } }, { createdAt: "desc" }],
-      select: { programId: true, levelId: true, level: { select: { name: true, rank: true } }, program: { select: { name: true } }, cohort: { select: { name: true, startDate: true, endDate: true } } },
+      select: { id: true, selfPacedStartDate: true, programId: true, levelId: true, level: { select: { name: true, rank: true } }, program: { select: { name: true } }, cohort: { select: { name: true, startDate: true, endDate: true } } },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -52,6 +53,8 @@ async function internContext(userId: string) {
     level: application.level,
     track: application.program.name,
     cohort: application.cohort,
+    // Self-paced: workday N opens with week N of their tasks.
+    openWeek: !application.cohort && application.selfPacedStartDate ? await openWeekFor(application.id, userId) : 0,
     you,
   };
 }
@@ -66,12 +69,12 @@ function windowFor(context: Context, workday: Workday) {
   };
 }
 
-/** Open now (or always, for an admin's preview), and whether it's past due. */
+/** Open from its week until the intern leaves the level (or always, for an admin's preview). */
 function availability(context: Context, workday: Workday, preview: boolean, now = new Date()) {
   const window = windowFor(context, workday);
   return {
     window,
-    open: preview || Boolean(window && now >= window.opensAt && now < window.dueAt),
+    open: preview || workday.day <= context.openWeek || Boolean(window && now >= window.opensAt),
   };
 }
 
@@ -126,7 +129,8 @@ export async function officeLifeOverview(userId: string, preview: boolean) {
       dueAt: window?.dueAt.toISOString() ?? null,
       open,
       upcoming: Boolean(window && new Date() < window.opensAt),
-      closed: Boolean(window && new Date() >= window.dueAt && !row?.completedAt),
+      // Workdays stay open for as long as the intern is on the level.
+      closed: false,
       stepsDone: done,
       stepsTotal: workday.steps.length,
       score: row?.score ?? null,
@@ -182,7 +186,9 @@ export async function officeLifeDay(userId: string, day: number, preview: boolea
     return {
       error: window
         ? `This workday opens on ${window.opensAt.toUTCString()}.`
-        : "Office Life opens once you're placed in a cohort.",
+        : context.openWeek
+          ? `This workday opens when you finish Week ${day - 1} on your Tasks page.`
+          : "Office Life opens once you're placed in a cohort.",
       status: 403,
     } as const;
   const cast = state.cast ?? (state.clockedInAt ? castFor(context.track) : castFromOfficeLifeContent(content));
@@ -237,7 +243,7 @@ export async function officeLifeAct(userId: string, day: number, preview: boolea
   const snapshot = state.workday ?? legacyWorkday;
   const workday = defaultWorkday ? { ...defaultWorkday, ...(snapshot ?? {}) } : snapshot;
   if (!workday) return { error: "That workday doesn't exist.", status: 404 } as const;
-  if (!availability(context, workday, preview).open) return { error: "This workday is outside its scheduled window.", status: 403 } as const;
+  if (!availability(context, workday, preview).open) return { error: "This workday isn't open yet.", status: 403 } as const;
   const cast = state.cast ?? (state.clockedInAt ? castFor(context.track) : castFromOfficeLifeContent(content));
   const now = new Date().toISOString();
   // What to celebrate once it's saved: a first clock-in or a graded step.

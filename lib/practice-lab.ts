@@ -9,6 +9,7 @@ import { awardTaskAchievements, awardTaskSubmittedAchievements } from "@/lib/ach
 import { artifactKeys, deleteArtifacts, parseArtifacts, type LabArtifacts } from "@/lib/lab-artifacts";
 import { getInternTrackAccess } from "@/lib/intern-resources";
 import { getInternTaskContext } from "@/lib/intern-tasks";
+import { openWeekFor, pacedLockedReason } from "@/lib/task-generation";
 import {
   MAX_SUBMISSION_LENGTH,
   submissionBlockedReason,
@@ -319,13 +320,21 @@ async function linkedTask(
 ) {
   if (!taskId) return null;
   const context = await getInternTaskContext(userId);
-  if (!context?.cohortId) return null;
-  return getPrisma().internshipTask.findFirst({
-    where: { id: taskId, cohortId: context.cohortId, labScenarioId: scenarioId },
+  if (!context) return null;
+  // A self-paced intern's tasks are their own; a cohort's are shared.
+  const selfPaced = !context.cohortId && Boolean(context.selfPacedStartDate);
+  if (!context.cohortId && !selfPaced) return null;
+  const task = await getPrisma().internshipTask.findFirst({
+    where: {
+      id: taskId,
+      labScenarioId: scenarioId,
+      ...(selfPaced ? { applicationId: context.id } : { cohortId: context.cohortId }),
+    },
     select: {
       id: true,
       title: true,
       kind: true,
+      opensWeek: true,
       opensAt: true,
       dueDate: true,
       maxScore: true,
@@ -333,6 +342,8 @@ async function linkedTask(
       module: { select: { programId: true } },
     },
   });
+  if (!task || !selfPaced) return task;
+  return { ...task, lockedReason: pacedLockedReason(task.opensWeek, await openWeekFor(context.id, userId)) };
 }
 
 /**
